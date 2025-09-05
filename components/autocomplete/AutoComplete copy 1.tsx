@@ -1,0 +1,145 @@
+// component/autocomplete/AutoComplete.tsx
+
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+type Suggestion = {
+    id: string | number;
+    name: string;
+};
+
+type AutoCompleteProps = {
+    label: string;
+    placeholder?: string;
+    endpoint: string;
+    value: Suggestion | null;
+    onChange: (value: Suggestion | null) => void;
+    disabled?: boolean;
+    parentId?: number | string | null; // for size/variant/unit
+};
+
+export default function AutoComplete({
+    label,
+    placeholder,
+    endpoint,
+    value,
+    onChange,
+    disabled = false,
+    parentId = null,
+}: AutoCompleteProps) {
+    const [inputValue, setInputValue] = useState(value?.name || "");
+    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [loading, setloading] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const justSelectedRef = useRef(false);
+
+    useEffect(() => {
+        setInputValue(value?.name || "");
+    }, [value]);
+
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            if ((!inputValue || inputValue.length < 1) && !parentId) {
+                setSuggestions([]);
+                return;
+            }
+
+            if (justSelectedRef.current) {
+                justSelectedRef.current = false;
+                return;
+            }
+
+            setloading(true);
+            try {
+                const url = new URL(endpoint, window.location.origin);
+                if (inputValue) url.searchParams.set("query", inputValue);
+                if (parentId) url.searchParams.set("itemId", String(parentId));
+
+                const res = await fetch(url.toString());
+                const data: Suggestion[] = await res.json();
+
+                if (data.length === 1 && data[0].name === "(None)") {
+                    handleSelect(data[0]);
+                    return;
+                }
+
+                setSuggestions(data);
+            } catch (err) {
+                console.error("Autocomplete fetch error:", err);
+            } finally {
+                setloading(false);
+            }
+        };
+
+        const timeout = setTimeout(fetchSuggestions, 300);
+        return () => clearTimeout(timeout);
+    }, [inputValue, endpoint, parentId]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+
+        window.addEventListener("click", handleClickOutside);
+        return () => window.removeEventListener("click", handleClickOutside);
+    }, []);
+
+    const handleSelect = (selected: Suggestion) => {
+        justSelectedRef.current = true;
+        setInputValue(selected.name);
+        onChange(selected);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setloading(false);
+    };
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <label className="block text-sm font-medium">{label}</label>
+            <input 
+            type="text"
+            value={inputValue}
+            onChange={(e) => {
+                const val = e.target.value;
+                setInputValue(val);
+                setShowSuggestions(true);
+
+                if (val === "") {
+                    onChange(null);
+                }
+            }}
+            placeholder={placeholder}
+            disabled={disabled}
+            className="w-full border border-gray-300 px-3 py-2 rounded-md disabled:bg-gray-100"
+            />
+
+            {loading && (
+                <div className="absolute mt-1 px-3 py-1 text-sm text-gray-500">Loading...</div>
+            )}
+
+            {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute z-10 w-full border bg-white rounded shadow max-h-40 overflow-y-auto">
+                    {suggestions.map((s) => (
+                        <li
+                        key={s.id}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleSelect(s)}
+                        >
+                            {s.name}
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {showSuggestions && !loading && suggestions.length === 0 && (
+                <div className="absolute z-10 w-full bg-white border px-3 py-2 text-gray-500 italic text-xs">
+                    No matches found
+                </div>
+            )}
+        </div>
+    );
+}
