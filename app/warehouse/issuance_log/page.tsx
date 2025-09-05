@@ -10,16 +10,16 @@ import { useEffect, useState } from "react";
 import IssuanceActions from "./issuance_actions";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { IssuanceItem } from "./types/issuance";
 
 const ITEMS_PER_PAGE = 10;
-
 
 const IssuanceLogPage = () => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [item_issuances, setItemIssuances] = useState<any[]>([]);
+    const [item_issuances, setItemIssuances] = useState<IssuanceItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<"Issued" | "Draft" | "Archived">("Issued");
 
@@ -35,8 +35,12 @@ const IssuanceLogPage = () => {
                 if (!res.ok) throw new Error(data.error || "Failed to fetch data.");
 
                 setItemIssuances(data);
-            } catch (err: any) {
-                setError(err.message || "Unknown error.");
+            } catch (err: unknown) {
+                if (err instanceof Error) {
+                    setError(err.message);
+                } else {
+                    setError("Unknown error.");
+                }
             } finally {
                 setLoading(false);
             }
@@ -179,7 +183,7 @@ const IssuanceLogPage = () => {
                         {issuance.status}
                     </span>
                     <span className="relative flex items-center justify-center">
-                        <IssuanceActions item={issuance} onDelete={async (id:string) => {
+                        <IssuanceActions item={issuance} onDelete={async (id:number) => {
 
                     try {
                         await fetch(`/api/issuances/${id}`, { 

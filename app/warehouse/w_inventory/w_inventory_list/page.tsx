@@ -15,15 +15,16 @@ import {
 } from "@/components/ui/pagination"
 import InventoryActions from "./inventory_action";
 import { toast } from "sonner";
+import { InventoryItem, InventoryCategory, InventoryUnit, InventoryVariant, InventorySize, } from "./types/inventory";
 
 const ITEMS_PER_PAGE = 10;
 
 const WarehouseInventoryListPage = () => {
-  const [items, setItems] = useState<any[]>([]);
-  const [categories, setCategories] = useState([]);
-  const [units, setUnits] = useState([]);
-  const [variants, setVariants] = useState([]);
-  const [sizes, setSizes] = useState([]);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [categories, setCategories] = useState<InventoryCategory[]>([]);
+  const [units, setUnits] = useState<InventoryUnit[]>([]);
+  const [variants, setVariants] = useState<InventoryVariant[]>([]);
+  const [sizes, setSizes] = useState<InventorySize[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,8 +63,9 @@ const WarehouseInventoryListPage = () => {
         setError("Failed to fetch items");
       }
     }
-    catch (err) {
+    catch (error) {
       setError("Something went wrong");
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -172,7 +174,13 @@ useEffect(() => {
                 units={units}
                 variants={variants}
                 sizes={sizes}
-                existingItems={items}
+                existingItems={items.map((item) => ({
+                  name: item.name,
+                  categoryId: item.category.id,
+                  unitId: item.unit.id,
+                  variantId: item.variant ? item.variant.id : null,
+                  sizeId: item.size ? item.size.id : null,
+                }))}
                 onItemAdded={fetchItems}
       />
       
@@ -227,7 +235,7 @@ useEffect(() => {
       >
         All Categories
         </div>
-      {categories.map((cat: any) => (
+      {categories.map((cat) => (
         <div
           key={cat.id}
           className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-center"
@@ -393,7 +401,7 @@ useEffect(() => {
                   <span className="flex items-center justify-center">
                   <InventoryActions
                     item={item}
-                    onDelete={async (id: string) => {
+                    onDelete={async (id: number) => {
                       try {
                         const res = await fetch(`/api/items/${id}`, { method: "DELETE" });
                         const json = await res.json();

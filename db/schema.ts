@@ -73,3 +73,33 @@ export const itemIssuanceItems = pgTable("item_issuance_items", {
 
   quantity: integer("quantity").notNull(),
 });
+
+
+  // //relation
+  // export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({
+  //   guardian: one(guardianAndParentsTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [guardianAndParentsTable.applicants_id],
+  //   }),
+  //   education: one(educationalBackgroundTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [educationalBackgroundTable.applicants_id],
+  //   }),
+  //   documents: one(documentsTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [documentsTable.applicants_id],
+  //   }),
+  //   status: one(applicationStatusTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [applicationStatusTable.applicants_id],
+  //   }),
+  //   reservationFee: one(reservationFeeTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [reservationFeeTable.applicants_id],
+  //   }),
+
+
+  //   admissionStatus: one(AdmissionStatusTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [AdmissionStatusTable.applicants_id],
+  //   }),

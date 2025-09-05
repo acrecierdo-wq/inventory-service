@@ -1,172 +1,172 @@
-// app/warehouse/w_inventory/w_inventory_list/issuance_action.tsx
-import { useEffect, useRef, useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import Image from "next/image";
-import { toast } from "sonner";
+// // app/warehouse/w_inventory/w_inventory_list/issuance_action.tsx
+// import { useEffect, useRef, useState } from "react";
+// import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+// import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
+// import Image from "next/image";
+// import { toast } from "sonner";
 
-const IssuanceActions = ({ item, onDelete }: { item: any; onDelete: (id: string) => void }) => {
-  const [openDropdown, setOpenDropdown] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+// const IssuanceActions = ({ item, onDelete }: { item: any; onDelete: (id: string) => void }) => {
+//   const [openDropdown, setOpenDropdown] = useState(false);
+//   const [sheetOpen, setSheetOpen] = useState(false);
+//   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const [items, setItems] = useState<
-          { itemId: string; sizeId: string; variantId: string; unitId: string; quantity: number 
-          itemName: string; sizeName: string; variantName: string; unitName: string;
-          }[]>([]);
+//   const [items, setItems] = useState<
+//           { itemId: string; sizeId: string; variantId: string; unitId: string; quantity: number 
+//           itemName: string; sizeName: string; variantName: string; unitName: string;
+//           }[]>([]);
 
-  //const router = useRouter();
+//   //const router = useRouter();
 
-  const handleDelete = async (id: string) => {
+//   const handleDelete = async (id: string) => {
 
-    try {
-      await onDelete(id);
-      setConfirmDelete(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Error archiving issuance.");
-    }
-  };
+//     try {
+//       await onDelete(id);
+//       setConfirmDelete(false);
+//     } catch (err) {
+//       console.error(err);
+//       toast.error("Error archiving issuance.");
+//     }
+//   };
 
-  useEffect(() => {
-    if (item.items) {
-      setItems(item.items);
-    }
-  }, [item.items]);
+//   useEffect(() => {
+//     if (item.items) {
+//       setItems(item.items);
+//     }
+//   }, [item.items]);
 
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+//   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const handleMouseDown = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(false);
-      }
-    };
+//   useEffect(() => {
+//     const handleMouseDown = (event: MouseEvent) => {
+//       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+//         setOpenDropdown(false);
+//       }
+//     };
 
-    window.addEventListener("mousedown", handleMouseDown);
-    return () => window.removeEventListener("mousedown", handleMouseDown);
-  }, []);
+//     window.addEventListener("mousedown", handleMouseDown);
+//     return () => window.removeEventListener("mousedown", handleMouseDown);
+//   }, []);
 
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-          setOpenDropdown(false);
-        }
-      };
+//     useEffect(() => {
+//       const handleClickOutside = (event: MouseEvent) => {
+//         if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+//           setOpenDropdown(false);
+//         }
+//       };
 
-      window.addEventListener("click", handleClickOutside);
-      return () => window.removeEventListener("click", handleClickOutside);
-    }, []);
+//       window.addEventListener("click", handleClickOutside);
+//       return () => window.removeEventListener("click", handleClickOutside);
+//     }, []);
 
-  return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Dots Icon */}
-      <div onClick={() => setOpenDropdown(!openDropdown)} className="cursor-pointer">
-        <Image src="/dots-vertical-rounded-svgrepo-com.svg" width={24} height={24} alt="Actions"/>
-      </div>
+//   return (
+//     <div className="relative" ref={dropdownRef}>
+//       {/* Dots Icon */}
+//       <div onClick={() => setOpenDropdown(!openDropdown)} className="cursor-pointer">
+//         <Image src="/dots-vertical-rounded-svgrepo-com.svg" width={24} height={24} alt="Actions"/>
+//       </div>
 
-      {/* Dropdown Options */}
-      {openDropdown && (
-        <div className="absolute right-0 z-100 bg-white shadow border rounded text-sm w-32">
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              setSheetOpen(true);
-              setOpenDropdown(false);
-            }}
-            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-          >
-            View Details
-          </div>
-          <div
-            onClick={() => {
-              setConfirmDelete(true);
-              setOpenDropdown(false);
-            }}
-            className="px-4 py-2 hover:bg-red-100 text-red-600 cursor-pointer"
-          >
-            Archive
-          </div>
-        </div>
-      )}
+//       {/* Dropdown Options */}
+//       {openDropdown && (
+//         <div className="absolute right-0 z-100 bg-white shadow border rounded text-sm w-32">
+//           <div
+//             onClick={(e) => {
+//               e.stopPropagation();
+//               setSheetOpen(true);
+//               setOpenDropdown(false);
+//             }}
+//             className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+//           >
+//             View Details
+//           </div>
+//           <div
+//             onClick={() => {
+//               setConfirmDelete(true);
+//               setOpenDropdown(false);
+//             }}
+//             className="px-4 py-2 hover:bg-red-100 text-red-600 cursor-pointer"
+//           >
+//             Archive
+//           </div>
+//         </div>
+//       )}
 
-      {/* View Details Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle className="text-center font-bold text-2xl underline">Issuance Details</SheetTitle>
-          </SheetHeader>
-          <div className="ml-4 space-y-2">
-          <div><strong>Client Name:</strong> {item.clientName}</div>
-          <div><strong>Dispatcher Name:</strong> {item.dispatcherName}</div>
-          <div><strong>DR Number:</strong> {item.drNumber || "-"}</div>
-          <div className="flex items-center gap-2"><span><strong>Status:</strong></span>
-          <span
-            className={`px-2 py-0.5 rounded text-sm font-medium ${
-              item.status === 'Issued' ? 'bg-green-200 text-green-800' :
-                            item.status === 'Archived' ? 'bg-red-200 text-red-800' :
-                            item.status === 'Draft' ? 'bg-slate-300 text-white' : ''
-            }`}
-          >{item.status}</span></div>
-          <div><strong>Date | Time:</strong> {item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "Draft (Not Yet Issued)" }</div>
+//       {/* View Details Sheet */}
+//       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+//         <SheetContent>
+//           <SheetHeader>
+//             <SheetTitle className="text-center font-bold text-2xl underline">Issuance Details</SheetTitle>
+//           </SheetHeader>
+//           <div className="ml-4 space-y-2">
+//           <div><strong>Client Name:</strong> {item.clientName}</div>
+//           <div><strong>Dispatcher Name:</strong> {item.dispatcherName}</div>
+//           <div><strong>DR Number:</strong> {item.drNumber || "-"}</div>
+//           <div className="flex items-center gap-2"><span><strong>Status:</strong></span>
+//           <span
+//             className={`px-2 py-0.5 rounded text-sm font-medium ${
+//               item.status === 'Issued' ? 'bg-green-200 text-green-800' :
+//                             item.status === 'Archived' ? 'bg-red-200 text-red-800' :
+//                             item.status === 'Draft' ? 'bg-slate-300 text-white' : ''
+//             }`}
+//           >{item.status}</span></div>
+//           <div><strong>Date | Time:</strong> {item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "Draft (Not Yet Issued)" }</div>
           
-          <div className="border-t pt-4 mt-4 w-[350px]">
-            <div className="text-center"><strong>ITEMS</strong></div>
-          <table className=" w-[350px] mt-4 text-sm border">
-                                    <thead className="bg-[#f5e6d3] text-[#482b0e]">
-                                        <tr>
-                                            <th className=" border px-2 py-1">Item ID</th>
-                                            <th className=" border px-2 py-1">Size</th>
-                                            <th className=" border px-2 py-1">Variant</th>
-                                            <th className=" border px-2 py-1">Unit</th>
-                                            <th className=" border px-2 py-1">Qty</th>
-                                        </tr>
-                                    </thead>
+//           <div className="border-t pt-4 mt-4 w-[350px]">
+//             <div className="text-center"><strong>ITEMS</strong></div>
+//           <table className=" w-[350px] mt-4 text-sm border">
+//                                     <thead className="bg-[#f5e6d3] text-[#482b0e]">
+//                                         <tr>
+//                                             <th className=" border px-2 py-1">Item ID</th>
+//                                             <th className=" border px-2 py-1">Size</th>
+//                                             <th className=" border px-2 py-1">Variant</th>
+//                                             <th className=" border px-2 py-1">Unit</th>
+//                                             <th className=" border px-2 py-1">Qty</th>
+//                                         </tr>
+//                                     </thead>
 
-                                    <tbody>
-                                        {items.map((item, idx) => (
-                                            <tr key={ idx }>
-                                                <td className="border px-2 py-1">{item.itemName}</td>
-                                                <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                                                <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                                                <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
-                                                <td className="border px-2 py-1">{item.quantity}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-          </div>
+//                                     <tbody>
+//                                         {items.map((item, idx) => (
+//                                             <tr key={ idx }>
+//                                                 <td className="border px-2 py-1">{item.itemName}</td>
+//                                                 <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
+//                                                 <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
+//                                                 <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
+//                                                 <td className="border px-2 py-1">{item.quantity}</td>
+//                                             </tr>
+//                                         ))}
+//                                     </tbody>
+//                                 </table>
+//           </div>
 
-          {/* Add more item details here */}
-          </div>
-        </SheetContent>
-      </Sheet>
+//           {/* Add more item details here */}
+//           </div>
+//         </SheetContent>
+//       </Sheet>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogTitle>
-        </AlertDialogTitle>
-        <AlertDialogContent>
-          <div className="text-lg font-semibold">Are you sure?</div>
-          <p>This will archive the selected issuance log record.</p>
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              className="px-4 py-1 rounded bg-gray-300 hover:bg-gray-400"
-              onClick={() => setConfirmDelete(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="px-4 py-1 rounded bg-red-600 text-white hover:bg-red-700"
-              onClick={() => handleDelete(item.id)}
-            >
-              Confirm
-            </button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-};
+//       {/* Delete Confirmation */}
+//       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+//         <AlertDialogTitle>
+//         </AlertDialogTitle>
+//         <AlertDialogContent>
+//           <div className="text-lg font-semibold">Are you sure?</div>
+//           <p>This will archive the selected issuance log record.</p>
+//           <div className="flex justify-end gap-2 mt-4">
+//             <button
+//               className="px-4 py-1 rounded bg-gray-300 hover:bg-gray-400"
+//               onClick={() => setConfirmDelete(false)}
+//             >
+//               Cancel
+//             </button>
+//             <button
+//               className="px-4 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+//               onClick={() => handleDelete(item.id)}
+//             >
+//               Confirm
+//             </button>
+//           </div>
+//         </AlertDialogContent>
+//       </AlertDialog>
+//     </div>
+//   );
+// };
 
-export default IssuanceActions;
+// export default IssuanceActions;

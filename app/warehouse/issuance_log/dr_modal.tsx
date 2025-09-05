@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 
-export default function DRModal({ onClose, onConfirm }: any) {
+export type DRConfirmData = {
+    drNumber: string;
+    saveAsDraft: boolean;
+};
+
+type DRModalProps = {
+    onClose: () => void;
+    onConfirm: (data: DRConfirmData) => void;
+};
+
+export default function DRModal({ onClose, onConfirm }: DRModalProps) {
     const [drNumber, setDrNumber] = useState("");
     const [saveAsDraft, setSaveAsDraft] = useState(false);
 

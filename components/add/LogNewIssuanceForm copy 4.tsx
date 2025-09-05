@@ -1,3 +1,5 @@
+// // app/components/add/LogNewIssuanceForm.tsx
+
 // "use client";
 
 // import { useEffect, useState } from "react";
@@ -6,6 +8,7 @@
 // import { toast } from "sonner";
 // import AutoComplete from "../autocomplete/AutoComplete";
 // import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
+// import { DraftIssuance } from "@/app/warehouse/issuance_log/types/issuance";
 
 // type Selection = { id: string | number; name: string };
 
@@ -19,14 +22,24 @@
 //   unitName: string | null;
 // };
 
-// const NewIssuancePage = () => {
-//   const [clientName, setClientName] = useState("");
-//   const [dispatcherName, setDispatcherName] = useState("");
-//   const [customerPoNumber, setCustomerPoNumber] = useState("");
-//   const [prfNumber, setPrfNumber] = useState("");
+
+
+// interface Props {
+//   draftData?: any;
+//   draftId?: string;
+//   onSaveSuccess?: () => void;
+// };
+
+
+// const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
+//   const [clientName, setClientName] = useState(draftData?.clientName || "");
+//   const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
+//   const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
+//   const [prfNumber, setPrfNumber] = useState(draftData?.prfNumber ||"");
 //   const [showDRModal, setShowDRModal] = useState(false);
 //   const [drInfo, setDrInfo] = useState<{ drNumber: string; saveAsDraft: boolean } | null>(null);
 //   const [showSummary, setShowSummary] = useState(false);
+//   const [isAdding, setIsAdding] = useState(false);
 
 //   const [items, setItems] = useState<
 //     {
@@ -40,7 +53,7 @@
 //       variantName: string | null;
 //       unitName: string | null;
 //     }[]
-//   >([]);
+//   >(draftData?.items || []);
 
 //   const [newItem, setNewItem] = useState({
 //       itemId: "",
@@ -210,25 +223,33 @@
 
 //   // Add item: consult item-find (which resolves correct item id) then push to list
 //   const handleAddItem = async () => {
+//     if (isAdding) return;
+//     setIsAdding(true);
+
 //     // Basic validations: require item, require size/variant/unit depending on options
 //     if (!selectedItem) {
 //       toast.error("Please select an item.");
+//       setIsAdding(false);
 //       return;
 //     }
 //     if (availableSizes.length > 0 && !selectedSize) {
 //       toast.error("Please select a size.");
+//       setIsAdding(false);
 //       return;
 //     }
 //     if (availableVariants.length > 0 && !selectedVariant) {
 //       toast.error("Please select a variant.");
+//       setIsAdding(false);
 //       return;
 //     }
 //     if (availableUnits.length > 0 && !selectedUnit) {
 //       toast.error("Please select a unit.");
+//       setIsAdding(false);
 //       return;
 //     }
 //     if (!quantity || Number(quantity) <= 0 || isNaN(Number(quantity))) {
 //       toast.error("Please enter a valid quantity.");
+//       setIsAdding(false);
 //       return;
 //     }
 
@@ -246,6 +267,7 @@
 
 //       if (!found || !found.id) {
 //         toast.error("Failed to find matching item in inventory.");
+//         setIsAdding(false);
 //         return;
 //       }
 
@@ -271,6 +293,7 @@
 
 //       if (isDuplicate) {
 //         toast.error("This item with the selected options is already added.");
+//         setIsAdding(false);
 //         return;
 //       }
 
@@ -286,7 +309,38 @@
 //     } catch (err) {
 //       console.error("Item-find error:", err);
 //       toast.error("Something went wrong while adding the item.");
+//     } finally {
+//       setIsAdding(false);
 //     }
+//   };
+
+//   const handleDone = () => {
+//     if (!clientName) {
+//       toast.error("Please enter a client name.");
+//       return;
+//     }
+
+//     if (!dispatcherName) {
+//       toast.error("Please enter a dispatcher name.");
+//       return;
+//     }
+
+//     if (!customerPoNumber) {
+//       toast.error("Please enter a customer PO number.");
+//       return;
+//     }
+
+//     if (!prfNumber) {
+//       toast.error("Please enter a PRF number.");
+//       return;
+//     }
+
+//     if (items.length === 0) {
+//       toast.error("Please add at least one item.");
+//       return;
+//     }
+
+//     setShowDRModal(true);
 //   };
 
 //   const handleSaveIssuance = async () => {
@@ -302,7 +356,7 @@
 //       customerPoNumber,
 //       prfNumber,
 //       drNumber: drInfo?.drNumber || "",
-//       saveAsDraft: drInfo?.saveAsDraft || false,
+//       saveAsDraft: drInfo?.saveAsDraft ? "draft" : "issued",
 //       items: items.map((item) => ({
 //         itemId: item.itemId,
 //         sizeId: item.sizeId ?? null,
@@ -313,8 +367,8 @@
 //     };
 
 //     try {
-//       const res = await fetch("/api/issuances", {
-//         method: "POST",
+//       const res = await fetch(draftId ? `/api/issuances/${draftId}` : "/api/issuances", {
+//         method: draftId ? "PUT" : "POST",
 //         headers: { "Content-Type": "application/json" },
 //         body: JSON.stringify(payload),
 //       });
@@ -329,7 +383,7 @@
 //             if (err?.error) errorMessage = err.error;
 //           }
 //         } catch (e) {
-//           console.log(e)
+//           console.log(e);
 //           /* ignore parse error */
 //         }
 //         toast.error(errorMessage);
@@ -346,6 +400,7 @@
 
 //       setTimeout(() => {
 //         toast.success(drInfo.saveAsDraft ? "Issuance saved as draft." : "Issuance saved successfully!");
+//         onSaveSuccess?.();
 //         setTimeout(() => {
 //           window.location.href = "/warehouse/issuance_log";
 //         }, 1500);
@@ -355,6 +410,15 @@
 //       toast.error("Something went wrong while saving the issuance.");
 //     }
 //   };
+
+//   useEffect(() => {
+    
+//     setClientName(draftData.clientName || "");
+//     setDispatcherName(draftData.dispatcherName || "");
+//     setCustomerPoNumber(draftData.customerPoNumber || "");
+//     setPrfNumber(draftData.prfNumber || "");
+//     setItems(draftData?.items || []);
+//   }, [draftData])
 
 //   return (
 //     <WarehousemanClientComponent>
@@ -475,9 +539,10 @@
 //               <button
 //                 type="button"
 //                 onClick={handleAddItem}
+//                 disabled={isAdding}
 //                 className="mt-3 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
 //               >
-//                 Add Item
+//                 {isAdding ? "Adding..." : "Add Item"}
 //               </button>
 
 //               {items.length > 0 && (
@@ -496,7 +561,7 @@
 //                     </thead>
 //                     <tbody>
 //                       {items.map((item, idx) => (
-//                         <tr key={idx}>
+//                         <tr key={`${item.itemId}-${idx}`}>
 //                           <td className="border px-2 py-1">{item.itemName}</td>
 //                           <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
 //                           <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
@@ -529,8 +594,8 @@
 //               </button>
 //               <button
 //                 type="button"
-//                 onClick={() => setShowDRModal(true)}
-//                 disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
+//                 onClick={handleDone}
+//                 //disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
 //                 className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
 //               >
 //                 Done
@@ -541,12 +606,12 @@
 //           {showDRModal && (
 //             <DRModal
 //               onClose={() => setShowDRModal(false)}
-//               onConfirm={(data: { drNumber: string; saveAsDraft: boolean }) => {
+//               onConfirm={(data) => {
 //                 setDrInfo(data);
 //                 setShowDRModal(false);
 //                 setShowSummary(true);
 //               }}
-//               className="hover:bg-gray-100"
+//               //className="hover:bg-gray-100"
 //             />
 //           )}
 
@@ -570,7 +635,7 @@
 //                   </thead>
 //                   <tbody>
 //                     {items.map((item, idx) => (
-//                       <tr key={idx}>
+//                       <tr key={`${item.itemId}-${idx}`}>
 //                         <td className="border px-2 py-1">{item.itemName}</td>
 //                         <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
 //                         <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
@@ -605,3 +670,4 @@
 // };
 
 // export default NewIssuancePage;
+// // Latest version - Sept.2 - 5:40PM

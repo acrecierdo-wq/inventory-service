@@ -3,8 +3,16 @@ import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Image from "next/image";
+import { InventoryItem } from "./types/inventory";
 
-const InventoryActions = ({ item, onDelete }: { item: any; onDelete: (id: string) => void }) => {
+type InventoryActionsProps = {
+  item: InventoryItem;
+  onDelete: (id: number) => void;
+}
+
+const InventoryActions = ({ item, onDelete }: InventoryActionsProps) => {
+  console.log("InventoryActions props.item:", item);
+
   const [openDropdown, setOpenDropdown] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -74,8 +82,8 @@ const InventoryActions = ({ item, onDelete }: { item: any; onDelete: (id: string
           <div className="text-lg font-bold mb-2">Item Details</div>
           <div><strong>Name:</strong> {item.name}</div>
           <div><strong>Category:</strong> {item.category?.name}</div>
-          <div><strong>Size:</strong> {item.size?.name}</div>
-          <div><strong>Variant:</strong> {item.variant?.name}</div>
+          <div><strong>Size:</strong> {item.size?.name ?? "(None)"}</div>
+          <div><strong>Variant:</strong> {item.variant?.name ?? "(None)"}</div>
           <div><strong>Unit:</strong> {item.unit?.name}</div>
           <div><strong>Quantity in Stock:</strong> {item.stock ?? 0}</div>
           <div className="flex items-center gap-2"><span><strong>Status:</strong></span>

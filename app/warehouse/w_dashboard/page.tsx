@@ -4,19 +4,21 @@
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
 import { Header } from "@/components/header";
 import { useEffect, useState } from "react";
+import { InventoryCategory, InventoryItemsReport, ChartData, PieChartData } from "@/app/warehouse/w_inventory/w_inventory_list/types/inventory";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, CartesianGrid} from 'recharts';
 
+
 const WarehouseInventoryReportsPage = () => {
-    const [items, setItems] = useState<any[]>([]);
+    const [items, setItems] = useState<InventoryItemsReport[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<InventoryCategory[]>([]);
 
     const fetchItems = async () => {
         setLoading(true);
         const res = await fetch("/api/items");
-        const data = await res.json();
+        const data: { data: InventoryItemsReport[] } = await res.json();
         setItems(data.data || []);
         setLoading(false);
     };
@@ -51,27 +53,35 @@ const WarehouseInventoryReportsPage = () => {
     //     {}
     // );
 
-    const chartData = selectedCategory
-        ? filteredItems.map((item) => ({
-            name: item.name,
-            stock: item.stock ?? 0,
-        }))
+    const chartData: ChartData[] = selectedCategory
+        ? items
+            .filter((item) => !selectedCategory || item.category?.name === selectedCategory)
+            .map((item) => ({
+                name: item.name,
+                stock: item.stock ?? 0,
+            }))
         : Object.values(
-            filteredItems.reduce((acc: any, item) => {
-                const cat = item.category?.name || "Uncategorized";
-                if (!acc[cat]) acc[cat] = { name: cat, stock: 0};
+            items.reduce<Record<string, { name: string; stock: number }>>(
+                (acc, item) => {
+                    const cat = item.category?.name || "Uncategorized";
+                    if (!acc[cat]) acc[cat] = { name: cat, stock: 0 };
                     acc[cat].stock += item.stock ?? 0;
                     return acc;
-            }, {})
+                },
+                {}
+            )
         );
 
-    const pieChartData = Object.values(
-        filteredItems.reduce((acc: any, item) => {
-            const status = item.status || "Unknown";
-            if (!acc[status]) acc[status] = { name: status, value: 0};
-            acc[status].value += 1;
-            return acc;
-        }, {})
+    const pieChartData: PieChartData[] = Object.values(
+        items.reduce<Record<string, { name: string; value: number }>>(
+            (acc, item) => {
+                const status = item.status || "Unknown";
+                if (!acc[status]) acc[status] = { name: status, value: 0 };
+                acc[status].value += 1;
+                return acc; 
+            },
+            {}
+        )
     );
     
     const COLORS = ["#16A34A", "#62748e", "#0088FE", "#FFBB28", "#d12f2f"]
@@ -123,7 +133,7 @@ const WarehouseInventoryReportsPage = () => {
                     onChange={(e) => setSelectedCategory(e.target.value)}
                     >
                     <option value="">All Categories</option>
-                    {categories.map((cat: any) => (
+                    {categories.map((cat) => (
                         <option key={cat.id} value={cat.name}>
                             {cat.name}
                         </option>

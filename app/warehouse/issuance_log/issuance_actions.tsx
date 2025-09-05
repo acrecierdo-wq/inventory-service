@@ -6,20 +6,26 @@ import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/
 import Image from "next/image";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { IssuanceItem, IssuanceItemDetail } from "./types/issuance";
 
-const IssuanceActions = ({ item, onDelete }: { item: any; onDelete: (id: string) => void }) => {
+
+type IssuanceActionsProps = {
+  item: IssuanceItem;
+  onDelete: (id: number) => void;
+};
+
+const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
+  console.log("IssuanceActions props.item:", item);
+
   const [openDropdown, setOpenDropdown] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const [items, setItems] = useState<
-          { itemId: string; sizeId: string; variantId: string; unitId: string; quantity: number 
-          itemName: string; sizeName: string; variantName: string; unitName: string;
-          }[]>([]);
+  const [items, setItems] = useState<IssuanceItemDetail[]>([]);
 
   const router = useRouter();
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
 
     try {
       await onDelete(id);
@@ -151,7 +157,7 @@ const IssuanceActions = ({ item, onDelete }: { item: any; onDelete: (id: string)
           <table className=" w-[350px] mt-4 text-sm border">
                                     <thead className="bg-[#f5e6d3] text-[#482b0e]">
                                         <tr>
-                                            <th className=" border px-2 py-1">Item ID</th>
+                                            <th className=" border px-2 py-1">Item</th>
                                             <th className=" border px-2 py-1">Size</th>
                                             <th className=" border px-2 py-1">Variant</th>
                                             <th className=" border px-2 py-1">Unit</th>

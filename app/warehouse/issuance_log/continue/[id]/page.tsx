@@ -8,21 +8,26 @@ import LogNewIssuanceForm from "@/components/add/LogNewIssuanceForm";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "@/components/header";
+import { DraftIssuance } from "@/app/warehouse/issuance_log/types/issuance";
 
 export default function ContinueIssuancePage() {
   const { id } = useParams(); // draft ID
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
-  const [draftData, setDraftData] = useState<any>(null);
+  const [draftData, setDraftData] = useState<DraftIssuance | null>(null);
 
   // Fetch draft data
   useEffect(() => {
+    
     const fetchDraft = async () => {
       try {
         const res = await fetch(`/api/issuances/${id}`); // corrected endpoint
         if (!res.ok) throw new Error("Failed to fetch draft");
         const data = await res.json();
+
+        console.log("Fetched draft issuance:", data);
+
         setDraftData(data);
       } catch (err) {
         console.error(err);

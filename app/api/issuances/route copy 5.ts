@@ -1,191 +1,191 @@
-import { db } from "@/db/drizzle";
-import {
-  itemIssuances,
-  itemIssuanceItems,
-  items as itemsTable,
-  sizes,
-  variants,
-  units,
-} from "@/db/schema";
-import { NextResponse } from "next/server";
-import { eq, desc } from "drizzle-orm";
+// import { db } from "@/db/drizzle";
+// import {
+//   itemIssuances,
+//   itemIssuanceItems,
+//   items as itemsTable,
+//   sizes,
+//   variants,
+//   units,
+// } from "@/db/schema";
+// import { NextResponse } from "next/server";
+// import { eq, desc } from "drizzle-orm";
 
-export async function POST(req: Request) {
-  try {
+// export async function POST(req: Request) {
+//   try {
 
-    const body = await req.json();
+//     const body = await req.json();
 
-    if (!body || !Array.isArray(body.items) || body.items.length === 0) {
-      return NextResponse.json({
-        error: "Invalid or missing items array."
-      },
-    {
-      status: 400
-    });
+//     if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+//       return NextResponse.json({
+//         error: "Invalid or missing items array."
+//       },
+//     {
+//       status: 400
+//     });
 
-    }
-    const {
-      clientName,
-      dispatcherName,
-      customerPoNumber,
-      prfNumber,
-      drNumber,
-      saveAsDraft,
-      items: issuedItems,
-    } = body;
+//     }
+//     const {
+//       clientName,
+//       dispatcherName,
+//       customerPoNumber,
+//       prfNumber,
+//       drNumber,
+//       saveAsDraft,
+//       items: issuedItems,
+//     } = body;
 
-    console.log("Incoming POST /api/issuances payload:", {
-      clientName,
-      dispatcherName,
-      customerPoNumber,
-      prfNumber,
-      drNumber,
-      saveAsDraft,
-      items: issuedItems,
-    });
+//     console.log("Incoming POST /api/issuances payload:", {
+//       clientName,
+//       dispatcherName,
+//       customerPoNumber,
+//       prfNumber,
+//       drNumber,
+//       saveAsDraft,
+//       items: issuedItems,
+//     });
 
-    const warning: string[] = [];
+//     const warning: string[] = [];
 
-    // Validate all items BEFORE doing anything else
-      for (const item of issuedItems) {
-        const itemData = await db.query.items.findFirst({
-          where: eq(itemsTable.id, item.itemId),
-        });
+//     // Validate all items BEFORE doing anything else
+//       for (const item of issuedItems) {
+//         const itemData = await db.query.items.findFirst({
+//           where: eq(itemsTable.id, item.itemId),
+//         });
 
-        if (!itemData) {
-          return NextResponse.json(
-            { error: `Item with ID ${item.itemId} not found.` },
-            { status: 404 }
-          );
-        }
+//         if (!itemData) {
+//           return NextResponse.json(
+//             { error: `Item with ID ${item.itemId} not found.` },
+//             { status: 404 }
+//           );
+//         }
 
-        if (!saveAsDraft && itemData.stock < item.quantity) {
-          return NextResponse.json(
-            {
-              error: `Not enough stock for "${itemData.name}". Current: ${itemData.stock}, Needed: ${item.quantity}`,
-            },
-            { status: 400 }
-          );
-        }
-      }
+//         if (!saveAsDraft && itemData.stock < item.quantity) {
+//           return NextResponse.json(
+//             {
+//               error: `Not enough stock for "${itemData.name}". Current: ${itemData.stock}, Needed: ${item.quantity}`,
+//             },
+//             { status: 400 }
+//           );
+//         }
+//       }
 
-      // Insert main issuance record
-      const [newIssuance] = await db
-      .insert(itemIssuances)
-      .values({
-        clientName,
-        dispatcherName,
-        customerPoNumber,
-        prfNumber,
-        drNumber,
-        status: saveAsDraft ? "Draft" : "Issued",
-        issuedAt: new Date(),
-      })
-      .returning();
+//       // Insert main issuance record
+//       const [newIssuance] = await db
+//       .insert(itemIssuances)
+//       .values({
+//         clientName,
+//         dispatcherName,
+//         customerPoNumber,
+//         prfNumber,
+//         drNumber,
+//         status: saveAsDraft ? "Draft" : "Issued",
+//         issuedAt: new Date(),
+//       })
+//       .returning();
 
-      for (const item of issuedItems) {
-        const itemData = await db.query.items.findFirst({
-          where: eq(itemsTable.id, item.itemId),
-        });
+//       for (const item of issuedItems) {
+//         const itemData = await db.query.items.findFirst({
+//           where: eq(itemsTable.id, item.itemId),
+//         });
 
-        if (!itemData) continue;
+//         if (!itemData) continue;
 
-        await db.insert(itemIssuanceItems).values({
-          issuanceId: newIssuance.id,
-          itemId: item.itemId,
-          sizeId: item.sizeId || null,
-          variantId: item.variantId || null,
-          quantity: item.quantity
-        });
+//         await db.insert(itemIssuanceItems).values({
+//           issuanceId: newIssuance.id,
+//           itemId: item.itemId,
+//           sizeId: item.sizeId || null,
+//           variantId: item.variantId || null,
+//           quantity: item.quantity
+//         });
 
-        if (!saveAsDraft) {
-          const newStock = itemData.stock - item.quantity;
+//         if (!saveAsDraft) {
+//           const newStock = itemData.stock - item.quantity;
 
-          let stockStatus = "In Stock";
-          if (newStock === 0) {
-            stockStatus = "Not Stock";
-          } else if (newStock <= itemData.criticalLevel) {
-            stockStatus = "Critical Level";
-            warning.push(`❗ ${itemData.name} is now at critical level.`)
-          } else if (newStock <= itemData.reorderLevel) {
-            stockStatus = "Reorder Level";
-            warning.push(`❗ ${itemData.name} is now at reorder level. `);
-          } else if (newStock > itemData.ceilingLevel) {
-            stockStatus = "Overstock";
-          }
+//           let stockStatus = "In Stock";
+//           if (newStock === 0) {
+//             stockStatus = "Not Stock";
+//           } else if (newStock <= itemData.criticalLevel) {
+//             stockStatus = "Critical Level";
+//             warning.push(`❗ ${itemData.name} is now at critical level.`)
+//           } else if (newStock <= itemData.reorderLevel) {
+//             stockStatus = "Reorder Level";
+//             warning.push(`❗ ${itemData.name} is now at reorder level. `);
+//           } else if (newStock > itemData.ceilingLevel) {
+//             stockStatus = "Overstock";
+//           }
 
-          await db
-          .update(itemsTable)
-          .set({ stock: newStock, status: stockStatus })
-          .where(eq(itemsTable.id, item.itemId));
-        }
-      }
+//           await db
+//           .update(itemsTable)
+//           .set({ stock: newStock, status: stockStatus })
+//           .where(eq(itemsTable.id, item.itemId));
+//         }
+//       }
 
-      return NextResponse.json(
-        {
-          message: saveAsDraft
-          ? "Issuance saved as draft."
-          : "Issuance recorded suaccessfully.",
-          warning: warning,
-        },
-        { status: 200 }
-      );
-  } catch (error: any) {
-    console.error("Issuance POST error:", error);
+//       return NextResponse.json(
+//         {
+//           message: saveAsDraft
+//           ? "Issuance saved as draft."
+//           : "Issuance recorded suaccessfully.",
+//           warning: warning,
+//         },
+//         { status: 200 }
+//       );
+//   } catch (error: any) {
+//     console.error("Issuance POST error:", error);
 
-    return new Response(
-      JSON.stringify({ error: "An unexpected error occurred.", details: error?.message || String(error) }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      }
-    );
-  }
-}
+//     return new Response(
+//       JSON.stringify({ error: "An unexpected error occurred.", details: error?.message || String(error) }),
+//       {
+//         status: 500,
+//         headers: {
+//           "Content-Type": "application/json"
+//         }
+//       }
+//     );
+//   }
+// }
 
-export async function GET() {
-  try {
-    const issuanceRecords = await db
-      .select()
-      .from(itemIssuances)
-      .orderBy(
-        desc(itemIssuances.createdAt),
-    );
+// export async function GET() {
+//   try {
+//     const issuanceRecords = await db
+//       .select()
+//       .from(itemIssuances)
+//       .orderBy(
+//         desc(itemIssuances.createdAt),
+//     );
 
-    const results = [];
+//     const results = [];
 
-    for (const issuance of issuanceRecords) {
-      const issuedItems = await db
-        .select({
-          itemId: itemIssuanceItems.itemId,
-          itemName: itemsTable.name,
-          quantity: itemIssuanceItems.quantity,
-          sizeName: sizes.name,
-          variantName: variants.name,
-          unit: units.name,
-          createdAt: itemIssuances.createdAt,
-        })
-        .from(itemIssuanceItems)
-        .where(eq(itemIssuanceItems.issuanceId, issuance.id))
-        .leftJoin(itemsTable, eq(itemIssuanceItems.itemId, itemsTable.id))
-        .leftJoin(sizes, eq(itemIssuanceItems.sizeId, sizes.id))
-        .leftJoin(variants, eq(itemIssuanceItems.variantId, variants.id))
-        .leftJoin(units, eq(itemIssuanceItems.unitId, units.id));
+//     for (const issuance of issuanceRecords) {
+//       const issuedItems = await db
+//         .select({
+//           itemId: itemIssuanceItems.itemId,
+//           itemName: itemsTable.name,
+//           quantity: itemIssuanceItems.quantity,
+//           sizeName: sizes.name,
+//           variantName: variants.name,
+//           unit: units.name,
+//           createdAt: itemIssuances.createdAt,
+//         })
+//         .from(itemIssuanceItems)
+//         .where(eq(itemIssuanceItems.issuanceId, issuance.id))
+//         .leftJoin(itemsTable, eq(itemIssuanceItems.itemId, itemsTable.id))
+//         .leftJoin(sizes, eq(itemIssuanceItems.sizeId, sizes.id))
+//         .leftJoin(variants, eq(itemIssuanceItems.variantId, variants.id))
+//         .leftJoin(units, eq(itemIssuanceItems.unitId, units.id));
 
-      results.push({
-        ...issuance,
-        items: issuedItems,
-      });
-    }
+//       results.push({
+//         ...issuance,
+//         items: issuedItems,
+//       });
+//     }
 
-    return NextResponse.json(results);
-  } catch (error) {
-    console.error("GET /api/issuances error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch issuance records." },
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json(results);
+//   } catch (error) {
+//     console.error("GET /api/issuances error:", error);
+//     return NextResponse.json(
+//       { error: "Failed to fetch issuance records." },
+//       { status: 500 }
+//     );
+//   }
+// }

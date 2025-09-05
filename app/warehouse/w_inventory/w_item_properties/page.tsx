@@ -1,7 +1,7 @@
 // app/warehouse/w_inventory/w_item_properties/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -27,10 +27,11 @@ const ItemPropertiesPage = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
 
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
   try {
     setLoading(true);
     setError(null);
+
     if (!selectedProperty) {
       setError("Failed to fetch properties.");
       return;
@@ -49,34 +50,23 @@ const ItemPropertiesPage = () => {
     console.error("Invalid data structure from API");
   }
 }
-catch (err) {
+catch (error) {
+  console.log(error);
   setError("Something went wrong");
 }
 finally {
   setLoading(false);
 }
-  };
+  }, [selectedProperty]);
   
   useEffect(() => {
     fetchItems();
-  }, [selectedProperty]);
+  }, [fetchItems]);
 
 
   const handleAdd = async () => {
     if (!newItemName.trim()) return;
     setShowConfirmModal(true);
-    {/*const res = await fetch(`/api/${selectedProperty}`, {
-      method: "POST",
-      headers: { "Content-Type" : "application/json",},
-      body: JSON.stringify({ name: newItemName }),
-    });
-    if (res.ok) {
-      toast.success("Item added successfully");
-      setNewItemName("");
-      fetchItems();
-    } else {
-      toast.error("Failed to add item");
-    } */}
   };
 
   const confirmAdd = async () => {
@@ -175,7 +165,7 @@ const handleDelete = async (id: number) => {
           <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Confirm Addition</h2>
             <p className="mb-6 text-gray-700">
-                Are you sure you want to add "<span className="font-semibold">{newItemName}</span>" in Item Properties: <span className="capitalize">{selectedProperty}</span>?
+                Are you sure you want to add &quot;<span className="font-semibold">{newItemName}</span>&quot; in Item Properties: <span className="capitalize">{selectedProperty}</span>?
             </p>
             <div className="flex justify-send gap-3">
               <Button variant="ghost" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
@@ -209,7 +199,7 @@ const handleDelete = async (id: number) => {
   {items.length === 0 ? (
     <p className="text-gray-500">No items found for {selectedProperty}.</p>
   ) : (
-    items.map((item, index) => (
+    items.map((item) => (
       <div
         key={item.id}
         className="bg-white border px-4 py-2 rounded grid grid-cols-12 gap-4 items-center"

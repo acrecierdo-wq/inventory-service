@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 type Suggestion = { id: string | number; name: string };
 
@@ -37,68 +37,75 @@ export default function AutoComplete({
   // keep input synced with external value
   useEffect(() => {
     const next = value?.name || "";
-    if (inputValue !== next) {
-      setInputValue(next);
-    }
+    setInputValue((prev) => (prev !== next ? next : prev));
   }, [value]);
+
+  const handleSelect = useCallback((selected: Suggestion) => {
+    justSelectedRef.current = true;
+    setInputValue(selected.name);
+    onChange(selected);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setLoading(false);
+  }, [onChange]);
 
   // local options OR remote fetch
   useEffect(() => {
-    if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
+  if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
 
-    // local options mode
-    if (options && options.length > 0) {
-      const next =
-        inputValue.trim().length === 0
-          ? options
-          : options.filter(o =>
-              o.name.toLowerCase().includes(inputValue.toLowerCase())
-            );
-      setSuggestions(next);
+  // local options mode
+  if (options && options.length > 0) {
+    const next =
+      inputValue.trim().length === 0
+        ? options
+        : options.filter(o =>
+            o.name.toLowerCase().includes(inputValue.toLowerCase())
+          );
+    setSuggestions(next);
+    return;
+  }
+
+  // remote mode
+  if (!endpoint) return;
+
+  fetchTimeout.current = setTimeout(async () => {
+    if (!inputValue || inputValue.length < 1) {
+      setSuggestions([]);
+      return;
+    }
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
       return;
     }
 
-    // remote mode
-    if (!endpoint) return;
+    setLoading(true);
+    try {
+      const url = new URL(endpoint, window.location.origin);
+      url.searchParams.set("query", inputValue);
+      if (parentId) url.searchParams.set("itemId", String(parentId));
 
-    fetchTimeout.current = setTimeout(async () => {
-      if (!inputValue || inputValue.length < 1) {
-        setSuggestions([]);
+      const res = await fetch(url.toString());
+      const data: Suggestion[] = await res.json();
+
+      // auto-select if 1 match AND not already selected
+      if (data.length === 1 && (!value || value.id !== data[0].id)) {
+        handleSelect(data[0]);
         return;
       }
-      if (justSelectedRef.current) {
-        justSelectedRef.current = false;
-        return;
-      }
 
-      setLoading(true);
-      try {
-        const url = new URL(endpoint, window.location.origin);
-        url.searchParams.set("query", inputValue);
-        if (parentId) url.searchParams.set("itemId", String(parentId));
+      setSuggestions(data);
+    } catch (e) {
+      console.error("Autocomplete fetch error:", e);
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, 300);
 
-        const res = await fetch(url.toString());
-        const data: Suggestion[] = await res.json();
-
-        // auto-select if 1 match AND not already selected
-        if (data.length === 1 && (!value || value.id !== data[0].id)) {
-          handleSelect(data[0]);
-          return;
-        }
-
-        setSuggestions(data);
-      } catch (e) {
-        console.error("Autocomplete fetch error:", e);
-        setSuggestions([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-
-    return () => {
-      if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
-    };
-  }, [inputValue, options, endpoint, parentId]);
+  return () => {
+    if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
+  };
+}, [inputValue, options, endpoint, parentId, value, handleSelect]);
 
   // outside click: only listen while open; use pointerdown to avoid focus/blur loops
   useEffect(() => {
@@ -115,14 +122,6 @@ export default function AutoComplete({
     return () => window.removeEventListener("pointerdown", handlePointerDown);
   }, [showSuggestions]);
 
-  const handleSelect = (selected: Suggestion) => {
-    justSelectedRef.current = true;
-    setInputValue(selected.name);
-    onChange(selected);
-    setSuggestions([]);
-    setShowSuggestions(false);
-    setLoading(false);
-  };
 
   return (
     <div className="relative" ref={dropdownRef}>

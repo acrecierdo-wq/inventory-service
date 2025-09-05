@@ -8,6 +8,7 @@ import DRModal from "@/app/warehouse/issuance_log/dr_modal";
 import { toast } from "sonner";
 import AutoComplete from "../autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
+import { DraftIssuance, FormItem } from "@/app/warehouse/issuance_log/types/issuance";
 
 type Selection = { id: string | number; name: string };
 
@@ -21,8 +22,10 @@ type Combination = {
   unitName: string | null;
 };
 
+
+
 interface Props {
-  draftData?: any;
+  draftData?: DraftIssuance;
   draftId?: string;
   onSaveSuccess?: () => void;
 };
@@ -37,30 +40,30 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  const [items, setItems] = useState<
-    {
-      itemId: string;
-      sizeId: string | null;
-      variantId: string | null;
-      unitId: string | null;
-      quantity: number;
-      itemName: string;
-      sizeName: string | null;
-      variantName: string | null;
-      unitName: string | null;
-    }[]
-  >(draftData?.items || []);
+  const [items, setItems] = useState<FormItem[]>(() => 
+    draftData?.items.map((i) => ({
+      itemId: String(i.itemId),
+      sizeId: i.sizeId !== null ? String(i.sizeId) : null,
+      variantId: i.variantId !== null ? String(i.variantId) : null,
+      unitId: i.unitId !== null ? String(i.unitId) : null,
+      quantity: i.quantity,
+      itemName: i.itemName,
+      sizeName: i.sizeName,
+      variantName: i.variantName,
+      unitName: i.unitName,
+    })) || []
+  );
 
-  const [newItem, setNewItem] = useState({
+  const [newItem, setNewItem] = useState<FormItem>({
       itemId: "",
-      sizeId: "",
-      variantId: "",
-      unitId: "",
-      quantity: "",
+      sizeId: null,
+      variantId: null,
+      unitId: null,
+      quantity: 0,
       itemName: "",
-      sizeName: "",
-      variantName: "",
-      unitName: "",
+      sizeName: null,
+      variantName: null,
+      unitName: null,
     });
 
   // UI selections
@@ -78,22 +81,17 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     new Map(
       combinations
         .filter((c) => c.sizeId != null && c.sizeName)
-        .map((c) => [String(c.sizeId), { id: c.sizeId!, name: c.sizeName! }])
+        .map((c) => [String(c.sizeId), { id: String(c.sizeId), name: c.sizeName! }])
     ).values()
-  ) as Selection[];
+  );
 
   const availableVariants = Array.from(
     new Map(
       combinations
-        .filter((c) => {
-          // only include variants that match the selected size (if any)
-          if (selectedSize) return c.sizeId === Number(selectedSize.id) && c.variantId != null && c.variantName;
-          // if no size selected, include all variants across combinations
-          return c.variantId != null && c.variantName;
-        })
-        .map((c) => [String(c.variantId), { id: c.variantId!, name: c.variantName! }])
+        .filter((c) => (!selectedSize || c.sizeId === Number(selectedSize.id)) && c.variantId != null && c.variantName)
+        .map((c) => [String(c.variantId), { id: String(c.variantId), name: c.variantName! }])
     ).values()
-  ) as Selection[];
+  );
 
   const availableUnits = Array.from(
     new Map(
@@ -110,9 +108,9 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
           // otherwise show all units (fallback)
           return c.unitId != null && c.unitName;
         })
-        .map((c) => [String(c.unitId), { id: c.unitId!, name: c.unitName! }])
+        .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
     ).values()
-  ) as Selection[];
+  );
 
   // Keep a "newItem" debug-like object similar to your previous UI (optional)
 useEffect(() => {
@@ -120,12 +118,13 @@ useEffect(() => {
       ...prev,
       itemId: selectedItem ? String(selectedItem.id) : "",
       itemName: selectedItem?.name || "",
-      sizeId: selectedSize ? String(selectedSize.id) : "",
-      sizeName: selectedSize?.name || "",
-      variantId: selectedVariant ? String(selectedVariant.id) : "",
-      variantName: selectedVariant?.name || "",
-      unitId: selectedUnit ? String(selectedUnit.id) : "",
-      unitName: selectedUnit?.name || "",
+      sizeId: selectedSize ? String(selectedSize.id) : null,
+      sizeName: selectedSize?.name || null,
+      variantId: selectedVariant ? String(selectedVariant.id) : null,
+      variantName: selectedVariant?.name || null,
+      unitId: selectedUnit ? String(selectedUnit.id) : null,
+      unitName: selectedUnit?.name || null,
+      quantity: Number(quantity) || 0,
     }));
   }, [selectedItem, selectedSize, selectedVariant, selectedUnit, quantity]);
 
@@ -150,8 +149,8 @@ useEffect(() => {
         }
         const data: Combination[] = await res.json();
         setCombinations(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Failed to fetch inventory options:", err);
+      } catch {
+        console.error("Failed to fetch inventory options:");
         setCombinations([]);
       }
       // reset dependent selections when item changes
@@ -198,7 +197,7 @@ useEffect(() => {
     if (selectedSize && selectedVariant && availableUnits.length === 1 && !selectedUnit) {
       setSelectedUnit(availableUnits[0]);
     }
-  }, [combinations]);
+  }, [selectedItem, availableSizes, availableVariants, availableUnits, selectedSize, selectedVariant, selectedUnit]);
 
   useEffect(() => {
     if (selectedSize && !availableSizes.some((s) => String(s.id) === String(selectedSize.id))) {
@@ -267,7 +266,7 @@ useEffect(() => {
         return;
       }
 
-      const candidate = {
+      const candidate: FormItem = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
         variantId: selectedVariant ? String(selectedVariant.id) : null,
@@ -300,7 +299,7 @@ useEffect(() => {
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
-      setCombinations([]);
+      //setCombinations([]);
       setQuantity("");
     } catch (err) {
       console.error("Item-find error:", err);
@@ -351,14 +350,14 @@ useEffect(() => {
       dispatcherName,
       customerPoNumber,
       prfNumber,
-      drNumber: drInfo?.drNumber || "",
-      saveAsDraft: drInfo?.saveAsDraft ? "draft" : "issued",
-      items: items.map((item) => ({
-        itemId: item.itemId,
-        sizeId: item.sizeId ?? null,
-        variantId: item.variantId ?? null,
-        unitId: item.unitId ?? null,
-        quantity: item.quantity,
+      drNumber: drInfo.drNumber,
+      saveAsDraft: drInfo.saveAsDraft ? "draft" : "issued",
+      items: items.map((i) => ({
+        itemId: Number(i.itemId),
+        sizeId: i.sizeId ? Number(i.sizeId) : null,
+        variantId: i.variantId ? Number(i.variantId) : null,
+        unitId: i.unitId ? Number(i.unitId) : null,
+        quantity: i.quantity,
       })),
     };
 
@@ -379,6 +378,7 @@ useEffect(() => {
             if (err?.error) errorMessage = err.error;
           }
         } catch (e) {
+          console.log(e);
           /* ignore parse error */
         }
         toast.error(errorMessage);
@@ -407,13 +407,35 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    if (!draftData) return;
-    setClientName(draftData.clientName || "");
-    setDispatcherName(draftData.dispatcherName || "");
-    setCustomerPoNumber(draftData.customerPoNumber || "");
-    setPrfNumber(draftData.prfNumber || "");
-    setItems(draftData?.items || []);
-  }, [draftData])
+    if (draftData) {
+      setClientName(draftData.clientName || "");
+      setDispatcherName(draftData.dispatcherName || "");
+      setCustomerPoNumber(draftData.customerPoNumber || "");
+      setPrfNumber(draftData.prfNumber || "");
+      setItems(
+        draftData.items.map((i) => ({
+          itemId: String(i.itemId),
+          sizeId: i.sizeId !== null ? String(i.sizeId) : null,
+          variantId: i.variantId !== null ? String(i.variantId) : null,
+          unitId: i.unitId !== null ? String(i.unitId) : null,
+          quantity: i.quantity,
+          itemName: i.itemName,
+          sizeName: i.sizeName,
+          variantName: i.variantName,
+          unitName: i.unitName,
+        }))
+      );
+    }
+  }, [draftData]);
+
+  const MAX_QUANTITY = 9999;
+
+  const sanitizeToDigits = (input: string) => {
+    const digits = input.replace(/\D+/g, "");
+    if (digits === "") return "";
+    const parsed = parseInt(digits, 10);
+    return Number.isNaN(parsed) ? "" : parsed;
+  };
 
   return (
     <WarehousemanClientComponent>
@@ -523,9 +545,66 @@ useEffect(() => {
                   <label className="text-sm font-semibold mb-1 text-[#482b0e]">Quantity</label>
                   <input
                     type="number"
-                    placeholder="Qty"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min={0}
+                    max={MAX_QUANTITY}
+                    step={1}
+                    value={quantity === "" ? "" : quantity}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-", "."].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text");
+                      const sanitized = sanitizeToDigits(pasted);
+                      if (sanitized === "") {
+                        setQuantity("");
+                        return;
+                      }
+                      let parsed = Number(sanitized);
+                      if (parsed < 0) {
+                        parsed = 0;
+                        toast.error("Quantity cannot be negative.", { duration: 2000 });
+                      } else if (parsed > MAX_QUANTITY) {
+                        parsed = MAX_QUANTITY;
+                        toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
+                      }
+                      setQuantity(String(parsed));
+                    }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      if (value === "") {
+                        setQuantity("");
+                        return;
+                      }
+
+                      const digitsOnly = value.replace(/\D+/g, "");
+                      if (digitsOnly === "") {
+                        setQuantity("");
+                        return;
+                      }
+
+                      let parsed = parseInt(digitsOnly, 10);
+
+                      if (isNaN(parsed)) {
+                        setQuantity("");
+                        return;
+                      }
+
+                      if (parsed < 0) {
+                        parsed = 0;
+                        toast.error("Quantity cannot be negative.", { duration: 2000 });
+                      } else if (parsed > MAX_QUANTITY) {
+                        parsed = MAX_QUANTITY;
+                        toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
+                      }
+
+                      setQuantity(String(parsed));
+                    }}
                     className="border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
                   />
                 </div>
@@ -601,12 +680,12 @@ useEffect(() => {
           {showDRModal && (
             <DRModal
               onClose={() => setShowDRModal(false)}
-              onConfirm={(data: { drNumber: string; saveAsDraft: boolean }) => {
+              onConfirm={(data) => {
                 setDrInfo(data);
                 setShowDRModal(false);
                 setShowSummary(true);
               }}
-              className="hover:bg-gray-100"
+              //className="hover:bg-gray-100"
             />
           )}
 
