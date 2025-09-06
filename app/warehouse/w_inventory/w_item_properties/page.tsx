@@ -131,29 +131,19 @@ const handleDelete = async (id: number) => {
   return (
     <WarehousemanClientComponent>
         <Header />
-     <div className="h-full w-full bg-[#ffedce] p-6 overflow-y-auto">
-      <h1 className="text-3xl text-[#173f63] font-bold mb-4 uppercase ml-4">Item Properties</h1>
-      <div className="flex flex-row">
-      <div className="flex gap-2 mb-6 ml-15">
-        {properties.map((prop) => (
-          <div
-            key={prop}
-            //variant={prop === selectedProperty ? "outline" : "ghost"}
-            onClick={() => setSelectedProperty(prop)}
-            className={`h-10 w-20 border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 text-sm justify-center ${ prop === selectedProperty ? "bg-[#f0d2ad]" : "bg-white"}`}
-            
-          >
-            {prop.charAt(0).toUpperCase() + prop.slice(1)}
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-4 flex items-center gap-2 ml-[400px]">
+     <div className="h-full w-full bg-[#ffedce]">
+      
+      <div className="flex flex-row justify-between items-center w-full pl-15 pr-15">
+        <div className="flex flex-row mt-5">
+          <h1 className="text-3xl text-[#173f63] font-bold mb-4 uppercase">Item Properties</h1>
+        </div>
+      
+        <div className="flex items-center gap-2 mt-5">
         <Input
-          placeholder={`Add new ${selectedProperty.slice(0, -1)}`}
+          placeholder={`Add ${selectedProperty}`}
           value={newItemName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewItemName(e.target.value)}
-          className="w-[200px] bg-white border-slate-400"
+          className="w-[200px] bg-white border-slate-400 hover:bg-slate-100"
         />
         <div onClick={handleAdd} className="h-10 w-20 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
         <Image src="/circle-plus-svgrepo-com.svg" width={20} height={20} alt="Add"/>
@@ -176,9 +166,21 @@ const handleDelete = async (id: number) => {
 
       )}
       </div>
-
+      <div className="flex gap-2 mt-2 pl-15">
+        {properties.map((prop) => (
+          <div
+            key={prop}
+            //variant={prop === selectedProperty ? "outline" : "ghost"}
+            onClick={() => setSelectedProperty(prop)}
+            className={`h-5 w-15 border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 text-xs justify-center ${ prop === selectedProperty ? "bg-[#f0d2ad]" : "bg-white"}`}
+            
+          >
+            {prop.charAt(0).toUpperCase() + prop.slice(1)}
+          </div>
+        ))}
+      </div>
       
-      <div className="h-auto w-[90%] bg-[#fffcf] ml-15 mt-5 rounded">
+      <div className="h-auto w-[90%] bg-[#fffcf6] ml-15 mt-5 rounded shadow">
         
           {loading && <div className="text-center mt-5">Loading...</div>}
           {error && <div className="text-red-500 text-center">{error}</div>}
@@ -186,8 +188,8 @@ const handleDelete = async (id: number) => {
     {!loading && !error && ( 
       <>
       {items.length > 0 &&(
-  <div className="w-full bg-white rounded border-2 border-slate-400 px-4 py-2 mb-2">
-    <div className="grid grid-cols-12 gap-4 text-[#482b0e] font-medium text-sm">
+  <div className="w-full bg-[#fffcf6] px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7]">
+    <div className="grid grid-cols-12 text-[#482b0e] font-medium text-sm">
       <span className="col-span-2">ID No.</span>
       <span className="col-span-7">Name</span>
       <span className="col-span-3 text-right">Actions</span>
@@ -195,14 +197,14 @@ const handleDelete = async (id: number) => {
   </div>
 )}
 
-<div className="space-y-2">
+<div>
   {items.length === 0 ? (
     <p className="text-gray-500">No items found for {selectedProperty}.</p>
   ) : (
     items.map((item) => (
       <div
         key={item.id}
-        className="bg-white border px-4 py-2 rounded grid grid-cols-12 gap-4 items-center"
+        className="px-5 py-2 bg-white border-b border-gray-200 grid grid-cols-12 items-center"
       >
         {editId === item.id ? (
           <>
@@ -226,12 +228,19 @@ const handleDelete = async (id: number) => {
             <span className="col-span-2 text-sm text-gray-700">{item.id}</span>
             <span className="col-span-7">{item.name}</span>
             <div className="col-span-3 flex gap-2 justify-end">
-              <Button size="sm" variant="primary" onClick={() => handleEdit(item.id, item.name)}>
+              <div
+              onClick={() => handleEdit(item.id, item.name)}
+              className="h-7 w-20 text-white bg-blue-300 rounded-4xl flex items-center justify-center cursor-pointer hover:bg-blue-400 active:border-b-4"
+              >
                 Edit
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => handleDelete(item.id)}>
+              </div>
+              <div
+              onClick={() => handleDelete(item.id)}
+              className="h-7 w-20 bg-slate-200 rounded-4xl flex items-center justify-center cursor-pointer hover:bg-slate-400 active:border-b-4"
+
+              >
                 Delete
-              </Button>
+              </div>
             </div>
           </>
         )}
