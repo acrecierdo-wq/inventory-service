@@ -74,7 +74,7 @@ export const itemIssuanceItems = pgTable("item_issuance_items", {
   quantity: integer("quantity").notNull(),
 });
 
-export const internalUsages = pgTable("internal-usages", {
+export const internalUsages = pgTable("internal_usages", {
   id: serial("id").primaryKey(),
   
   personnelName: varchar("personnel_name", { length: 255 }).notNull(),
@@ -82,13 +82,13 @@ export const internalUsages = pgTable("internal-usages", {
 
   purpose: varchar("purpose", { length: 255 }).notNull(),
 
-  autorizedBy: varchar("authorized_by", { length: 255 }).notNull(),
+  authorizedBy: varchar("authorized_by", { length: 255 }).notNull(),
 
-  note: varchar("note", { length: 255 }).notNull(),
+  note: varchar("note", { length: 255 }),
 
   status: varchar("status", { enum: ["Utilized", "Archived"]}).notNull().default("Utilized"),
 
-  loggedAt: timestamp("logged_at"),
+  loggedAt: timestamp("logged_at").defaultNow().notNull(),
   loggedBy: varchar("logged_by", { length: 255 }).notNull(),
 });
 
