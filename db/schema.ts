@@ -1,6 +1,6 @@
 // db/schema.ts
 
-import { pgTable, serial, varchar, integer, boolean, timestamp, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, boolean, timestamp, text } from "drizzle-orm/pg-core";
 
 
 export const categories = pgTable("categories", {
@@ -41,6 +41,8 @@ export const items = pgTable("items", {
   isActive: boolean("is_active").default(true),
 });
 
+{/* Item Issuances */}
+
 export const itemIssuances = pgTable("item_issuances", {
   id: serial("id").primaryKey(),
 
@@ -60,6 +62,8 @@ status: varchar("status", { enum: ["Issued", "Draft", "Archived"] }).notNull().d
 restocked: boolean("restocked").default(false),
 });
 
+{/* Item Issuance Items */}
+
 export const itemIssuanceItems = pgTable("item_issuance_items", {
   id: serial("id").primaryKey(),
 
@@ -73,6 +77,8 @@ export const itemIssuanceItems = pgTable("item_issuance_items", {
 
   quantity: integer("quantity").notNull(),
 });
+
+{/* Internal Usages */}
 
 export const internalUsages = pgTable("internal_usages", {
   id: serial("id").primaryKey(),
@@ -92,6 +98,8 @@ export const internalUsages = pgTable("internal_usages", {
   loggedBy: varchar("logged_by", { length: 255 }).notNull(),
 });
 
+{/* Internal Usage Items */}
+
 export const internalUsageItems = pgTable("internal_usage_items", {
   id: serial("id").primaryKey(),
 
@@ -104,6 +112,38 @@ export const internalUsageItems = pgTable("internal_usage_items", {
   unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
 
   quantity: integer("quantity").notNull(),
+});
+
+{/* Quotation Requests */}
+
+export const quotation_requests = pgTable("quotation_requests", {
+  id: serial("id").primaryKey(),
+  project_name: text("project_name").notNull(),
+  mode: text("mode"),
+  message: text("message"),
+  status: text("status").default("Pending"),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+{/* Quotation Request Files */}
+
+export const quotation_request_files = pgTable("quotation_request_files", {
+  id: serial("id").primaryKey(),
+  request_id: integer("request_id").notNull(),
+  path: text("path").notNull(),
+  uploaded_at: timestamp("uploaded_at").defaultNow(),
+});
+
+{/* Customers */}
+
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  customerName: varchar("customer_name", { length: 255 }).notNull(),
+  contactPerson: varchar("contact_person", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  phone: varchar("phone", { length: 20 }),
+  address: text("address"),
+  password: varchar("password", { length: 255 }),
 });
 
 
