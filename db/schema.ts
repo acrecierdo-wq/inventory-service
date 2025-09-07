@@ -74,6 +74,38 @@ export const itemIssuanceItems = pgTable("item_issuance_items", {
   quantity: integer("quantity").notNull(),
 });
 
+export const internalUsages = pgTable("internal-usages", {
+  id: serial("id").primaryKey(),
+  
+  personnelName: varchar("personnel_name", { length: 255 }).notNull(),
+  department: varchar("department", { length: 255 }).notNull(),
+
+  purpose: varchar("purpose", { length: 255 }).notNull(),
+
+  autorizedBy: varchar("authorized_by", { length: 255 }).notNull(),
+
+  note: varchar("note", { length: 255 }).notNull(),
+
+  status: varchar("status", { enum: ["Utilized", "Archived"]}).notNull().default("Utilized"),
+
+  loggedAt: timestamp("logged_at"),
+  loggedBy: varchar("logged_by", { length: 255 }).notNull(),
+});
+
+export const internalUsageItems = pgTable("internal_usage_items", {
+  id: serial("id").primaryKey(),
+
+  usageId: integer("usage_id").notNull().references(() => internalUsages.id, { onDelete: "cascade" }),
+
+  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict"}),
+  
+  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
+  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
+  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
+
+  quantity: integer("quantity").notNull(),
+});
+
 
   // //relation
   // export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({
