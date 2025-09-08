@@ -3,12 +3,17 @@
 import { db } from '@/db/drizzle';
 import { items } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest  } from 'next/server';
+
+type RouteContext = {
+  params: Promise<{ id: string }>;
+}
 
 // PUT (Update item)
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
   const body = await req.json();
-  const itemId = Number(params.id);
+  const itemId = Number(id);
 
   try {
     const result = await db
@@ -36,8 +41,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 // DELETE (Delete item)
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const itemId = Number(params.id);
+export async function DELETE(_req: NextRequest, context: RouteContext ) {
+  const { id } = await context.params;
+  const itemId = Number(id);
 
   try {
     const result = await db.delete(items).where(eq(items.id, itemId)).returning();

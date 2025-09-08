@@ -2,13 +2,18 @@
 import { db } from '@/db/drizzle';
 import { items, sizes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+type RouteContext = {
+  params: Promise<{ id: string }>;
+}
+
+export async function PUT(req: NextRequest, context: RouteContext ) {
+  const { id } = await context.params;
   const body = await req.json();
-  const id = Number(params.id);
+  const sizesId = Number(id);
 
-  if(isNaN(id)) {
+  if(isNaN(sizesId)) {
     return NextResponse.json({ success: false, message: 'Invalid size ID' }, { status: 400 });
   }
 
@@ -16,7 +21,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const result = await db
       .update(sizes)
       .set({ name: body.name })
-      .where(eq(sizes.id, id))
+      .where(eq(sizes.id, sizesId))
       .returning();
 
     return NextResponse.json({ success: true, data: result });
@@ -25,19 +30,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const id = Number(params.id);
+export async function DELETE( _req: NextRequest, context: RouteContext ) {
+  const { id } = await context.params;
+  const sizesId = Number(id);
 
-  if(isNaN(id)) {
+  if(isNaN(sizesId)) {
     return NextResponse.json({ success: false, message: 'Invalid size ID' }, { status: 400 });
   }
 
   try {
     // Check if any items are using this size
-    const inUse = await db.select().from(items).where(eq(items.sizeId, id)).limit(1);
+    const inUse = await db.select().from(items).where(eq(items.sizeId, sizesId)).limit(1);
   
 
     if (inUse.length > 0) {
@@ -47,7 +50,7 @@ export async function DELETE(
       );
     }
 
-    const deleted =await db.delete(sizes).where(eq(sizes.id, id)).returning();
+    const deleted =await db.delete(sizes).where(eq(sizes.id, sizesId)).returning();
     return NextResponse.json({ success: true, data: deleted });
   } catch (error) {
     return NextResponse.json(

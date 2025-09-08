@@ -5,17 +5,15 @@ import { eq } from 'drizzle-orm';
 import { NextResponse, NextRequest } from 'next/server';
 
 type RouteContext = {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 };
 
 export async function PUT(req: NextRequest, context: RouteContext) {
-  const { params } = context;
+  const { id } = await context.params;
   const body = await req.json();
-  const id = Number(params.id);
+  const catNum = Number(id);
 
-  if (isNaN(id)) {
+  if (isNaN(catNum)) {
     return NextResponse.json({ success: false, message: 'Invalid category ID' }, { status: 400 });
   }
 
@@ -23,21 +21,21 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     const result = await db
       .update(categories)
       .set({ name: body.name })
-      .where(eq(categories.id, id))
+      .where(eq(categories.id, catNum))
       .returning();
 
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error("Category PUT error:", error);
-    return NextResponse.json({ success: false, message: (error as Error).message });
+    return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest, context: RouteContext) {
-  const { params } = context;
-  const id = Number(params.id);
+  const { id } = await context.params;
+  const catNum = Number(id);
 
-  if (isNaN(id)) {
+  if (isNaN(catNum)) {
     return NextResponse.json(
       { success: false, message: 'Invalid category ID' },
       { status: 400 }
@@ -51,7 +49,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     const inUse = await db
       .select()
       .from(items)
-      .where(eq(items.categoryId, id))
+      .where(eq(items.categoryId, catNum))
       .limit(1);
 
     console.log("Items found using category:", inUse);
@@ -65,7 +63,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
 
     const deleted = await db
       .delete(categories)
-      .where(eq(categories.id, id))
+      .where(eq(categories.id, catNum))
       .returning();
 
     console.log("Deleted category:", deleted);

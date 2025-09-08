@@ -7,16 +7,18 @@ import {
   items as itemsTable,
   sizes, variants, units,
 } from "@/db/schema";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+type RouteContext = {
+  params: Promise<{ id: string }>;
+}
+
+export async function PUT(req: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const body = await req.json();
-    const issuanceId = Number(params.id);
+    const issuanceId = Number(id);
 
     if (!issuanceId || isNaN(issuanceId)) {
       return NextResponse.json({ error: "Invalid issuance ID." }, { status: 400 });
@@ -230,9 +232,11 @@ export async function PUT(
 
 
 // DELETE — Archive/Delete Issuance
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, context: RouteContext ) {
     try {
-        const issuanceId = Number(params.id);
+      const { id } = await context.params;
+      // const body = await req.jason(); req is _
+      const issuanceId = Number(id);
 
         // Delete line items
        // await db.delete(itemIssuanceItems)
@@ -251,9 +255,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 }
 
 // GET - Fetch Issuance by ID (including line items + item details)
-export async function GET(_req: Request, { params }: { params: { id: string }}) {
+export async function GET(_req: NextRequest, context: RouteContext ) {
   try {
-    const issuanceId = Number(params.id);
+    const { id } = await context.params;
+    const issuanceId = Number(id);
 
     // Fetch issuance header
     const [issuance] = await db
