@@ -148,19 +148,36 @@ export default function AddItemModal({
       return;
     }
 
-    if (
-      existingItems.some(
-        item => 
-          item.name.toLowerCase() === formData.name.trim().toLowerCase() &&
-        item.categoryId === formData.categoryId &&
-        item.unitId === formData.unitId &&
-        (item.variantId || null) === (formData.variantId || null) &&
-        (item.sizeId || null) === (formData.sizeId || null)
-      )
-    ) {
-      toast.error("This item already exists in inventory.", { duration: 2000 });
-      return;
-    }
+    const isDuplicate = existingItems.some((item) => {
+  const itemName = item.name.trim().toLowerCase();
+  const formName = formData.name.trim().toLowerCase();
+
+  const nameMatch = itemName === formName;
+  const categoryMatch = String(item.categoryId) === String(formData.categoryId);
+  const unitMatch = String(item.unitId) === String(formData.unitId);
+  const variantMatch = String(item.variantId ?? "") === String(formData.variantId ?? "");
+  const sizeMatch = String(item.sizeId ?? "") === String(formData.sizeId ?? "");
+
+  if (nameMatch && categoryMatch && unitMatch && variantMatch && sizeMatch) {
+    console.log("Duplicate found because all fields matched:", {
+      item,
+      formData
+    });
+  } else {
+    console.log("Checked item but not a full duplicate:", {
+      item,
+      comparisons: { nameMatch, categoryMatch, unitMatch, variantMatch, sizeMatch }
+    });
+  }
+
+  return nameMatch && categoryMatch && unitMatch && variantMatch && sizeMatch;
+});
+
+if (isDuplicate) {
+  toast.error("This item already exists in inventory.", { duration: 2000 });
+  return;
+}
+
 
     const payload = {
       ...formData,
@@ -445,8 +462,9 @@ export default function AddItemModal({
       <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
         <div className="bg-white w-[600px] p-6 rounded shadow">
           <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Item</h2>
+          
 
-          <table className="w-full mt-4 text-sm border">
+          <table className="w-full mt-4 mb-2 text-sm border">
             <thead className="bg-[#f5e6d3] text-[#482b0e]">
               <tr>
                 <th className="border px-2 py-1">Item</th>
@@ -477,6 +495,10 @@ export default function AddItemModal({
             </tbody>
           </table>
 
+          <p className="mb-2 text-sm text-gray-700">Reorder Level: {formData.reorderLevel ?? 0}</p>
+          <p className="mb-2 text-sm text-gray-700">Critical Level: {formData.criticalLevel ?? 0}</p>
+          <p className="mb-2 text-sm text-gray-700">Ceiling Level: {formData.ceilingLevel ?? 0}</p>
+
           <div className="flex justify-end gap-4 mt-6">
             <button
               onClick={() => setShowSummary(false)}
@@ -491,8 +513,9 @@ export default function AddItemModal({
               Save
             </button>
           </div>
+          </div>
+
         </div>
-      </div>
     )}
   </>
   );

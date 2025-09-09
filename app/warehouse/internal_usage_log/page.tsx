@@ -102,7 +102,8 @@ const InternalUsagePage = () => {
 
                 {/* Search */}
                 <div className="h-8 w-70 mt-2 ml-30 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row">
-                    <Image src="/search-alt-2-svgrepo-com.svg" width={0} height={0} alt="Search" className="ml-5 w-[15px] h-auto" />
+                    <img src="/search-alt-2-svgrepo-com.svg" alt="Search" className="ml-5 w-[15px] h-auto" />
+
                     <input
                     type="text"
                     placeholder="Search..."
