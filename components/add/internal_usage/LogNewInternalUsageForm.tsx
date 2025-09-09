@@ -40,7 +40,6 @@ const NewInternalUsagePage = () => {
   const [purpose, setPurpose] = useState("");
   const [authorizedBy, setAuthorizedBy] = useState("");
   const [note, setNote] = useState("");
-  const [loggedBy, setLoggedBy] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
