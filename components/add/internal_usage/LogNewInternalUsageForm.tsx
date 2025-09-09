@@ -263,13 +263,21 @@ const NewInternalUsagePage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        toast.error("Failed to save internal usage.");
+        toast.error(data?.error ||"Failed to save internal usage log.");
         return;
       }
 
-      toast.success("Internal usage saved successfully!");
+      toast.success(data?.message || "Internal usage saved successfully!");
+
+      if (data?.warning && data.warning.length > 0) {
+        data.warning.forEach((msg: string) => {
+          toast.warning(msg);
+        });
+      }
+
       setTimeout(() => {
         window.location.href = "/warehouse/internal_usage_log";
       }, 1500);
@@ -474,7 +482,7 @@ const NewInternalUsagePage = () => {
                 <p className="mb-2 text-sm text-gray-700">Authorized By: {authorizedBy}</p>
                 <p className="mb-2 text-sm text-gray-700">Note: {note}</p>
 
-                <table className="w-full mt-4 text-sm border">
+                <table className="w-full mt-4 mb-2 text-sm border">
                   <thead className="bg-[#f5e6d3] text-[#482b0e]">
                     <tr>
                       <th className="border px-2 py-1">Item</th>

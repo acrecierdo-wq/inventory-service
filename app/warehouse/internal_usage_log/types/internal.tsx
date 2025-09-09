@@ -1,4 +1,4 @@
-// api/warehouse/internal_usage_log/types/internal.tsx
+// app/warehouse/internal_usage_log/types/internal.tsx
 
 export type InternalUsage = {
     id: number;

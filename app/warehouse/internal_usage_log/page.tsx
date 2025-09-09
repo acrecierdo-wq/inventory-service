@@ -6,10 +6,11 @@ import { Header } from "@/components/header";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { InternalUsage } from "./types/internal";
-//import UsageActions from "./usage_actions";
+import InternalUsageActions from "./actions/usage_actions";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -177,8 +178,24 @@ const InternalUsagePage = () => {
                         {usages.status}
                     </span>
                     <span className="relative flex items-center justify-center">
-                        {/* <UsageActions 
-                  /> */}
+                        <InternalUsageActions 
+                        item={usages} onDelete={async (id:number) => {
+
+                    try {
+                        await fetch(`/api/internal_usages/${id}`, { 
+                        method: "DELETE", 
+                    });
+                    // Re-fetch the updated list
+                    const updatedRes = await fetch("/api/internal_usages");
+                    const updatedData = await updatedRes.json();
+                    setInternalUsages(updatedData);
+
+                    toast.success("Internal usage record archived successfully.");
+                  } catch {
+                    toast.error("Failed to archive internal usage record.");
+                  }
+                }}
+                  />
                     </span>
                     </div>
                 )) 

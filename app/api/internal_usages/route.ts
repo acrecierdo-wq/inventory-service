@@ -189,7 +189,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { message: "Internal usage logged successfully!", warning, usageId: newUsage.id },
+      { message: "Internal usage saved successfully!", warning, usageId: newUsage.id },
       { status: 200 }
     );
   } catch (error: unknown) {
