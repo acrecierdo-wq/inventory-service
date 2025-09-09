@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { toast } from "sonner";
 import AutoComplete from "@/components/autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
+import { useUser } from "@clerk/nextjs";
 
 type Selection = { id: string | number; name: string };
 
@@ -33,11 +34,13 @@ type FormItem = {
 };
 
 const NewInternalUsagePage = () => {
+  const { user } = useUser();
   const [personnelName, setPersonnelName] = useState("");
   const [department, setDepartment] = useState("");
   const [purpose, setPurpose] = useState("");
   const [authorizedBy, setAuthorizedBy] = useState("");
   const [note, setNote] = useState("");
+  const [loggedBy, setLoggedBy] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -252,6 +255,7 @@ const NewInternalUsagePage = () => {
         unitId: i.unitId ? Number(i.unitId) : null,
         quantity: i.quantity,
       })),
+      loggedBy: user?.fullName || user?.emailAddresses[0]?.emailAddress || "Warehouseman",
     };
 
     try {
@@ -332,6 +336,10 @@ const NewInternalUsagePage = () => {
                 onChange={(e) => setNote(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged By: {user?.fullName || user?.emailAddresses[0]?.emailAddress}</label>
             </div>
 
             {/* Items Section */}
@@ -489,6 +497,7 @@ const NewInternalUsagePage = () => {
                     ))}
                   </tbody>
                 </table>
+                <p className="mb-2 text-sm text-gray-700">Logged By: {user?.fullName || user?.emailAddresses[0]?.emailAddress}</p>
 
                 <div className="mt-6 flex justify-end gap-3">
                   <button

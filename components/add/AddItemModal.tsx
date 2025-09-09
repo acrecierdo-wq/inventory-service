@@ -437,7 +437,6 @@ if (isDuplicate) {
         <div className="mt-4 flex justify-center gap-4 ">
           <button
                 type="button"
-                disabled={isSubmitting}
                 onClick={onClose}
                 className="h-7 w-15 bg-gray-300 text-sm text-gray-700 rounded hover:bg-gray-400"
               >
@@ -446,6 +445,7 @@ if (isDuplicate) {
 
           <button 
           onClick={handleDone}
+          disabled={isSubmitting}
           className="h-7 w-15 bg-blue-400 text-white rounded hover:bg-blue-700 text-sm">
             {isSubmitting ? "Submitting..." : "Done"}
           </button>

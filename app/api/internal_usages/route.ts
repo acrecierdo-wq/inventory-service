@@ -30,13 +30,15 @@ export async function POST(req: Request) {
       items: usageItems,
     } = body;
 
+    const loggedBySafe = loggedBy ?? "System";
+
     console.log("Incoming POST /api/internal_usages payload:", {
       personnelName,
       department,
       purpose,
       authorizedBy,
       note,
-      loggedBy,
+      loggedBy: loggedBySafe,
       items: usageItems,
     });
 
@@ -95,7 +97,7 @@ export async function POST(req: Request) {
     }
 
     if (Object.keys(mismatchesOverall).length > 0) {
-      console.log("Validation failed for items:", mismatchesOverall);
+      console.error("Validation failed for items:", mismatchesOverall);
       return NextResponse.json(
         { error: "Item ID validation failed.", details: mismatchesOverall },
         { status: 400 }
@@ -112,6 +114,25 @@ export async function POST(req: Request) {
         loggedBy,
     });
 
+    console.log("Inserting usage record:", {
+      personnelName,
+      department,
+      purpose,
+      authorizedBy,
+      note,
+      loggedBy,
+    });
+    console.log("Inserting usage items:", usageItems);
+
+    console.log("Final insert payload for internalUsages", {
+      personnelName,
+      department,
+      purpose,
+      authorizedBy,
+      note: note ?? null,
+      loggedBy,
+    });
+
 
     // Insert main internal usage record
     const [newUsage] = await db
@@ -122,9 +143,7 @@ export async function POST(req: Request) {
         purpose,
         authorizedBy,
         note,
-        loggedBy,
-        status: "Utilized",
-        loggedAt: new Date(),
+        loggedBy: loggedBySafe,
       })
       .returning();
 
