@@ -26,7 +26,7 @@ export const Header = () => {
                 }  else if (user?.publicMetadata?.role === 'manager') {
                     router.push("/manager/m_dashboard");
                 } else {
-                    router.push("/customer/cus_dashboard");
+                    router.push("/");
                 }
         }
     }, [isSignedIn, isLoaded, user, router]);
