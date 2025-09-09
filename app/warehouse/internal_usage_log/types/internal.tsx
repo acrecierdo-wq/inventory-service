@@ -9,4 +9,18 @@ export type InternalUsage = {
     note?: string;
     status: "Utilized" | "Archived";
     loggedAt: string;
+    loggedBy: string;
+    items: InternalUsageItemDetail[];
+};
+
+export type InternalUsageItemDetail = {
+  itemId: number;
+  itemName: string;
+  quantity: number;
+  sizeId: number | null;
+  sizeName: string | null;
+  unitId: number | null;
+  unitName: string | null;
+  variantId: number | null;
+  variantName: string | null;
 };
