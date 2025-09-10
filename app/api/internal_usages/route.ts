@@ -8,15 +8,20 @@ import {
   sizes,
   variants,
   units,
+  appUsers,
 } from "@/db/schema";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
+import { currentUser } from "@clerk/nextjs/server";
+import bcrypt from "bcryptjs";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log("Raw incoming body:", body);
 
     if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+      console.log("Missing or invalid items array");
       return NextResponse.json({ error: "Invalid or missing items array." }, { status: 400 });
     }
 
@@ -28,9 +33,50 @@ export async function POST(req: Request) {
       note,
       loggedBy,
       items: usageItems,
+      pin,
     } = body;
+    console.log("Parsed fields:", {
+      personnelName,
+      department,
+      purpose,
+      authorizedBy,
+      note,
+      loggedBy,
+      items: usageItems,
+      pin,
+    });
 
-    const loggedBySafe = loggedBy ?? "System";
+    const user = await currentUser();
+    if (!user) {
+      console.log("No Clerk user");
+      return NextResponse.json({ error: "Unauthoeized" }, { status: 401 });
+    }
+    
+    const [dbUser] = await db
+      .select()
+      .from(appUsers)
+      .where(eq(appUsers.clerkId, user.id))
+      .limit(1);
+      console.log("Found appUser:", dbUser);
+
+    if (!dbUser || !dbUser.pinHash) {
+      console.log("No PIN hash in dbUser");
+      return NextResponse.json({ error: "PIN not set for this user." }, { status: 400 });
+    }
+
+    console.log("About to compare PIN:", { pin, pinHash: dbUser.pinHash });
+    const isValid = await bcrypt.compare(pin, dbUser.pinHash);
+    console.log("bcrypt.comapre.result:", isValid);
+
+    if (!isValid) {
+      console.log("Invalid PIN");
+      return NextResponse.json({ error: "Invalid PIN"}, { status: 401 });
+    }
+
+    const loggedBySafe = 
+      user?.fullName?.trim() ||
+      user?.emailAddresses[0]?.emailAddress ||
+      "System";
 
     console.log("Incoming POST /api/internal_usages payload:", {
       personnelName,

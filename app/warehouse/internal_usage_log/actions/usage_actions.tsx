@@ -6,7 +6,6 @@ import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/
 import Image from "next/image";
 import { toast } from "sonner";
 import { InternalUsage, InternalUsageItemDetail } from "@/app/warehouse/internal_usage_log/types/internal";
-import { useUser } from "@clerk/nextjs";
 
 type InternalUsageActionsProps = {
   item: InternalUsage;
@@ -16,7 +15,6 @@ type InternalUsageActionsProps = {
 const InternalUsageActions = ({ item, onDelete }: InternalUsageActionsProps) => {
   console.log("InternalUsageActions props.item:", item);
 
-  const { user } = useUser();
   const [openDropdown, setOpenDropdown] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -139,7 +137,7 @@ const InternalUsageActions = ({ item, onDelete }: InternalUsageActionsProps) => 
             </span>
           </div>
           <div><strong>Date | Time:</strong> {item.loggedAt}</div>
-          <div><strong>Logged By:</strong> {user?.fullName || user?.emailAddresses[0]?.emailAddress}</div>
+          <div><strong>Logged By:</strong> {item.loggedBy}</div>
           
           <div className="border-t pt-4 mt-4 w-[350px]">
             <div className="text-center"><strong>ITEMS</strong></div>

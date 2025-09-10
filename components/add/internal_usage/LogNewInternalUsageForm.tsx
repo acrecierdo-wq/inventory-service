@@ -40,8 +40,13 @@ const NewInternalUsagePage = () => {
   const [purpose, setPurpose] = useState("");
   const [authorizedBy, setAuthorizedBy] = useState("");
   const [note, setNote] = useState("");
+  const [loggedBy, setLoggedBy] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pinError, setPinError] = useState(false);
 
   const [items, setItems] = useState<FormItem[]>([]);
   const [, setNewItem] = useState<FormItem>({
@@ -231,16 +236,55 @@ const NewInternalUsagePage = () => {
     }
   };
 
+  // "Done" button
   const handleDone = () => {
     if (!personnelName) return toast.error("Please enter a personnel name.");
     if (!department) return toast.error("Please enter a department.");
     if (!purpose) return toast.error("Please enter a purpose.");
     if (!authorizedBy) return toast.error("Please enter who authorized this.");
     if (items.length === 0) return toast.error("Please add at least one item.");
-    setShowSummary(true);
+
+    setShowSummary(true); // show summary modal
   };
 
-  const handleSaveUsage = async () => {
+  // "Confirm" button in summary modal handler
+  const handleSaveUsage = () => {
+    setShowSummary(false);
+    setShowPinModal(true); // show PIN modal
+  }
+
+  // "Submit" button in pin modal handler
+  const handlePinSubmit = async () => {
+  if (isSubmitting) return;
+  setIsSubmitting(true);
+
+  if (!pin.trim() || pin.length !== 4) {
+    toast.error("Please enter a valid 4-digit PIN.");
+    setIsSubmitting(false);
+    return;
+  }
+  setIsSubmitting(true);
+
+  try {
+    // verify pin
+    const pinRes = await fetch("/api/warehouse_pin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    const pinData = await pinRes.json();
+
+    if (!pinRes.ok) {
+      toast.error(pinData?.error || "PIN verification failed.");
+      setPinError(true); // highlights input
+      setPin(""); // clear wrong PIN
+      setIsSubmitting(false);
+      return;
+    } else {
+      setPinError(false);
+    }
+
+    // prepare internal usage payload
     const payload = {
       personnelName,
       department,
@@ -254,37 +298,79 @@ const NewInternalUsagePage = () => {
         unitId: i.unitId ? Number(i.unitId) : null,
         quantity: i.quantity,
       })),
-      loggedBy: user?.fullName || user?.emailAddresses[0]?.emailAddress || "Warehouseman",
+      loggedBy,
+      pin: pin,
     };
 
-    try {
-      const res = await fetch("/api/internal_usages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => null);
+    console.log("Sending to /api/internal_usages:", payload);
+    // save usage
+    const usageRes = await fetch("/api/internal_usages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const usageData = await usageRes.json().catch(() => null);
 
-      if (!res.ok) {
-        toast.error(data?.error ||"Failed to save internal usage log.");
-        return;
-      }
-
-      toast.success(data?.message || "Internal usage saved successfully!");
-
-      if (data?.warning && data.warning.length > 0) {
-        data.warning.forEach((msg: string) => {
-          toast.warning(msg);
-        });
-      }
-
-      setTimeout(() => {
-        window.location.href = "/warehouse/internal_usage_log";
-      }, 1500);
-    } catch (err) {
-      console.log(err);
-      toast.error("Something went wrong while saving the usage.");
+    if (!usageRes.ok) {
+      toast.error(usageData?.error || "Failed to save internal usage log.");
+      setIsSubmitting(false);
+      return;
     }
+
+    // success
+    toast.success(usageData?.message || "Internal usage saved successfully!");
+    setShowPinModal(false);
+
+    // show warnings if there's any
+    if (usageData?.warning?.length > 0) {
+      usageData.warning.forEach((msg: string) => {
+        toast.warning(msg);
+      });
+    }
+
+    // redirect to internal usage log
+
+    setTimeout(() => {
+      window.location.href = "/warehouse/internal_usage_log";
+    }, 1500);
+  } catch (err) {
+    console.error(err);
+    toast.error("Something went wrong while saving the usage.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+  useEffect(() => {
+    if (user) {
+      setLoggedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+    }
+  }, [user]);
+
+  const handleClose = () => {
+    // reset all states when close button is clicked (pin modal)
+    setShowSummary(false);
+    setShowPinModal(false);
+    setItems([]);
+    setPersonnelName("");
+    setDepartment("");
+    setPurpose("");
+    setAuthorizedBy("");
+    setNote("");
+    setPin("");
+    setLoggedBy(user?.fullName || user?.emailAddresses[0]?.emailAddress || "Warehouseman");
+
+    // navigate back to internal usage log page
+    window.history.back();
+  }
+
+  const MAX_QUANTITY = 9999;
+
+  const sanitizeToDigits = (input: string) => {
+    const digits = input.replace(/\D+/g, "");
+    if (digits === "") return "";
+    const parsed = parseInt(digits, 10);
+    return Number.isNaN(parsed) ? "" : parsed;
   };
 
   return (
@@ -326,7 +412,7 @@ const NewInternalUsagePage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Authorized By:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Authorized by:</label>
               <input
                 type="text"
                 value={authorizedBy}
@@ -346,7 +432,7 @@ const NewInternalUsagePage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged By: {user?.fullName || user?.emailAddresses[0]?.emailAddress}</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {loggedBy}</label>
             </div>
 
             {/* Items Section */}
@@ -399,8 +485,66 @@ const NewInternalUsagePage = () => {
                   <label className="text-sm font-semibold mb-1 text-[#482b0e]">Quantity</label>
                   <input
                     type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min={0}
+                    max={MAX_QUANTITY}
+                    step={1}
+                    value={quantity === "" ? "" : quantity}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-", "."].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text");
+                      const sanitized = sanitizeToDigits(pasted);
+                      if (sanitized === "") {
+                        setQuantity("");
+                        return;
+                      }
+                      let parsed = Number(sanitized);
+                      if (parsed < 0) {
+                        parsed = 0;
+                        toast.error("Quantity cannot be negative.", { duration: 2000 });
+                      } else if (parsed > MAX_QUANTITY) {
+                        parsed = MAX_QUANTITY;
+                        toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
+                      }
+                      setQuantity(String(parsed));
+                    }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      if (value === "") {
+                        setQuantity("");
+                        return;
+                      }
+
+                      const digitsOnly = value.replace(/\D+/g, "");
+                      if (digitsOnly === "") {
+                        setQuantity("");
+                        return;
+                      }
+
+                      let parsed = parseInt(digitsOnly, 10);
+
+                      if (isNaN(parsed)) {
+                        setQuantity("");
+                        return;
+                      }
+
+                      if (parsed < 0) {
+                        parsed = 0;
+                        toast.error("Quantity cannot be negative.", { duration: 2000 });
+                      } else if (parsed > MAX_QUANTITY) {
+                        parsed = MAX_QUANTITY;
+                        toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
+                      }
+
+                      setQuantity(String(parsed));
+                    }}
                     className="border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
                   />
                 </div>
@@ -504,7 +648,7 @@ const NewInternalUsagePage = () => {
                     ))}
                   </tbody>
                 </table>
-                <p className="mb-2 text-sm text-gray-700">Logged By: {user?.fullName || user?.emailAddresses[0]?.emailAddress}</p>
+                <p className="mb-2 text-sm text-gray-700">Logged By: {loggedBy}</p>
 
                 <div className="mt-6 flex justify-end gap-3">
                   <button
@@ -519,7 +663,51 @@ const NewInternalUsagePage = () => {
                     onClick={handleSaveUsage}
                     className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800"
                   >
-                    Confirm & Save
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PIN Modal */}
+          {showPinModal && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
+              <div className="bg-white w-[600px] p-6 rounded shadow">
+                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Enter PIN</h2>
+                <div>
+                <input 
+                    id="pinInput"
+                    type={"password"}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    placeholder="Enter 4-digit PIN..."
+                    className={`w-full border p-2 rounded mb-2 hover:bg-gray-100 ${
+                      pinError ? "border-red-500" : "border-gray-300"
+                    }`}
+                    value={pin}
+                    maxLength={4}
+                    onChange={(e) => {
+                      setPin(e.target.value.replace(/\D/g, ""))
+                    }}
+                    autoFocus
+                />
+                </div>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePinSubmit}
+                    disabled={isSubmitting}
+                    className={`px-4 py-2 rounded text-white ${isSubmitting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit"}
                   </button>
                 </div>
               </div>
