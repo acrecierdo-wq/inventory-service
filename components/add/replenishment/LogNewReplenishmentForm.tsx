@@ -1,12 +1,14 @@
-// app/components/add/LogNewInternalUsageForm.tsx
+// app/components/add/LogNewReplenishmentForm.tsx
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
+import DelRefModal from "@/app/warehouse/replenishment_log/DR_modal";
 import { toast } from "sonner";
 import AutoComplete from "@/components/autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
+import { DraftReplenishment, FormInfo } from "@/app/warehouse/replenishment_log/types/replenishment";
 import { useUser } from "@clerk/nextjs";
 
 type Selection = { id: string | number; name: string };
@@ -21,45 +23,50 @@ type Combination = {
   unitName: string | null;
 };
 
-type FormItem = {
-  itemId: string;
-  sizeId: string | null;
-  variantId: string | null;
-  unitId: string | null;
-  quantity: number;
-  itemName: string;
-  sizeName: string | null;
-  variantName: string | null;
-  unitName: string | null;
+
+
+interface Props {
+  draftData?: DraftReplenishment;
+  draftId?: string;
+  onSaveSuccess?: () => void;
 };
 
-const NewInternalUsagePage = () => {
+const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
-  const [personnelName, setPersonnelName] = useState("");
-  const [department, setDepartment] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [authorizedBy, setAuthorizedBy] = useState("");
-  const [note, setNote] = useState("");
-  const [loggedBy, setLoggedBy] = useState("");
+  const [supplier, setSupplier] = useState(draftData?.supplier || "");
+  const [poRefNum, setPoRefNum] = useState(draftData?.poRefNum || "");
+  const [remarks, setRemarks] = useState(draftData?.remarks || "");
+  const [recordedBy, setRecordedBy] = useState(draftData?.recordedBy || "")
+  const [showDRModal, setShowDRModal] = useState(false);
+  const [drInfo, setDrInfo] = useState<{ drRefNum: string; isDraft: boolean } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pin, setPin] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pinError, setPinError] = useState(false);
 
-  const [items, setItems] = useState<FormItem[]>([]);
-  const [, setNewItem] = useState<FormItem>({
-    itemId: "",
-    sizeId: null,
-    variantId: null,
-    unitId: null,
-    quantity: 0,
-    itemName: "",
-    sizeName: null,
-    variantName: null,
-    unitName: null,
-  });
+  const [items, setItems] = useState<FormInfo[]>(() => 
+    draftData?.items.map((i) => ({
+      itemId: String(i.itemId),
+      sizeId: i.sizeId !== null ? String(i.sizeId) : null,
+      variantId: i.variantId !== null ? String(i.variantId) : null,
+      unitId: i.unitId !== null ? String(i.unitId) : null,
+      quantity: i.quantity,
+      itemName: i.itemName,
+      sizeName: i.sizeName,
+      variantName: i.variantName,
+      unitName: i.unitName,
+    })) || []
+  );
+
+  const [newItem, setNewItem] = useState<FormInfo>({
+      itemId: "",
+      sizeId: null,
+      variantId: null,
+      unitId: null,
+      quantity: 0,
+      itemName: "",
+      sizeName: null,
+      variantName: null,
+      unitName: null,
+    });
 
   // UI selections
   const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
@@ -92,19 +99,23 @@ const NewInternalUsagePage = () => {
     new Map(
       combinations
         .filter((c) => {
+          // units must match selected size and selected variant (if provided)
           if (selectedSize && selectedVariant) {
             return c.sizeId === Number(selectedSize.id) && c.variantId === Number(selectedVariant.id) && c.unitId != null && c.unitName;
           }
+          // if variant isn't chosen yet (but size is), show units for size across variants
           if (selectedSize && !selectedVariant) {
             return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
           }
+          // otherwise show all units (fallback)
           return c.unitId != null && c.unitName;
         })
         .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
     ).values()
   );
 
-  useEffect(() => {
+  // debug-like object similar to previous UI
+useEffect(() => {
     setNewItem((prev) => ({
       ...prev,
       itemId: selectedItem ? String(selectedItem.id) : "",
@@ -119,6 +130,7 @@ const NewInternalUsagePage = () => {
     }));
   }, [selectedItem, selectedSize, selectedVariant, selectedUnit, quantity]);
 
+  // When an item is selected (from item-name autocomplete), fetch row-level combos
   useEffect(() => {
     if (!selectedItem) {
       setCombinations([]);
@@ -130,16 +142,21 @@ const NewInternalUsagePage = () => {
 
     const fetchOptions = async () => {
       try {
+        
+        // pass itemName so API aggregates across all itemIds that share the same name
         const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(String(selectedItem.name))}`);
         if (!res.ok) {
+          console.warn("inventory-options returned non-ok status");
           setCombinations([]);
           return;
         }
         const data: Combination[] = await res.json();
         setCombinations(Array.isArray(data) ? data : []);
       } catch {
+        console.error("Failed to fetch inventory options:");
         setCombinations([]);
       }
+      // reset dependent selections when item changes
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
@@ -148,11 +165,66 @@ const NewInternalUsagePage = () => {
     fetchOptions();
   }, [selectedItem]);
 
-  // Add item handler
+  useEffect(() => {
+      console.log("Available Sizes:", availableSizes);
+      console.log("Available Variants:", availableVariants);
+      console.log("Available Units:", availableUnits);
+  }, [availableSizes, availableVariants, availableUnits]);
+
+  useEffect(() => {
+    setSelectedVariant(null);
+    setSelectedUnit(null);
+  }, [selectedSize]);
+
+  useEffect(() => {
+    setSelectedUnit(null);
+  }, [selectedVariant])
+
+  // Auto-select single options where useful and keep selections valid
+  useEffect(() => {
+    if (!selectedItem) {
+      setSelectedSize(null);
+      setSelectedVariant(null);
+      setSelectedUnit(null);
+      return;
+    }
+
+    if (availableSizes.length === 1 && !selectedSize) {
+      setSelectedSize(availableSizes[0]);
+    }
+
+    if(selectedSize && availableVariants.length === 1 && !selectedVariant) {
+      setSelectedVariant(availableVariants[0]);
+    }
+
+    if (selectedSize && selectedVariant && availableUnits.length === 1 && !selectedUnit) {
+      setSelectedUnit(availableUnits[0]);
+    }
+  }, [selectedItem, availableSizes, availableVariants, availableUnits, selectedSize, selectedVariant, selectedUnit]);
+
+  useEffect(() => {
+    if (selectedSize && !availableSizes.some((s) => String(s.id) === String(selectedSize.id))) {
+      setSelectedSize(null);
+      setSelectedVariant(null);
+      setSelectedUnit(null);
+    }
+
+    if (selectedVariant && !availableVariants.some((v) => String(v.id) === String(selectedVariant.id))) {
+      setSelectedVariant(null);
+      setSelectedUnit(null);
+    }
+
+    if (selectedUnit && !availableUnits.some((u) => String(u.id) === String(selectedUnit.id))) {
+      setSelectedUnit(null);
+    }
+  }, [selectedSize, selectedVariant, selectedUnit, availableSizes, availableVariants, availableUnits]);
+
+  // Add item: consult item-find (which resolves correct item id) then push to list
   const handleAddItem = async () => {
     if (isAdding) return;
     setIsAdding(true);
 
+    // Basic validations: require item, require size/variant/unit depending on options
     if (!selectedItem) {
       toast.error("Please select an item.");
       setIsAdding(false);
@@ -187,6 +259,7 @@ const NewInternalUsagePage = () => {
         unitId: selectedUnit ? String(selectedUnit.id) : "",
       });
 
+      // item-find should return the specific item id that matches the combination
       const res = await fetch(`/api/item-find?${params.toString()}`);
       const found = await res.json();
 
@@ -196,7 +269,7 @@ const NewInternalUsagePage = () => {
         return;
       }
 
-      const candidate: FormItem = {
+      const candidate: FormInfo = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
         variantId: selectedVariant ? String(selectedVariant.id) : null,
@@ -224,73 +297,54 @@ const NewInternalUsagePage = () => {
 
       setItems((prev) => [...prev, candidate]);
 
+      // Reset selections for next entry
       setSelectedItem(null);
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
+      //setCombinations([]);
       setQuantity("");
-    } catch {
+    } catch (err) {
+      console.error("Item-find error:", err);
       toast.error("Something went wrong while adding the item.");
     } finally {
       setIsAdding(false);
     }
   };
 
-  // "Done" button
   const handleDone = () => {
-    if (!personnelName) return toast.error("Please enter a personnel name.");
-    if (!department) return toast.error("Please enter a department.");
-    if (!purpose) return toast.error("Please enter a purpose.");
-    if (!authorizedBy) return toast.error("Please enter who authorized this.");
-    if (items.length === 0) return toast.error("Please add at least one item.");
-
-    setShowSummary(true); // show summary modal
-  };
-
-  // "Confirm" button in summary modal handler
-  const handleSaveUsage = () => {
-    setShowSummary(false);
-    setShowPinModal(true); // show PIN modal
-  }
-
-  // "Submit" button in pin modal handler
-  const handlePinSubmit = async () => {
-  if (isSubmitting) return;
-  setIsSubmitting(true);
-
-  if (!pin.trim() || pin.length !== 4) {
-    toast.error("Please enter a valid 4-digit PIN.");
-    setIsSubmitting(false);
-    return;
-  }
-  setIsSubmitting(true);
-
-  try {
-    // verify pin
-    const pinRes = await fetch("/api/warehouse_pin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin }),
-    });
-    const pinData = await pinRes.json();
-
-    if (!pinRes.ok) {
-      toast.error(pinData?.error || "PIN verification failed.");
-      setPinError(true); // highlights input
-      setPin(""); // clear wrong PIN
-      setIsSubmitting(false);
+    if (!supplier) {
+      toast.error("Please enter a supplier.");
       return;
-    } else {
-      setPinError(false);
     }
 
-    // prepare internal usage payload
+    if (!poRefNum) {
+      toast.error("Please enter a PO reference number.");
+      return;
+    }
+
+    if (items.length === 0) {
+      toast.error("Please add at least one item.");
+      return;
+    }
+
+    setShowDRModal(true);
+  };
+
+  const handleSaveReplenishment = async () => {
+    if (!drInfo) return;
+    if (!supplier || !poRefNum || items.length === 0) {
+      toast.error("Please fill in all the required fields.");
+      return;
+    }
+
     const payload = {
-      personnelName,
-      department,
-      purpose,
-      authorizedBy,
-      note,
+      supplier,
+      poRefNum,
+      remarks,
+      recordedBy,
+      drRefNum: drInfo.drRefNum,
+      isDraft: drInfo.isDraft ? "draft" : "replenished",
       items: items.map((i) => ({
         itemId: Number(i.itemId),
         sizeId: i.sizeId ? Number(i.sizeId) : null,
@@ -298,71 +352,88 @@ const NewInternalUsagePage = () => {
         unitId: i.unitId ? Number(i.unitId) : null,
         quantity: i.quantity,
       })),
-      loggedBy,
-      pin: pin,
     };
 
-    console.log("Sending to /api/internal_usages:", payload);
-    // save usage
-    const usageRes = await fetch("/api/internal_usages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const usageData = await usageRes.json().catch(() => null);
+    console.log('[handleSaveReplenishment] drInfo', drInfo);
+    console.log('[submit replenishment] payload about to send', payload);
+    console.log("[ReplenishmentForm] About to PUT /api/replenishment", payload);
 
-    if (!usageRes.ok) {
-      toast.error(usageData?.error || "Failed to save internal usage log.");
-      setIsSubmitting(false);
-      return;
-    }
 
-    // success
-    toast.success(usageData?.message || "Internal usage saved successfully!");
-    setShowPinModal(false);
+    try {
+      console.log('[submit replenishment] payload about to send', payload);
+      console.log("[ReplenishmentForm] About to PUT /api/replenishment", payload);
 
-    // show warnings if there's any
-    if (usageData?.warning?.length > 0) {
-      usageData.warning.forEach((msg: string) => {
-        toast.warning(msg);
+      const res = await fetch(draftId ? `/api/replenishment/${draftId}` : "/api/replenishment", {
+        method: draftId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        // Attempt to parse error JSON like you had
+        let errorMessage = "Failed to process replenishment.";
+        try {
+          const ct = res.headers.get("content-type") || "";
+          if (ct.includes("application/json")) {
+            const err = await res.json();
+            if (err?.error) errorMessage = err.error;
+          }
+        } catch (e) {
+          console.log(e);
+          /* ignore parse error */
+        }
+        toast.error(errorMessage);
+        return;
+      }
+
+      const result = await res.json();
+
+      if (result.warning && result.warning.length > 0) {
+        result.warning.forEach((w: string, i: number) => {
+          setTimeout(() => toast.warning(w), i * 5000);
+        });
+      }
+
+      setTimeout(() => {
+        toast.success(drInfo.isDraft ? "Replenishment saved as draft." : "Replenishment saved successfully!");
+        onSaveSuccess?.();
+        setTimeout(() => {
+          window.location.href = "/warehouse/replenishment_log";
+        }, 1500);
+      }, (result.warning?.length || 0) * 1000);
+    } catch (err) {
+      console.error("Replenishment error:", err);
+      toast.error("Something went wrong while saving the replenishment.");
     }
-
-    // redirect to internal usage log
-
-    setTimeout(() => {
-      window.location.href = "/warehouse/internal_usage_log";
-    }, 1500);
-  } catch (err) {
-    console.error(err);
-    toast.error("Something went wrong while saving the usage.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   useEffect(() => {
-    if (user) {
-      setLoggedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+    if (draftData) {
+      setSupplier(draftData.supplier || "");
+      setPoRefNum(draftData.poRefNum || "");
+      setRemarks(draftData.remarks || "");
+      setRecordedBy(draftData.recordedBy || "");
+      setItems(
+        draftData.items.map((i) => ({
+          itemId: String(i.itemId),
+          sizeId: i.sizeId !== null ? String(i.sizeId) : null,
+          variantId: i.variantId !== null ? String(i.variantId) : null,
+          unitId: i.unitId !== null ? String(i.unitId) : null,
+          quantity: i.quantity,
+          itemName: i.itemName,
+          sizeName: i.sizeName,
+          variantName: i.variantName,
+          unitName: i.unitName,
+        }))
+      );
     }
-  }, [user]);
+  }, [draftData]);
 
-  const handleClose = () => {
-    // reset all states when close button is clicked (pin modal)
-    setShowSummary(false);
-    setShowPinModal(false);
-    setItems([]);
-    setPersonnelName("");
-    setDepartment("");
-    setPurpose("");
-    setAuthorizedBy("");
-    setNote("");
-    setPin("");
-    setLoggedBy(user?.fullName || user?.emailAddresses[0]?.emailAddress || "Warehouseman");
-
-    // navigate back to internal usage log page
-    window.history.back();
-  }
+  useEffect(() => {
+      if (user) {
+        setRecordedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+      }
+    }, [user]);
 
   const MAX_QUANTITY = 9999;
 
@@ -378,68 +449,41 @@ const NewInternalUsagePage = () => {
       <main className="bg-[#ffedce] w-full">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Internal Usage</h1>
+          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Replenishment</h1>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
+            {/* Supplier */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Personnel Name:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Supplier:</label>
               <input
                 type="text"
-                value={personnelName}
-                onChange={(e) => setPersonnelName(e.target.value)}
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+              />
+            </div>
+
+            {/* PO reference number */}
+            <div>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">PO Reference Number:</label>
+              <input
+                type="text"
+                value={poRefNum}
+                onChange={(e) => setPoRefNum(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Department:</label>
-              <input
-                type="text"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Recorded by: {recordedBy}</label>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Purpose:</label>
-              <input
-                type="text"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Authorized by:</label>
-              <input
-                type="text"
-                value={authorizedBy}
-                onChange={(e) => setAuthorizedBy(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Note:</label>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {loggedBy}</label>
-            </div>
-
-            {/* Items Section */}
+            {/* Add Item Section */}
             <div className="border-t pt-4 mt-4">
-              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Utilize</h2>
+              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Replenish</h2>
 
               <div className="grid grid-cols-5 gap-2 items-end">
+                {/* Item Name */}
                 <div>
                   <AutoComplete
                     label="Item Name"
@@ -449,8 +493,10 @@ const NewInternalUsagePage = () => {
                       setSelectedItem(item);
                     }}
                   />
+                  <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre>
                 </div>
 
+                {/* Size */}
                 <div>
                   <AutoComplete
                     label="Item Size"
@@ -461,6 +507,7 @@ const NewInternalUsagePage = () => {
                   />
                 </div>
 
+                {/* Variant */}
                 <div>
                   <AutoComplete
                     label="Item Variant"
@@ -471,6 +518,7 @@ const NewInternalUsagePage = () => {
                   />
                 </div>
 
+                {/* Unit */}
                 <div>
                   <AutoComplete
                     label="Item Unit"
@@ -481,6 +529,7 @@ const NewInternalUsagePage = () => {
                   />
                 </div>
 
+                {/* Quantity */}
                 <div className="flex flex-col">
                   <label className="text-sm font-semibold mb-1 text-[#482b0e]">Quantity</label>
                   <input
@@ -609,6 +658,7 @@ const NewInternalUsagePage = () => {
               <button
                 type="button"
                 onClick={handleDone}
+                //disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
                 className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
               >
                 Done
@@ -616,17 +666,28 @@ const NewInternalUsagePage = () => {
             </div>
           </form>
 
+          {showDRModal && (
+            <DelRefModal
+              onClose={() => setShowDRModal(false)}
+              onConfirm={(data) => {
+                console.log('[DelRefModal onConfirm] data', data);
+                setDrInfo(data);
+                setShowDRModal(false);
+                setShowSummary(true);
+              }}
+              //className="hover:bg-gray-100"
+            />
+          )}
+
           {showSummary && (
             <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
               <div className="bg-white w-[600px] p-6 rounded shadow">
-                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Internal Usage</h2>
-                <p className="mb-2 text-sm text-gray-700">Personnel: {personnelName}</p>
-                <p className="mb-2 text-sm text-gray-700">Department: {department}</p>
-                <p className="mb-2 text-sm text-gray-700">Purpose: {purpose}</p>
-                <p className="mb-2 text-sm text-gray-700">Authorized By: {authorizedBy}</p>
-                <p className="mb-2 text-sm text-gray-700">Note: {note}</p>
+                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Replenishment</h2>
+                <p className="mb-2 text-sm text-gray-700">Supplier: {supplier}</p>
+                <p className="mb-2 text-sm text-gray-700">PO Reference No.: {poRefNum}</p>
+                <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drRefNum || "Draft"}</p>
 
-                <table className="w-full mt-4 mb-2 text-sm border">
+                <table className="w-full mt-4 text-sm border">
                   <thead className="bg-[#f5e6d3] text-[#482b0e]">
                     <tr>
                       <th className="border px-2 py-1">Item</th>
@@ -648,66 +709,19 @@ const NewInternalUsagePage = () => {
                     ))}
                   </tbody>
                 </table>
-                <p className="mb-2 text-sm text-gray-700">Logged By: {loggedBy}</p>
 
-                <div className="mt-6 flex justify-end gap-3">
+                <div className="flex justify-end gap-4 mt-6">
                   <button
-                    type="button"
-                    onClick={() => setShowSummary(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    onClick={() => {
+                      setShowSummary(false);
+                      setShowDRModal(true);
+                    }}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveUsage}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800"
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PIN Modal */}
-          {showPinModal && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
-              <div className="bg-white w-[600px] p-6 rounded shadow">
-                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Enter PIN</h2>
-                <div>
-                <input 
-                    id="pinInput"
-                    type={"password"}
-                    inputMode="numeric"
-                    pattern="\d*"
-                    placeholder="Enter 4-digit PIN..."
-                    className={`w-full border p-2 rounded mb-2 hover:bg-gray-100 ${
-                      pinError ? "border-red-500" : "border-gray-300"
-                    }`}
-                    value={pin}
-                    maxLength={4}
-                    onChange={(e) => {
-                      setPin(e.target.value.replace(/\D/g, ""))
-                    }}
-                    autoFocus
-                />
-                </div>
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePinSubmit}
-                    disabled={isSubmitting}
-                    className={`px-4 py-2 rounded text-white ${isSubmitting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
-                  >
-                    {isSubmitting ? "Submitting..." : "Submit"}
+                  <button onClick={handleSaveReplenishment} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
+                    Save
                   </button>
                 </div>
               </div>
@@ -719,4 +733,4 @@ const NewInternalUsagePage = () => {
   );
 };
 
-export default NewInternalUsagePage;
+export default NewReplenishmentPage;
