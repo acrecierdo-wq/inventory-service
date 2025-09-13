@@ -146,6 +146,46 @@ export const customers = pgTable("customers", {
   password: varchar("password", { length: 255 }),
 });
 
+{/* Quotations */}
+
+export const quotations = pgTable("quotations", {
+  id: serial("id").primaryKey(),
+  
+  requestId: integer("request_id")
+    .notNull()
+    .references(() => quotation_requests.id, { onDelete: "cascade" }),
+
+  delivery: text("delivery"),
+  warranty: text("warranty"),
+  validity: timestamp("validity"),
+  notes: text("notes"),
+
+  overallTotal: integer("overall_total").default(0), // could also be numeric/decimal
+  status: varchar("status", { length: 50 }).default("Draft"), // Draft, Sent, Approved, Rejected
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const quotation_items = pgTable("quotation_items", {
+  id: serial("id").primaryKey(),
+
+  quotationId: integer("quotation_id")
+    .notNull()
+    .references(() => quotations.id, { onDelete: "cascade" }),
+
+  itemName: text("item_name").notNull(),
+  scopeOfWork: text("scope_of_work"),
+  materials: text("materials"),
+
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(),
+  totalPrice: integer("total_price").notNull(),
+});
+
+
+
+
 
   // //relation
   // export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({

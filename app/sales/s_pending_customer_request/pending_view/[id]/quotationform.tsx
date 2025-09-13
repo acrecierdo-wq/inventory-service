@@ -2,12 +2,27 @@
 
 import { useState, useEffect } from "react";
 
+// Define the shape of a saved quotation response
+export type QuotationData = {
+  id: number;
+  quotation_notes?: string;
+  scope_of_work?: string;
+  materials?: string;
+  quantity?: string;
+  unit_price?: string;
+  total_price?: string;
+  delivery?: string;
+  validity?: string;
+  warranty?: string;
+  // add more fields if your API returns them
+};
+
 type QuotationFormProps = {
   requestId: number;
   projectName?: string;
   mode?: string;
   initialNotes?: string;
-  onSaved?: (data: any) => void;
+  onSaved?: (data: QuotationData) => void; // ✅ no more any
 };
 
 export default function QuotationForm({
@@ -65,7 +80,7 @@ export default function QuotationForm({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save quotation");
       alert("Quotation saved successfully!");
-      if (onSaved) onSaved(data.data);
+      if (onSaved) onSaved(data.data as QuotationData); // ✅ type-safe cast
     } catch (err) {
       console.error(err);
       alert("Failed to save quotation");

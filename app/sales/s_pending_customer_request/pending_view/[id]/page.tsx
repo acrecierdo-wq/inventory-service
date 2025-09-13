@@ -34,33 +34,34 @@ const PendingViewPage = () => {
   const [showFloatingValidation, setShowFloatingValidation] = useState(false);
   const [actionType, setActionType] = useState<"Approved" | "Rejected" | "Cancelled" | null>(null);
 
-  const fetchRequest = async () => {
-    if (!requestId) {
-      console.error("No request ID provided in URL");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch(`/api/q_request?id=${requestId}`);
-      if (!res.ok) throw new Error("Request not found");
-
-      const json = await res.json();
-      const data: QuotationRequest | null = Array.isArray(json) ? json[0] : json;
-      if (!data) throw new Error("Request not found");
-
-      setRequest(data);
-    } catch (err) {
-      console.error("Failed to fetch request:", err);
-      setRequest(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ✅ fetch logic is now inside useEffect
   useEffect(() => {
+    const fetchRequest = async () => {
+      if (!requestId) {
+        console.error("No request ID provided in URL");
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch(`/api/q_request?id=${requestId}`);
+        if (!res.ok) throw new Error("Request not found");
+
+        const json = await res.json();
+        const data: QuotationRequest | null = Array.isArray(json) ? json[0] : json;
+        if (!data) throw new Error("Request not found");
+
+        setRequest(data);
+      } catch (err) {
+        console.error("Failed to fetch request:", err);
+        setRequest(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchRequest();
   }, [requestId]);
 
