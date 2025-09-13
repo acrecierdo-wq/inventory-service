@@ -68,7 +68,10 @@ const IssuanceLogPage = () => {
                 {/* Issued Tab */}
                 <div className="relative">
                     <div
-                    onClick={() => setActiveTab("Issued")}
+                    onClick={() => {
+                        setActiveTab("Issued");
+                        setCurrentPage(1);
+                    }}
                     className={`h-5 w-15 mt-3 bg-white border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 
                         ${activeTab === "Issued" ? "border-b-4 border-green-800" : ""}`}
                     >
@@ -81,7 +84,10 @@ const IssuanceLogPage = () => {
                 {/* Draft Tab */}
                 <div className="relative">
                     <div
-                    onClick={() => setActiveTab("Draft")}
+                    onClick={() => {
+                        setActiveTab("Draft");
+                        setCurrentPage(1);
+                    }}
                     className={`h-5 w-15 mt-3 bg-white border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4
                         ${activeTab === "Draft" ? "border-b-4 border-slate-500" : ""}`}
                     >
@@ -94,7 +100,10 @@ const IssuanceLogPage = () => {
                 {/* Archived Tab */}
                 <div className="relative">
                     <div
-                    onClick={() => setActiveTab("Archived")}
+                    onClick={() => {
+                        setActiveTab("Archived");
+                        setCurrentPage(1);
+                    }}
                     className={`h-5 w-15 mt-3 bg-white border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4
                         ${activeTab === "Archived" ? "border-b-4 border-red-800" : ""}`}
                     >
@@ -107,6 +116,7 @@ const IssuanceLogPage = () => {
                 {/* Search */}
                 <div className="h-8 w-70 mt-2 ml-30 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row">
                     <Image src="/search-alt-2-svgrepo-com.svg" width={0} height={0} alt="Search" className="ml-5 w-[15px] h-auto" />
+
                     <input
                     type="text"
                     placeholder="Search..."
@@ -137,6 +147,7 @@ const IssuanceLogPage = () => {
                 </div>
 
                 <button
+                // {isExporting ? "Exporting..." : "Export"} either csv or pdf
                 className="bg-green-600 h-8 text-white px-2 rounded hover:bg-green-700 cursor-pointer">
                     Export to CSV
                 </button>

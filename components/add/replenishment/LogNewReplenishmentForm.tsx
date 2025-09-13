@@ -1,14 +1,15 @@
-// app/components/add/LogNewIssuanceForm.tsx
+// app/components/add/LogNewReplenishmentForm.tsx
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
-import DRModal from "@/app/warehouse/issuance_log/dr_modal";
+import DelRefModal from "@/app/warehouse/replenishment_log/DR_modal";
 import { toast } from "sonner";
-import AutoComplete from "../autocomplete/AutoComplete";
+import AutoComplete from "@/components/autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
-import { DraftIssuance, FormItem } from "@/app/warehouse/issuance_log/types/issuance";
+import { DraftReplenishment, FormInfo } from "@/app/warehouse/replenishment_log/types/replenishment";
+import { useUser } from "@clerk/nextjs";
 
 type Selection = { id: string | number; name: string };
 
@@ -25,22 +26,23 @@ type Combination = {
 
 
 interface Props {
-  draftData?: DraftIssuance;
+  draftData?: DraftReplenishment;
   draftId?: string;
   onSaveSuccess?: () => void;
 };
 
-const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
-  const [clientName, setClientName] = useState(draftData?.clientName || "");
-  const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
-  const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
-  const [prfNumber, setPrfNumber] = useState(draftData?.prfNumber ||"");
+const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
+  const { user } = useUser();
+  const [supplier, setSupplier] = useState(draftData?.supplier || "");
+  const [poRefNum, setPoRefNum] = useState(draftData?.poRefNum || "");
+  const [remarks, setRemarks] = useState(draftData?.remarks || "");
+  const [recordedBy, setRecordedBy] = useState(draftData?.recordedBy || "")
   const [showDRModal, setShowDRModal] = useState(false);
-  const [drInfo, setDrInfo] = useState<{ drNumber: string; saveAsDraft: boolean } | null>(null);
+  const [drInfo, setDrInfo] = useState<{ drRefNum: string; isDraft: boolean } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  const [items, setItems] = useState<FormItem[]>(() => 
+  const [items, setItems] = useState<FormInfo[]>(() => 
     draftData?.items.map((i) => ({
       itemId: String(i.itemId),
       sizeId: i.sizeId !== null ? String(i.sizeId) : null,
@@ -54,7 +56,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     })) || []
   );
 
-  const [newItem, setNewItem] = useState<FormItem>({
+  const [newItem, setNewItem] = useState<FormInfo>({
       itemId: "",
       sizeId: null,
       variantId: null,
@@ -140,6 +142,7 @@ useEffect(() => {
 
     const fetchOptions = async () => {
       try {
+        
         // pass itemName so API aggregates across all itemIds that share the same name
         const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(String(selectedItem.name))}`);
         if (!res.ok) {
@@ -266,7 +269,7 @@ useEffect(() => {
         return;
       }
 
-      const candidate: FormItem = {
+      const candidate: FormInfo = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
         variantId: selectedVariant ? String(selectedVariant.id) : null,
@@ -310,23 +313,13 @@ useEffect(() => {
   };
 
   const handleDone = () => {
-    if (!clientName) {
-      toast.error("Please enter a client name.");
+    if (!supplier) {
+      toast.error("Please enter a supplier.");
       return;
     }
 
-    if (!dispatcherName) {
-      toast.error("Please enter a dispatcher name.");
-      return;
-    }
-
-    if (!customerPoNumber) {
-      toast.error("Please enter a customer PO number.");
-      return;
-    }
-
-    if (!prfNumber) {
-      toast.error("Please enter a PRF number.");
+    if (!poRefNum) {
+      toast.error("Please enter a PO reference number.");
       return;
     }
 
@@ -338,20 +331,20 @@ useEffect(() => {
     setShowDRModal(true);
   };
 
-  const handleSaveIssuance = async () => {
+  const handleSaveReplenishment = async () => {
     if (!drInfo) return;
-    if (!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0) {
+    if (!supplier || !poRefNum || items.length === 0) {
       toast.error("Please fill in all the required fields.");
       return;
     }
 
     const payload = {
-      clientName,
-      dispatcherName,
-      customerPoNumber,
-      prfNumber,
-      drNumber: drInfo.drNumber,
-      saveAsDraft: drInfo.saveAsDraft ? "draft" : "issued",
+      supplier,
+      poRefNum,
+      remarks,
+      recordedBy,
+      drRefNum: drInfo.drRefNum,
+      isDraft: drInfo.isDraft ? "draft" : "replenished",
       items: items.map((i) => ({
         itemId: Number(i.itemId),
         sizeId: i.sizeId ? Number(i.sizeId) : null,
@@ -361,8 +354,16 @@ useEffect(() => {
       })),
     };
 
+    console.log('[handleSaveReplenishment] drInfo', drInfo);
+    console.log('[submit replenishment] payload about to send', payload);
+    console.log("[ReplenishmentForm] About to PUT /api/replenishment", payload);
+
+
     try {
-      const res = await fetch(draftId ? `/api/issuances/${draftId}` : "/api/issuances", {
+      console.log('[submit replenishment] payload about to send', payload);
+      console.log("[ReplenishmentForm] About to PUT /api/replenishment", payload);
+
+      const res = await fetch(draftId ? `/api/replenishment/${draftId}` : "/api/replenishment", {
         method: draftId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -370,7 +371,7 @@ useEffect(() => {
 
       if (!res.ok) {
         // Attempt to parse error JSON like you had
-        let errorMessage = "Failed to process issuance.";
+        let errorMessage = "Failed to process replenishment.";
         try {
           const ct = res.headers.get("content-type") || "";
           if (ct.includes("application/json")) {
@@ -394,24 +395,24 @@ useEffect(() => {
       }
 
       setTimeout(() => {
-        toast.success(drInfo.saveAsDraft ? "Issuance saved as draft." : "Issuance saved successfully!");
+        toast.success(drInfo.isDraft ? "Replenishment saved as draft." : "Replenishment saved successfully!");
         onSaveSuccess?.();
         setTimeout(() => {
-          window.location.href = "/warehouse/issuance_log";
+          window.location.href = "/warehouse/replenishment_log";
         }, 1500);
       }, (result.warning?.length || 0) * 1000);
     } catch (err) {
-      console.error("Issuance error:", err);
-      toast.error("Something went wrong while saving the issuance.");
+      console.error("Replenishment error:", err);
+      toast.error("Something went wrong while saving the replenishment.");
     }
   };
 
   useEffect(() => {
     if (draftData) {
-      setClientName(draftData.clientName || "");
-      setDispatcherName(draftData.dispatcherName || "");
-      setCustomerPoNumber(draftData.customerPoNumber || "");
-      setPrfNumber(draftData.prfNumber || "");
+      setSupplier(draftData.supplier || "");
+      setPoRefNum(draftData.poRefNum || "");
+      setRemarks(draftData.remarks || "");
+      setRecordedBy(draftData.recordedBy || "");
       setItems(
         draftData.items.map((i) => ({
           itemId: String(i.itemId),
@@ -428,6 +429,12 @@ useEffect(() => {
     }
   }, [draftData]);
 
+  useEffect(() => {
+      if (user) {
+        setRecordedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+      }
+    }, [user]);
+
   const MAX_QUANTITY = 9999;
 
   const sanitizeToDigits = (input: string) => {
@@ -442,56 +449,38 @@ useEffect(() => {
       <main className="bg-[#ffedce] w-full">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Issuance</h1>
+          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Replenishment</h1>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
-            {/* Client Name */}
+            {/* Supplier */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Client Name:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Supplier:</label>
               <input
                 type="text"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
-            {/* Dispatcher Name */}
+            {/* PO reference number */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Dispatcher Name:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">PO Reference Number:</label>
               <input
                 type="text"
-                value={dispatcherName}
-                onChange={(e) => setDispatcherName(e.target.value)}
+                value={poRefNum}
+                onChange={(e) => setPoRefNum(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
-            {/* Customer PO Number */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Customer PO Number:</label>
-              <input
-                type="text"
-                value={customerPoNumber}
-                onChange={(e) => setCustomerPoNumber(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            {/* PRF Number */}
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">PRF Number:</label>
-              <input
-                type="text"
-                value={prfNumber}
-                onChange={(e) => setPrfNumber(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Recorded by: {recordedBy}</label>
             </div>
 
             {/* Add Item Section */}
             <div className="border-t pt-4 mt-4">
-              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Issue</h2>
+              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Replenish</h2>
 
               <div className="grid grid-cols-5 gap-2 items-end">
                 {/* Item Name */}
@@ -678,9 +667,10 @@ useEffect(() => {
           </form>
 
           {showDRModal && (
-            <DRModal
+            <DelRefModal
               onClose={() => setShowDRModal(false)}
               onConfirm={(data) => {
+                console.log('[DelRefModal onConfirm] data', data);
                 setDrInfo(data);
                 setShowDRModal(false);
                 setShowSummary(true);
@@ -692,10 +682,10 @@ useEffect(() => {
           {showSummary && (
             <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
               <div className="bg-white w-[600px] p-6 rounded shadow">
-                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Issuance</h2>
-                <p className="mb-2 text-sm text-gray-700">Client: {clientName}</p>
-                <p className="mb-2 text-sm text-gray-700">Dispatcher: {dispatcherName}</p>
-                <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drNumber || "Draft"}</p>
+                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Replenishment</h2>
+                <p className="mb-2 text-sm text-gray-700">Supplier: {supplier}</p>
+                <p className="mb-2 text-sm text-gray-700">PO Reference No.: {poRefNum}</p>
+                <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drRefNum || "Draft"}</p>
 
                 <table className="w-full mt-4 text-sm border">
                   <thead className="bg-[#f5e6d3] text-[#482b0e]">
@@ -730,7 +720,7 @@ useEffect(() => {
                   >
                     Cancel
                   </button>
-                  <button onClick={handleSaveIssuance} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
+                  <button onClick={handleSaveReplenishment} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
                     Save
                   </button>
                 </div>
@@ -743,5 +733,4 @@ useEffect(() => {
   );
 };
 
-export default NewIssuancePage;
-// Latest version - Sept.2 - 5:40PM
+export default NewReplenishmentPage;

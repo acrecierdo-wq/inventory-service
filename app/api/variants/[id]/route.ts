@@ -2,13 +2,18 @@
 import { db } from '@/db/drizzle';
 import { items, variants } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+type RouteContext = { 
+  params: Promise <{ id: string }>;
+}
+
+export async function PUT(req: NextRequest, context: RouteContext ) {
+  const { id } = await  context.params;
   const body = await req.json();
-  const id = Number(params.id);
+  const variantsId = Number(id);
 
-  if (isNaN(id)) {
+  if (isNaN(variantsId)) {
     return NextResponse.json({ success: false, message: 'Invalid variant ID' }, { status: 400 });
   }
 
@@ -16,7 +21,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const result = await db
       .update(variants)
       .set({ name: body.name })
-      .where(eq(variants.id, id))
+      .where(eq(variants.id, variantsId))
       .returning();
 
     return NextResponse.json({ success: true, data: result });
@@ -25,19 +30,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const id = Number(params.id);
+export async function DELETE(_req: NextRequest, context: RouteContext ) {
+  const { id } = await context.params;
+  const variantsId = Number(id);
 
-  if(isNaN(id)) {
+  if(isNaN(variantsId)) {
     return NextResponse.json({ success: false, message: 'Invalid variant ID' }, { status: 400 });
   }
 
   try {
     // Check if any items are using this variant
-    const inUse = await db.select().from(items).where(eq(items.variantId, id)).limit(1);
+    const inUse = await db.select().from(items).where(eq(items.variantId, variantsId)).limit(1);
 
     if (inUse.length > 0) {
       return NextResponse.json(
@@ -46,7 +49,7 @@ export async function DELETE(
       );
     }
 
-    const deleted = await db.delete(variants).where(eq(variants.id, id)).returning();
+    const deleted = await db.delete(variants).where(eq(variants.id, variantsId)).returning();
     return NextResponse.json({ success: true, data: deleted });
   } catch (error) {
     return NextResponse.json(

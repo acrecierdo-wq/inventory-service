@@ -1,14 +1,13 @@
-// app/components/add/LogNewIssuanceForm.tsx
+// app/components/add/LogNewInternalUsageForm.tsx
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
-import DRModal from "@/app/warehouse/issuance_log/dr_modal";
 import { toast } from "sonner";
-import AutoComplete from "../autocomplete/AutoComplete";
+import AutoComplete from "@/components/autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
-import { DraftIssuance, FormItem } from "@/app/warehouse/issuance_log/types/issuance";
+import { useUser } from "@clerk/nextjs";
 
 type Selection = { id: string | number; name: string };
 
@@ -22,49 +21,45 @@ type Combination = {
   unitName: string | null;
 };
 
-
-
-interface Props {
-  draftData?: DraftIssuance;
-  draftId?: string;
-  onSaveSuccess?: () => void;
+type FormItem = {
+  itemId: string;
+  sizeId: string | null;
+  variantId: string | null;
+  unitId: string | null;
+  quantity: number;
+  itemName: string;
+  sizeName: string | null;
+  variantName: string | null;
+  unitName: string | null;
 };
 
-const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
-  const [clientName, setClientName] = useState(draftData?.clientName || "");
-  const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
-  const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
-  const [prfNumber, setPrfNumber] = useState(draftData?.prfNumber ||"");
-  const [showDRModal, setShowDRModal] = useState(false);
-  const [drInfo, setDrInfo] = useState<{ drNumber: string; saveAsDraft: boolean } | null>(null);
+const NewInternalUsagePage = () => {
+  const { user } = useUser();
+  const [personnelName, setPersonnelName] = useState("");
+  const [department, setDepartment] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [authorizedBy, setAuthorizedBy] = useState("");
+  const [note, setNote] = useState("");
+  const [loggedBy, setLoggedBy] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pinError, setPinError] = useState(false);
 
-  const [items, setItems] = useState<FormItem[]>(() => 
-    draftData?.items.map((i) => ({
-      itemId: String(i.itemId),
-      sizeId: i.sizeId !== null ? String(i.sizeId) : null,
-      variantId: i.variantId !== null ? String(i.variantId) : null,
-      unitId: i.unitId !== null ? String(i.unitId) : null,
-      quantity: i.quantity,
-      itemName: i.itemName,
-      sizeName: i.sizeName,
-      variantName: i.variantName,
-      unitName: i.unitName,
-    })) || []
-  );
-
-  const [newItem, setNewItem] = useState<FormItem>({
-      itemId: "",
-      sizeId: null,
-      variantId: null,
-      unitId: null,
-      quantity: 0,
-      itemName: "",
-      sizeName: null,
-      variantName: null,
-      unitName: null,
-    });
+  const [items, setItems] = useState<FormItem[]>([]);
+  const [, setNewItem] = useState<FormItem>({
+    itemId: "",
+    sizeId: null,
+    variantId: null,
+    unitId: null,
+    quantity: 0,
+    itemName: "",
+    sizeName: null,
+    variantName: null,
+    unitName: null,
+  });
 
   // UI selections
   const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
@@ -97,23 +92,19 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     new Map(
       combinations
         .filter((c) => {
-          // units must match selected size and selected variant (if provided)
           if (selectedSize && selectedVariant) {
             return c.sizeId === Number(selectedSize.id) && c.variantId === Number(selectedVariant.id) && c.unitId != null && c.unitName;
           }
-          // if variant isn't chosen yet (but size is), show units for size across variants
           if (selectedSize && !selectedVariant) {
             return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
           }
-          // otherwise show all units (fallback)
           return c.unitId != null && c.unitName;
         })
         .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
     ).values()
   );
 
-  // debug-like object similar to previous UI
-useEffect(() => {
+  useEffect(() => {
     setNewItem((prev) => ({
       ...prev,
       itemId: selectedItem ? String(selectedItem.id) : "",
@@ -128,7 +119,6 @@ useEffect(() => {
     }));
   }, [selectedItem, selectedSize, selectedVariant, selectedUnit, quantity]);
 
-  // When an item is selected (from item-name autocomplete), fetch row-level combos
   useEffect(() => {
     if (!selectedItem) {
       setCombinations([]);
@@ -140,20 +130,16 @@ useEffect(() => {
 
     const fetchOptions = async () => {
       try {
-        // pass itemName so API aggregates across all itemIds that share the same name
         const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(String(selectedItem.name))}`);
         if (!res.ok) {
-          console.warn("inventory-options returned non-ok status");
           setCombinations([]);
           return;
         }
         const data: Combination[] = await res.json();
         setCombinations(Array.isArray(data) ? data : []);
       } catch {
-        console.error("Failed to fetch inventory options:");
         setCombinations([]);
       }
-      // reset dependent selections when item changes
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
@@ -162,66 +148,11 @@ useEffect(() => {
     fetchOptions();
   }, [selectedItem]);
 
-  useEffect(() => {
-      console.log("Available Sizes:", availableSizes);
-      console.log("Available Variants:", availableVariants);
-      console.log("Available Units:", availableUnits);
-  }, [availableSizes, availableVariants, availableUnits]);
-
-  useEffect(() => {
-    setSelectedVariant(null);
-    setSelectedUnit(null);
-  }, [selectedSize]);
-
-  useEffect(() => {
-    setSelectedUnit(null);
-  }, [selectedVariant])
-
-  // Auto-select single options where useful and keep selections valid
-  useEffect(() => {
-    if (!selectedItem) {
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-      return;
-    }
-
-    if (availableSizes.length === 1 && !selectedSize) {
-      setSelectedSize(availableSizes[0]);
-    }
-
-    if(selectedSize && availableVariants.length === 1 && !selectedVariant) {
-      setSelectedVariant(availableVariants[0]);
-    }
-
-    if (selectedSize && selectedVariant && availableUnits.length === 1 && !selectedUnit) {
-      setSelectedUnit(availableUnits[0]);
-    }
-  }, [selectedItem, availableSizes, availableVariants, availableUnits, selectedSize, selectedVariant, selectedUnit]);
-
-  useEffect(() => {
-    if (selectedSize && !availableSizes.some((s) => String(s.id) === String(selectedSize.id))) {
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-    }
-
-    if (selectedVariant && !availableVariants.some((v) => String(v.id) === String(selectedVariant.id))) {
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-    }
-
-    if (selectedUnit && !availableUnits.some((u) => String(u.id) === String(selectedUnit.id))) {
-      setSelectedUnit(null);
-    }
-  }, [selectedSize, selectedVariant, selectedUnit, availableSizes, availableVariants, availableUnits]);
-
-  // Add item: consult item-find (which resolves correct item id) then push to list
+  // Add item handler
   const handleAddItem = async () => {
     if (isAdding) return;
     setIsAdding(true);
 
-    // Basic validations: require item, require size/variant/unit depending on options
     if (!selectedItem) {
       toast.error("Please select an item.");
       setIsAdding(false);
@@ -256,7 +187,6 @@ useEffect(() => {
         unitId: selectedUnit ? String(selectedUnit.id) : "",
       });
 
-      // item-find should return the specific item id that matches the combination
       const res = await fetch(`/api/item-find?${params.toString()}`);
       const found = await res.json();
 
@@ -294,64 +224,73 @@ useEffect(() => {
 
       setItems((prev) => [...prev, candidate]);
 
-      // Reset selections for next entry
       setSelectedItem(null);
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
-      //setCombinations([]);
       setQuantity("");
-    } catch (err) {
-      console.error("Item-find error:", err);
+    } catch {
       toast.error("Something went wrong while adding the item.");
     } finally {
       setIsAdding(false);
     }
   };
 
+  // "Done" button
   const handleDone = () => {
-    if (!clientName) {
-      toast.error("Please enter a client name.");
-      return;
-    }
+    if (!personnelName) return toast.error("Please enter a personnel name.");
+    if (!department) return toast.error("Please enter a department.");
+    if (!purpose) return toast.error("Please enter a purpose.");
+    if (!authorizedBy) return toast.error("Please enter who authorized this.");
+    if (items.length === 0) return toast.error("Please add at least one item.");
 
-    if (!dispatcherName) {
-      toast.error("Please enter a dispatcher name.");
-      return;
-    }
-
-    if (!customerPoNumber) {
-      toast.error("Please enter a customer PO number.");
-      return;
-    }
-
-    if (!prfNumber) {
-      toast.error("Please enter a PRF number.");
-      return;
-    }
-
-    if (items.length === 0) {
-      toast.error("Please add at least one item.");
-      return;
-    }
-
-    setShowDRModal(true);
+    setShowSummary(true); // show summary modal
   };
 
-  const handleSaveIssuance = async () => {
-    if (!drInfo) return;
-    if (!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0) {
-      toast.error("Please fill in all the required fields.");
+  // "Confirm" button in summary modal handler
+  const handleSaveUsage = () => {
+    setShowSummary(false);
+    setShowPinModal(true); // show PIN modal
+  }
+
+  // "Submit" button in pin modal handler
+  const handlePinSubmit = async () => {
+  if (isSubmitting) return;
+  setIsSubmitting(true);
+
+  if (!pin.trim() || pin.length !== 4) {
+    toast.error("Please enter a valid 4-digit PIN.");
+    setIsSubmitting(false);
+    return;
+  }
+  setIsSubmitting(true);
+
+  try {
+    // verify pin
+    const pinRes = await fetch("/api/warehouse_pin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    const pinData = await pinRes.json();
+
+    if (!pinRes.ok) {
+      toast.error(pinData?.error || "PIN verification failed.");
+      setPinError(true); // highlights input
+      setPin(""); // clear wrong PIN
+      setIsSubmitting(false);
       return;
+    } else {
+      setPinError(false);
     }
 
+    // prepare internal usage payload
     const payload = {
-      clientName,
-      dispatcherName,
-      customerPoNumber,
-      prfNumber,
-      drNumber: drInfo.drNumber,
-      saveAsDraft: drInfo.saveAsDraft ? "draft" : "issued",
+      personnelName,
+      department,
+      purpose,
+      authorizedBy,
+      note,
       items: items.map((i) => ({
         itemId: Number(i.itemId),
         sizeId: i.sizeId ? Number(i.sizeId) : null,
@@ -359,74 +298,71 @@ useEffect(() => {
         unitId: i.unitId ? Number(i.unitId) : null,
         quantity: i.quantity,
       })),
+      loggedBy,
+      pin: pin,
     };
 
-    try {
-      const res = await fetch(draftId ? `/api/issuances/${draftId}` : "/api/issuances", {
-        method: draftId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    console.log("Sending to /api/internal_usages:", payload);
+    // save usage
+    const usageRes = await fetch("/api/internal_usages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const usageData = await usageRes.json().catch(() => null);
 
-      if (!res.ok) {
-        // Attempt to parse error JSON like you had
-        let errorMessage = "Failed to process issuance.";
-        try {
-          const ct = res.headers.get("content-type") || "";
-          if (ct.includes("application/json")) {
-            const err = await res.json();
-            if (err?.error) errorMessage = err.error;
-          }
-        } catch (e) {
-          console.log(e);
-          /* ignore parse error */
-        }
-        toast.error(errorMessage);
-        return;
-      }
-
-      const result = await res.json();
-
-      if (result.warning && result.warning.length > 0) {
-        result.warning.forEach((w: string, i: number) => {
-          setTimeout(() => toast.warning(w), i * 5000);
-        });
-      }
-
-      setTimeout(() => {
-        toast.success(drInfo.saveAsDraft ? "Issuance saved as draft." : "Issuance saved successfully!");
-        onSaveSuccess?.();
-        setTimeout(() => {
-          window.location.href = "/warehouse/issuance_log";
-        }, 1500);
-      }, (result.warning?.length || 0) * 1000);
-    } catch (err) {
-      console.error("Issuance error:", err);
-      toast.error("Something went wrong while saving the issuance.");
+    if (!usageRes.ok) {
+      toast.error(usageData?.error || "Failed to save internal usage log.");
+      setIsSubmitting(false);
+      return;
     }
-  };
+
+    // success
+    toast.success(usageData?.message || "Internal usage saved successfully!");
+    setShowPinModal(false);
+
+    // show warnings if there's any
+    if (usageData?.warning?.length > 0) {
+      usageData.warning.forEach((msg: string) => {
+        toast.warning(msg);
+      });
+    }
+
+    // redirect to internal usage log
+
+    setTimeout(() => {
+      window.location.href = "/warehouse/internal_usage_log";
+    }, 1500);
+  } catch (err) {
+    console.error(err);
+    toast.error("Something went wrong while saving the usage.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   useEffect(() => {
-    if (draftData) {
-      setClientName(draftData.clientName || "");
-      setDispatcherName(draftData.dispatcherName || "");
-      setCustomerPoNumber(draftData.customerPoNumber || "");
-      setPrfNumber(draftData.prfNumber || "");
-      setItems(
-        draftData.items.map((i) => ({
-          itemId: String(i.itemId),
-          sizeId: i.sizeId !== null ? String(i.sizeId) : null,
-          variantId: i.variantId !== null ? String(i.variantId) : null,
-          unitId: i.unitId !== null ? String(i.unitId) : null,
-          quantity: i.quantity,
-          itemName: i.itemName,
-          sizeName: i.sizeName,
-          variantName: i.variantName,
-          unitName: i.unitName,
-        }))
-      );
+    if (user) {
+      setLoggedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
     }
-  }, [draftData]);
+  }, [user]);
+
+  const handleClose = () => {
+    // reset all states when close button is clicked (pin modal)
+    setShowSummary(false);
+    setShowPinModal(false);
+    setItems([]);
+    setPersonnelName("");
+    setDepartment("");
+    setPurpose("");
+    setAuthorizedBy("");
+    setNote("");
+    setPin("");
+    setLoggedBy(user?.fullName || user?.emailAddresses[0]?.emailAddress || "Warehouseman");
+
+    // navigate back to internal usage log page
+    window.history.back();
+  }
 
   const MAX_QUANTITY = 9999;
 
@@ -442,59 +378,68 @@ useEffect(() => {
       <main className="bg-[#ffedce] w-full">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Issuance</h1>
+          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Internal Usage</h1>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
-            {/* Client Name */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Client Name:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Personnel Name:</label>
               <input
                 type="text"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
+                value={personnelName}
+                onChange={(e) => setPersonnelName(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
-            {/* Dispatcher Name */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Dispatcher Name:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Department:</label>
               <input
                 type="text"
-                value={dispatcherName}
-                onChange={(e) => setDispatcherName(e.target.value)}
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
-            {/* Customer PO Number */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Customer PO Number:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Purpose:</label>
               <input
                 type="text"
-                value={customerPoNumber}
-                onChange={(e) => setCustomerPoNumber(e.target.value)}
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
-            {/* PRF Number */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">PRF Number:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Authorized by:</label>
               <input
                 type="text"
-                value={prfNumber}
-                onChange={(e) => setPrfNumber(e.target.value)}
+                value={authorizedBy}
+                onChange={(e) => setAuthorizedBy(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
-            {/* Add Item Section */}
+            <div>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Note:</label>
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {loggedBy}</label>
+            </div>
+
+            {/* Items Section */}
             <div className="border-t pt-4 mt-4">
-              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Issue</h2>
+              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Utilize</h2>
 
               <div className="grid grid-cols-5 gap-2 items-end">
-                {/* Item Name */}
                 <div>
                   <AutoComplete
                     label="Item Name"
@@ -504,10 +449,8 @@ useEffect(() => {
                       setSelectedItem(item);
                     }}
                   />
-                  <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre>
                 </div>
 
-                {/* Size */}
                 <div>
                   <AutoComplete
                     label="Item Size"
@@ -518,7 +461,6 @@ useEffect(() => {
                   />
                 </div>
 
-                {/* Variant */}
                 <div>
                   <AutoComplete
                     label="Item Variant"
@@ -529,7 +471,6 @@ useEffect(() => {
                   />
                 </div>
 
-                {/* Unit */}
                 <div>
                   <AutoComplete
                     label="Item Unit"
@@ -540,7 +481,6 @@ useEffect(() => {
                   />
                 </div>
 
-                {/* Quantity */}
                 <div className="flex flex-col">
                   <label className="text-sm font-semibold mb-1 text-[#482b0e]">Quantity</label>
                   <input
@@ -669,7 +609,6 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={handleDone}
-                //disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
                 className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
               >
                 Done
@@ -677,27 +616,17 @@ useEffect(() => {
             </div>
           </form>
 
-          {showDRModal && (
-            <DRModal
-              onClose={() => setShowDRModal(false)}
-              onConfirm={(data) => {
-                setDrInfo(data);
-                setShowDRModal(false);
-                setShowSummary(true);
-              }}
-              //className="hover:bg-gray-100"
-            />
-          )}
-
           {showSummary && (
             <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
               <div className="bg-white w-[600px] p-6 rounded shadow">
-                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Issuance</h2>
-                <p className="mb-2 text-sm text-gray-700">Client: {clientName}</p>
-                <p className="mb-2 text-sm text-gray-700">Dispatcher: {dispatcherName}</p>
-                <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drNumber || "Draft"}</p>
+                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Internal Usage</h2>
+                <p className="mb-2 text-sm text-gray-700">Personnel: {personnelName}</p>
+                <p className="mb-2 text-sm text-gray-700">Department: {department}</p>
+                <p className="mb-2 text-sm text-gray-700">Purpose: {purpose}</p>
+                <p className="mb-2 text-sm text-gray-700">Authorized By: {authorizedBy}</p>
+                <p className="mb-2 text-sm text-gray-700">Note: {note}</p>
 
-                <table className="w-full mt-4 text-sm border">
+                <table className="w-full mt-4 mb-2 text-sm border">
                   <thead className="bg-[#f5e6d3] text-[#482b0e]">
                     <tr>
                       <th className="border px-2 py-1">Item</th>
@@ -719,19 +648,66 @@ useEffect(() => {
                     ))}
                   </tbody>
                 </table>
+                <p className="mb-2 text-sm text-gray-700">Logged By: {loggedBy}</p>
 
-                <div className="flex justify-end gap-4 mt-6">
+                <div className="mt-6 flex justify-end gap-3">
                   <button
-                    onClick={() => {
-                      setShowSummary(false);
-                      setShowDRModal(true);
-                    }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
+                    type="button"
+                    onClick={() => setShowSummary(false)}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
                   >
                     Cancel
                   </button>
-                  <button onClick={handleSaveIssuance} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
-                    Save
+                  <button
+                    type="button"
+                    onClick={handleSaveUsage}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PIN Modal */}
+          {showPinModal && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
+              <div className="bg-white w-[600px] p-6 rounded shadow">
+                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Enter PIN</h2>
+                <div>
+                <input 
+                    id="pinInput"
+                    type={"password"}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    placeholder="Enter 4-digit PIN..."
+                    className={`w-full border p-2 rounded mb-2 hover:bg-gray-100 ${
+                      pinError ? "border-red-500" : "border-gray-300"
+                    }`}
+                    value={pin}
+                    maxLength={4}
+                    onChange={(e) => {
+                      setPin(e.target.value.replace(/\D/g, ""))
+                    }}
+                    autoFocus
+                />
+                </div>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePinSubmit}
+                    disabled={isSubmitting}
+                    className={`px-4 py-2 rounded text-white ${isSubmitting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit"}
                   </button>
                 </div>
               </div>
@@ -743,5 +719,4 @@ useEffect(() => {
   );
 };
 
-export default NewIssuancePage;
-// Latest version - Sept.2 - 5:40PM
+export default NewInternalUsagePage;

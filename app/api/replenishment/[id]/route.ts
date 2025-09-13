@@ -1,9 +1,9 @@
-// api/issuances/[id]/route.ts
+// api/replenishment/[id]/route.ts
 
 import { db } from "@/db/drizzle";
 import {
-  itemIssuances,
-  itemIssuanceItems,
+  itemReplenishments,
+  replenishmentItems,
   items as itemsTable,
   sizes, variants, units,
 } from "@/db/schema";
@@ -18,10 +18,10 @@ export async function PUT(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await req.json();
-    const issuanceId = Number(id);
+    const replenishmentId = Number(id);
 
-    if (!issuanceId || isNaN(issuanceId)) {
-      return NextResponse.json({ error: "Invalid issuance ID." }, { status: 400 });
+    if (!replenishmentId || isNaN(replenishmentId)) {
+      return NextResponse.json({ error: "Invalid replenishment ID." }, { status: 400 });
     }
 
     if (!body || !Array.isArray(body.items) || body.items.length === 0) {
@@ -29,39 +29,38 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     }
 
     const {
-      clientName,
-      dispatcherName,
-      customerPoNumber,
-      prfNumber,
-      drNumber,
-      saveAsDraft,
+      supplier,
+      poRefNum,
+      drRefNum,
+      remarks,
       items: updatedItems,
+      recordedBy,
     } = body;
 
     // normalize saveAsDraft
-    const isDraft =
-      saveAsDraft === true || saveAsDraft === "draft" || saveAsDraft === "Draft";
+    const rawIsDraft = body.isDraft;
+    const isDraft = rawIsDraft === true || String(rawIsDraft).toLowerCase() === "draft";
+      console.log(`[PUT /api/replenishment] isDraft computed:`, isDraft);
 
-    console.log("Incoming PUT /api/issuances payload:", {
-      issuanceId,
-      clientName,
-      dispatcherName,
-      customerPoNumber,
-      prfNumber,
-      drNumber,
-      saveAsDraft,
-      isDraft,
+
+    console.log("Incoming PUT /api/replenishment payload:", {
+      replenishmentId,
+      supplier,
+      poRefNum,
+      drRefNum,
+      remarks,
       items: updatedItems,
+      recordedBy,
     });
+
+    console.log(`[PUT /api/replenishment] raw isDraft from body:`, body.isDraft);
+    console.log(`[PUT /api/replenishment] computed isDraft boolean:`, isDraft);
 
     const warning: string[] = [];
     const validatedItems: Map<string, typeof itemsTable.$inferSelect> = new Map();
 
     // Validate items
-    const mismatchesOverall: Record<
-      string,
-      { field: string; expected: unknown; received: unknown }[]
-    > = {};
+    const mismatchesOverall: Record<string, { field: string; expected: unknown; received: unknown }[]> = {};
 
     for (const item of updatedItems) {
       const itemData = await db.query.items.findFirst({
@@ -70,11 +69,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
       if (!itemData) {
         mismatchesOverall[item.itemId] = [
-          {
-            field: "itemId",
-            expected: item.itemId,
-            received: "Not found in DB",
-          },
+          {field: "itemId", expected: item.itemId, received: "Not found in DB",},
         ];
         continue;
       }
@@ -104,18 +99,13 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         mismatches.push({ field: "unitId", expected: itemData.unitId, received: unitId });
       }
 
+
       if (mismatches.length > 0) {
         mismatchesOverall[item.itemId] = mismatches;
+        continue;
       }
 
-      if (!isDraft && itemData.stock < item.quantity) {
-        return NextResponse.json(
-          { error: `Not enough stock for "${itemData.name}". Current: ${itemData.stock}, Needed: ${item.quantity}` },
-          { status: 400 }
-        );
-      } else {
-        validatedItems.set(item.itemId, itemData);
-      }
+      validatedItems.set(item.itemId, itemData);
     }
 
     if (Object.keys(mismatchesOverall).length > 0) {
@@ -126,23 +116,23 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       );
     }
 
-    // Update main issuance record
-    await db.update(itemIssuances)
+    // Update main replenishment record
+    await db.update(itemReplenishments)
       .set({
-        clientName,
-        dispatcherName,
-        customerPoNumber,
-        prfNumber,
-        drNumber,
-        status: isDraft ? "Draft" : "Issued",
-        issuedAt: isDraft ? null : new Date(),
+        supplier,
+        poRefNum,
+        drRefNum,
+        remarks,
+        status: isDraft ? "Draft" : "Replenished",
+        replenishedAt: isDraft ? null : new Date(),
+        recordedBy,
       })
-      .where(eq(itemIssuances.id, issuanceId));
+      .where(eq(itemReplenishments.id, replenishmentId));
 
-    // Clear old issuance items
-    await db.delete(itemIssuanceItems).where(eq(itemIssuanceItems.issuanceId, issuanceId));
+    // Clear old replenishment items
+    await db.delete(replenishmentItems).where(eq(replenishmentItems.replenishmentId, replenishmentId));
 
-    // Insert new issuance items + stock updates
+    // Insert new replenishment items + stock updates
     for (const item of updatedItems) {
       const itemData = validatedItems.get(item.itemId);
       if (!itemData) continue;
@@ -154,8 +144,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       const unitId =
         item.unitId !== undefined && Number(item.unitId) !== 0 ? Number(item.unitId) : null;
 
-      await db.insert(itemIssuanceItems).values({
-        issuanceId,
+      console.log(`[PUT] inserting replenishment item ${item.itemId} qty=${item.quantity}`);
+        await db.insert(replenishmentItems).values({
+        replenishmentId,
         itemId: item.itemId,
         sizeId,
         variantId,
@@ -163,63 +154,61 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         quantity: item.quantity,
       });
 
+      console.log(`[Replenishment PUT] item ${item.itemId} currentStock=${itemData.stock}, quantity=${item.quantity}, isDraft=${isDraft}`);
+
       if (!isDraft) {
-        const newStock = itemData.stock - item.quantity;
+        const newStock = itemData.stock + item.quantity;
+
+        console.log(`[Replenishment PUT] updating stock for item ${item.itemId} to ${newStock}`);
 
         let stockStatus = "In Stock";
-        if (newStock === 0) {
-          stockStatus = "No Stock";
-          warning.push(`❗${itemData.name} is now out of stock.`);
-        } else if (newStock <= itemData.criticalLevel) {
-          stockStatus = "Critical Level";
-          warning.push(`❗${itemData.name} is now at critical level.`);
-        } else if (newStock <= itemData.reorderLevel) {
-          stockStatus = "Reorder Level";
-          warning.push(`⚠️${itemData.name} is now at reorder level.`);
-        } else if (newStock > itemData.ceilingLevel) {
+            if (newStock > itemData.ceilingLevel) {
           stockStatus = "Overstock";
           warning.push(`⚠️${itemData.name} is now overstocked.`);
         }
 
+        console.log(`[PUT] updating stock for ${item.itemId} ${itemData.stock} -> ${newStock}`);
         await db.update(itemsTable)
           .set({ stock: newStock, status: stockStatus })
           .where(eq(itemsTable.id, item.itemId));
-      }
+      } else {
+    console.log(`[PUT] draft mode - no stock update for ${item.itemId}`);
+  }
     }
 
     // Fetch items after update
     const itemsWithDetails = await db
       .select({
-        id: itemIssuanceItems.id,
-        quantity: itemIssuanceItems.quantity,
+        id: replenishmentItems.id,
+        quantity: replenishmentItems.quantity,
         itemId: itemsTable.id,
         itemName: itemsTable.name,
-        sizeId: itemIssuanceItems.sizeId,
+        sizeId: replenishmentItems.sizeId,
         sizeName: sizes.name,
-        variantId: itemIssuanceItems.variantId,
+        variantId: replenishmentItems.variantId,
         variantName: variants.name,
-        unitId: itemIssuanceItems.unitId,
+        unitId: replenishmentItems.unitId,
         unitName: units.name,
       })
-      .from(itemIssuanceItems)
-      .innerJoin(itemsTable, eq(itemsTable.id, itemIssuanceItems.itemId))
-      .innerJoin(sizes, eq(sizes.id, itemIssuanceItems.sizeId))
-      .innerJoin(variants, eq(variants.id, itemIssuanceItems.variantId))
-      .innerJoin(units, eq(units.id, itemIssuanceItems.unitId))
-      .where(eq(itemIssuanceItems.issuanceId, issuanceId));
+      .from(replenishmentItems)
+      .innerJoin(itemsTable, eq(itemsTable.id, replenishmentItems.itemId))
+      .innerJoin(sizes, eq(sizes.id, replenishmentItems.sizeId))
+      .innerJoin(variants, eq(variants.id, replenishmentItems.variantId))
+      .innerJoin(units, eq(units.id, replenishmentItems.unitId))
+      .where(eq(replenishmentItems.replenishmentId, replenishmentId));
 
     return NextResponse.json(
       {
-        message: isDraft ? "Issuance updated as draft." : "Issuance updated successfully!",
+        message: isDraft ? "Replenishment updated as draft." : "Replenishment updated successfully!",
         warning,
-        issuanceId,
-        status: isDraft ? "Draft" : "Issued",
+        replenishmentId,
+        status: isDraft ? "Draft" : "Replenished",
         items: itemsWithDetails,
       },
       { status: 200 }
     );
   } catch (error: unknown) {
-    console.error("Issuance PUT error:", error);
+    console.error("Replenishment PUT error:", error);
     return new Response(
       JSON.stringify({
         error: "An unexpected error occurred.",
@@ -231,50 +220,50 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 }
 
 
-// DELETE — Archive/Delete Issuance
+// DELETE — Archive/Delete replenishment
 export async function DELETE(_req: NextRequest, context: RouteContext ) {
     try {
       const { id } = await context.params;
       // const body = await req.jason(); req is _
-      const issuanceId = Number(id);
+      const replenishmentId = Number(id);
 
         // Delete line items
        // await db.delete(itemIssuanceItems)
        //     .where(eq(itemIssuanceItems.issuanceId, issuanceId)).returning();
 
         // Delete header
-        await db.update(itemIssuances)
+        await db.update(itemReplenishments)
             .set({ status: "Archived" })
-            .where(eq(itemIssuances.id, issuanceId)).returning();
+            .where(eq(itemReplenishments.id, replenishmentId)).returning();
 
-        return NextResponse.json({ message: "Issuance archived successfully." });
+        return NextResponse.json({ message: "Replenishment archived successfully." });
     } catch (error) {
-        console.error("DELETE /api/issuances/[id] error:", error);
-        return NextResponse.json({ error: "Failed to archive issuance." }, { status: 500 });
+        console.error("DELETE /api/replenishment/[id] error:", error);
+        return NextResponse.json({ error: "Failed to archive replenishment." }, { status: 500 });
     }
 }
 
-// GET - Fetch Issuance by ID (including line items + item details)
+// GET - Fetch Replenishment by ID (including line items + item details)
 export async function GET(_req: NextRequest, context: RouteContext ) {
   try {
     const { id } = await context.params;
-    const issuanceId = Number(id);
+    const replenishmentId = Number(id);
 
-    // Fetch issuance header
-    const [issuance] = await db
+    // Fetch replenishment header
+    const [replenishment] = await db
       .select()
-      .from(itemIssuances)
-      .where(eq(itemIssuances.id, issuanceId));
+      .from(itemReplenishments)
+      .where(eq(itemReplenishments.id, replenishmentId));
 
-    if (!issuance) {
-      return NextResponse.json({ error: "Issuance not found." }, { status: 404 });
+    if (!replenishment) {
+      return NextResponse.json({ error: "Replenishment not found." }, { status: 404 });
     }
 
     // Fetch line items with joins
     const itemsWithDetails = await db
       .select({
-        id: itemIssuanceItems.id,
-        quantity: itemIssuanceItems.quantity,
+        id: replenishmentItems.id,
+        quantity: replenishmentItems.quantity,
 
         // join main item
         itemId: itemsTable.id,
@@ -282,34 +271,32 @@ export async function GET(_req: NextRequest, context: RouteContext ) {
         stock: itemsTable.stock,
 
         // join optional references
-        sizeId: itemIssuanceItems.sizeId,
+        sizeId: replenishmentItems.sizeId,
         sizeName: sizes.name,
-        variantId: itemIssuanceItems.variantId,
+        variantId: replenishmentItems.variantId,
         variantName: variants.name,
-        unitId: itemIssuanceItems.unitId,
+        unitId: replenishmentItems.unitId,
         unitName: units.name,
       })
-      .from(itemIssuanceItems)
-      .innerJoin(itemsTable, eq(itemsTable.id, itemIssuanceItems.itemId))
-      .leftJoin(sizes, eq(sizes.id, itemIssuanceItems.sizeId))
-      .leftJoin(variants, eq(variants.id, itemIssuanceItems.variantId))
-      .leftJoin(units, eq(units.id, itemIssuanceItems.unitId))
-      .where(eq(itemIssuanceItems.issuanceId, issuanceId));
+      .from(replenishmentItems)
+      .innerJoin(itemsTable, eq(itemsTable.id, replenishmentItems.itemId))
+      .leftJoin(sizes, eq(sizes.id, replenishmentItems.sizeId))
+      .leftJoin(variants, eq(variants.id, replenishmentItems.variantId))
+      .leftJoin(units, eq(units.id, replenishmentItems.unitId))
+      .where(eq(replenishmentItems.replenishmentId, replenishmentId));
 
-    const isDraft = issuance.status?.toLowerCase() === "draft";
+    const isDraft = replenishment.status?.toLowerCase() === "draft";
 
     return NextResponse.json({
-      ...issuance,
+      ...replenishment,
       isDraft,
       items: itemsWithDetails,
     });
   } catch (error) {
-    console.error("GET /api/issuances/[id] error:", error);
+    console.error("GET /api/replenishment/[id] error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch issuance." },
+      { error: "Failed to fetch replenishment." },
       { status: 500 }
     );
   }
 }
-
-// Latest version - Sept.2

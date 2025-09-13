@@ -1,6 +1,6 @@
 // db/schema.ts
 
-import { pgTable, serial, varchar, integer, boolean, timestamp, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid } from "drizzle-orm/pg-core";
 
 
 export const categories = pgTable("categories", {
@@ -113,6 +113,52 @@ export const internalUsageItems = pgTable("internal_usage_items", {
 
   quantity: integer("quantity").notNull(),
 });
+
+{/* App users db */}
+
+export const appUsers = pgTable("app_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
+  fullName: text("full_name"),
+  email: text("email").notNull(),
+  pinHash: text("pin_hash"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+{/* Item replenishments */}
+
+export const itemReplenishments = pgTable("item_replenishments", {
+  id: serial("id").primaryKey(),
+
+  supplier: varchar("supplier").notNull(),
+  poRefNum: varchar("po_ref_num", { length: 100 }).notNull(),
+  remarks: varchar("remarks", { length: 255 }),
+  drRefNum: varchar("dr_ref_num", { length: 100 }),
+  isDraft: boolean("is_draft").default(false),
+
+  status: varchar("status", { enum: ["Replenished", "Draft", "Archived"]}).notNull().default("Replenished"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  replenishedAt: timestamp("recorded_at"),
+  recordedBy: varchar("recorded_by", { length: 255 }).notNull(), 
+});
+
+{/* Replenishment Items */}
+export const replenishmentItems = pgTable("replenishment_items", {
+  id: serial("id").primaryKey(),
+
+  replenishmentId: integer("replenishment_id").notNull().references(() => itemReplenishments.id, { onDelete: "cascade" }),
+
+  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict"}),
+  
+  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
+  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
+  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
+
+  quantity: integer("quantity").notNull(),
+});
+
 
 {/* Quotation Requests */}
 

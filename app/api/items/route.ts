@@ -1,12 +1,12 @@
 // app/api/items/route.ts
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { db } from '@/db/drizzle';
 import { items, categories, units, variants, sizes } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 // POST
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
@@ -22,7 +22,8 @@ export async function POST(req: Request) {
       )
     );
 
-    if (existingItem) {
+    if (existingItem.length > 0) {
+      console.log("Duplicate item found:", existingItem)
       return NextResponse.json({ success: false, message: "Item already exists in inventory." },
         { status: 400 }
       );
