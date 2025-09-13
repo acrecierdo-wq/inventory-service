@@ -2,16 +2,18 @@
 
 import { db } from "@/db/drizzle";
 import { quotation_requests, quotation_request_files } from "@/db/schema";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 
-interface Params {
-  params: { id: string };
-}
+type RouteContext = {
+  params: Promise<{ id: string }>;
+  id: string;
+};
 
 // ✅ GET request by ID
-export async function GET(req: Request, { params }: Params) {
-  const { id } = params;
+export async function GET(req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+  
 
   try {
     // Fetch request by ID
@@ -41,8 +43,8 @@ export async function GET(req: Request, { params }: Params) {
 }
 
 // ✅ PATCH request (update status, e.g. Cancel)
-export async function PATCH(req: Request, { params }: Params) {
-  const { id } = params;
+export async function PATCH(req: NextRequest, context: RouteContext ) {
+  const { id } = await context.params;
 
   try {
     const body = await req.json();

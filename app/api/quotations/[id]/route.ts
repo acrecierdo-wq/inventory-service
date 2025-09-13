@@ -3,10 +3,10 @@
 import { db } from "@/db/drizzle";
 import { quotations, quotation_items } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-interface Params {
-  params: { id: string };
+type RouteContext = {
+  params: Promise<{ id: string }>;
 }
 
 interface QuotationItemInput {
@@ -27,10 +27,11 @@ interface QuotationUpdateBody {
   items: QuotationItemInput[];
 }
 
-export async function PATCH(req: Request, { params }: Params) {
+export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
+    const { id } = await context.params;
     const body: QuotationUpdateBody = await req.json();
-    const quotationId = Number(params.id);
+    const quotationId = Number(id);
     
     const [updatedQuotation] = await db
       .update(quotations)
