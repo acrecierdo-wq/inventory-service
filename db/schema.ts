@@ -51,6 +51,7 @@ dispatcherName: varchar("dispatcher_name", { length: 255 }).notNull(),
 
 createdAt: timestamp("created_at").defaultNow().notNull(),
 issuedAt: timestamp("issued_at", ),
+issuedBy: varchar("issued_by", { length: 255 }).notNull(),
 
 customerPoNumber: varchar("customer_po_number", { length: 100 }).notNull(),
 prfNumber: varchar("prf_number", { length: 100 }).notNull(),

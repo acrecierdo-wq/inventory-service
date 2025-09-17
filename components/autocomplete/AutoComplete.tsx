@@ -149,7 +149,9 @@ export default function AutoComplete({
       />
 
       {loading && (
-            <div className="absolute mt-1 px-3 py-1 text-sm text-gray-500">Loading...</div>
+            <div className="absolute mt-1 px-3 py-1">
+              <div className="w-2 h-2 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
           )}
 
       {showSuggestions && (

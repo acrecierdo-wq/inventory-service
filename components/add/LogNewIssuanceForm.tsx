@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import AutoComplete from "../autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
 import { DraftIssuance, FormItem } from "@/app/warehouse/issuance_log/types/issuance";
+import { useUser } from "@clerk/nextjs";
 
 type Selection = { id: string | number; name: string };
 
@@ -31,10 +32,12 @@ interface Props {
 };
 
 const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
+  const { user } = useUser();
   const [clientName, setClientName] = useState(draftData?.clientName || "");
   const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
   const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
   const [prfNumber, setPrfNumber] = useState(draftData?.prfNumber ||"");
+  const [issuedBy, setIssuedBy] = useState(draftData?.issuedBy ||"");
   const [showDRModal, setShowDRModal] = useState(false);
   const [drInfo, setDrInfo] = useState<{ drNumber: string; saveAsDraft: boolean } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
@@ -65,6 +68,8 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       variantName: null,
       unitName: null,
     });
+  
+  console.log("New items:", newItem);
 
   // UI selections
   const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
@@ -266,6 +271,33 @@ useEffect(() => {
         return;
       }
 
+      const stockRes = await fetch(`/api/items/${found.id}`);
+      if (!stockRes.ok) {
+        toast.error("Failed to fetch stock for item.");
+        setIsAdding(false);
+        return;
+      }
+      const stockData = await stockRes.json();
+      const qty = Number(quantity);
+
+      // warn user before adding items
+      if (qty > stockData.stock) {
+        toast.warning(`⚠️ "${selectedItem.name}" currently has only ${stockData.stock} in stock. You are adding ${qty}.`);
+        setIsAdding(false);
+        setSelectedItem(null);
+        setSelectedSize(null);
+        setSelectedVariant(null);
+        setSelectedUnit(null);
+        setQuantity("");
+        return;
+      }
+      
+      if (stockData.stock - qty <= stockData.criticalLevel) {
+        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this issuance.`);
+      } else if (stockData.stock - qty <= stockData.reorderLevel) {
+        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this issuance.`);
+      }
+
       const candidate: FormItem = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
@@ -299,7 +331,6 @@ useEffect(() => {
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
-      //setCombinations([]);
       setQuantity("");
     } catch (err) {
       console.error("Item-find error:", err);
@@ -350,6 +381,7 @@ useEffect(() => {
       dispatcherName,
       customerPoNumber,
       prfNumber,
+      issuedBy,
       drNumber: drInfo.drNumber,
       saveAsDraft: drInfo.saveAsDraft ? "draft" : "issued",
       items: items.map((i) => ({
@@ -412,6 +444,7 @@ useEffect(() => {
       setDispatcherName(draftData.dispatcherName || "");
       setCustomerPoNumber(draftData.customerPoNumber || "");
       setPrfNumber(draftData.prfNumber || "");
+      setIssuedBy(draftData.issuedBy || "");
       setItems(
         draftData.items.map((i) => ({
           itemId: String(i.itemId),
@@ -428,6 +461,12 @@ useEffect(() => {
     }
   }, [draftData]);
 
+  useEffect(() => {
+        if (user) {
+          setIssuedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+        }
+      }, [user]);
+
   const MAX_QUANTITY = 9999;
 
   const sanitizeToDigits = (input: string) => {
@@ -439,7 +478,7 @@ useEffect(() => {
 
   return (
     <WarehousemanClientComponent>
-      <main className="bg-[#ffedce] w-full">
+      <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Issuance</h1>
@@ -489,6 +528,10 @@ useEffect(() => {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {issuedBy}</label>
+            </div>
+
             {/* Add Item Section */}
             <div className="border-t pt-4 mt-4">
               <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Issue</h2>
@@ -504,7 +547,7 @@ useEffect(() => {
                       setSelectedItem(item);
                     }}
                   />
-                  <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre>
+                  {/* <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre> */}
                 </div>
 
                 {/* Size */}
@@ -614,7 +657,7 @@ useEffect(() => {
                 type="button"
                 onClick={handleAddItem}
                 disabled={isAdding}
-                className="mt-3 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
+                className="mt-5 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
               >
                 {isAdding ? "Adding..." : "Add Item"}
               </button>

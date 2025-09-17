@@ -43,11 +43,11 @@ export default function DelRefModal({ onClose, onConfirm }: DRModalProps) {
                 </label>
 
                 <div className="flex justify-end gap-2">
-                    <button onClick={onClose} className="text-gray-600 cursor-pointer">Cancel</button>
+                    <button onClick={onClose} className="px-4 py-2 rounded bg-gray-200 text-gray-600 cursor-pointer hover:bg-gray-400">Cancel</button>
                     <button
                         onClick={() => onConfirm({ drRefNum, isDraft })}
                         className={`px-4 py-2 rounded ${
-                         canConfirm ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                         canConfirm ? "bg-blue-600 text-white cursor-pointer hover:bg-blue-700" : "bg-gray-300 text-gray-500 cursor-not-allowed"
                         }`}
                         disabled={!canConfirm}
                          >

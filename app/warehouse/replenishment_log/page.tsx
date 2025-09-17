@@ -11,6 +11,9 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Replenishment } from "./types/replenishment";
 import ReplenishmentActions from "./actions/replenishment_actions";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -22,6 +25,9 @@ const ReplenishmentPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<"Replenished" | "Draft" | "Archived">("Replenished");
     const [replenishments, setReplenishments] = useState<Replenishment[]>([]);
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         const fetchReplenishments = async () => {
@@ -56,13 +62,155 @@ const ReplenishmentPage = () => {
         fetchReplenishments();
     }, []);
 
+    const exportToCSV = () => {
+            return new Promise<void>((resolve) => {
+                const headers = ["Supplier", "PO Ref. No.", "Remarks", "DR Ref. No.", "Created At", "Replenished At", "Status", "Recorded By", "Items"];
+                const rows = filteredReplenishments.map((item) => [
+                item.supplier,
+                item.poRefNum,
+                item.remarks,
+                item.drRefNum,
+                item.createdAt,
+                item.replenishedAt,
+                item.status,
+                item.recordedBy,
+                item.items.map((item) => `${item.itemName} (${item.sizeName || "No Size"} | ${item.variantName || "No Variant"} | ${item.unitName || "No Unit"}) = ${item.quantity}`).join(", "),
+                ]);
+    
+                const BOM = "\uFEFF";
+                const csvContent =
+                BOM +
+                [headers, ...rows]
+                    .map((row) => row.map((cell) => `"${cell}"`).join(","))
+                    .join("\n");
+    
+                const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "Replenishment_Report.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+    
+                resolve(); // signal completion
+            });
+            };
+    
+        const exportToPDF = () => {
+      if (typeof window === "undefined") return;
+    
+      const doc = new jsPDF("p", "pt", "a4"); // portrait, points, A4 size
+    
+      // Add a logo (use your own image or base64)
+      // e.g. import logo from "@/assets/logo.png"; then use it:
+      // doc.addImage(logo, "PNG", x, y, width, height);
+      // Or load from URL/base64 string:
+      // doc.addImage("data:image/png;base64,...", "PNG", 40, 20, 80, 40);
+    
+      // Company logo
+      doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80); // x=400, y=15, w=120 h=60
+    
+      // Company name at top
+      doc.setFontSize(18);
+      doc.setFont("garamond", "bold");
+      doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
+    
+      // Subtitle or report name
+      doc.setFontSize(12);
+      doc.text("Replenishment Report", 40, 60);
+    
+      // A line under header
+      doc.setDrawColor(150);
+      doc.setLineWidth(0.5);
+      doc.line(40, 80, 420, 80);
+    
+      // Table data
+      const headers = [
+        "Supplier",
+        "PO Ref. No.",
+        "Remakrs",
+        "DR Ref. No.",
+        "Created At",
+        "Replenished At",
+        "Status",
+        "Recorded By",
+        "Items",
+      ];
+    
+      const rows = filteredReplenishments.map((item) => [
+        item.supplier,
+        item.poRefNum,
+        item.remarks || "None",
+        item.drRefNum,
+        item.createdAt,
+        item.replenishedAt,
+        item.status,
+        item.recordedBy,
+        item.items
+          .map(
+            (i) =>
+              `${i.itemName} (${i.sizeName || "No Size"} | ${
+                i.variantName || "No variant"
+              } | ${i.unitName || "No Unit"}) = ${i.quantity}`
+          )
+          .join(", "),
+      ]);
+    
+      autoTable(doc, {
+        head: [headers],
+        body: rows,
+        startY: 100,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [166, 124, 82] }, // brown header
+      });
+    
+      // Footer: page numbers
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 500, 820, { align: "right" });
+      }
+    
+      doc.save("Replenishment_Report.pdf");
+    };
+    
+        const handleExport = async (format: string) => {
+            setIsExporting(true);
+            try {
+                if (format === "csv") {
+                    await exportToCSV();
+                }
+                if (format === "pdf") {
+                    exportToPDF();
+                }
+            } finally {
+                setIsExporting(false);
+            }  
+        };
+
     const filteredReplenishments = replenishments
     .filter((replenishments) => replenishments.status === activeTab)
     .filter((replenishments) =>
         searchTerm
             ? replenishments.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+                || replenishments.drRefNum.toLowerCase().includes(searchTerm.toLowerCase())
             : true
-    );
+    ).filter((replenishments) => {
+        // which date to filter by: issued or created
+        const date = new Date(replenishments.replenishedAt || replenishments.createdAt);
+
+        if (startDate && endDate) {
+            return date >= new Date(startDate) && date <= new Date(endDate);
+        }
+        if (startDate && !endDate) {
+            return date >= new Date(startDate);
+        }
+        if (!startDate && endDate) {
+            return date <= new Date(endDate);
+        }
+        return true;
+    });
 
     const totalPages = Math.ceil(filteredReplenishments.length / ITEMS_PER_PAGE);
     const paginatedReplenishments = filteredReplenishments.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -71,11 +219,10 @@ const ReplenishmentPage = () => {
         <WarehousemanClientComponent>
         <main className="h-screen w-full bg-[#ffedce] flex flex-col">
             <Header />
-            <div className="mx-auto mt-2">
+            <section className="flex flex-row justify-between mt-5">
+                {/* <span className="text-3xl text-[#173f63] font-bold mr-2">Replenishment Log</span> */}
 
-            <section className="flex flex-row gap-2 mt-4">
-                <span className="text-3xl text-[#173f63] font-bold mr-2">Replenishment Log</span>
-
+            <div className="flex flex-row gap-4 ml-10">
                 {/* Replenished Tab */}
                 <div className="relative">
                     <div
@@ -83,10 +230,10 @@ const ReplenishmentPage = () => {
                         setActiveTab("Replenished");
                         setCurrentPage(1);
                     }}
-                    className={`h-5 w-17 mt-3 bg-white border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 
-                        ${activeTab === "Replenished" ? "border-b-4 border-green-800" : ""}`}
+                    className={`h-10 w-21 mt-3 border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 
+                        ${activeTab === "Replenished" ? "border-2 border-green-800 bg-green-600 hover:bg-green-800 shadow-md" : "bg-white"}`}
                     >
-                        <span className={`text-xs ${activeTab === "Replenished" ? "text-green-800" : "text-gray-500"}`}>
+                        <span className={`text-sm ${activeTab === "Replenished" ? "text-white font-semibold" : "text-gray-500"}`}>
                             Replenished
                         </span>
                     </div>
@@ -99,10 +246,10 @@ const ReplenishmentPage = () => {
                         setActiveTab("Draft");
                         setCurrentPage(1);
                     }}
-                    className={`h-5 w-15 mt-3 bg-white border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4
-                        ${activeTab === "Draft" ? "border-b-4 border-slate-500" : ""}`}
+                    className={`h-10 w-20 mt-3 border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4
+                        ${activeTab === "Draft" ? "border-2 border-slate-700 bg-slate-500 hover:bg-slate-700 shadow-md" : "bg-white"}`}
                     >
-                        <span className={`text-xs ${activeTab === "Draft" ? "text-slate-500" : "text-gray-500"}`}>
+                        <span className={`text-sm ${activeTab === "Draft" ? "text-white font-semibold" : "text-gray-500"}`}>
                             Draft
                         </span>
                         </div>
@@ -115,17 +262,19 @@ const ReplenishmentPage = () => {
                         setActiveTab("Archived");
                         setCurrentPage(1);
                     }}
-                    className={`h-5 w-15 mt-3 bg-white border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4
-                        ${activeTab === "Archived" ? "border-b-4 border-red-800" : ""}`}
+                    className={`h-10 w-20 mt-3 border-b-2 rounded-md flex items-center justify-center cursor-pointer hover:bg-[#f0d2ad] active:border-b-4
+                        ${activeTab === "Archived" ? "border-2 border-red-800 bg-red-600 hover:bg-red-800 shadow-md" : "bg-white"}`}
                     >
-                        <span className={`text-xs ${activeTab === "Archived" ? "text-red-800" : "text-gray-500"}`}>
+                        <span className={`text-sm ${activeTab === "Archived" ? "text-white font-semibold" : "text-gray-500"}`}>
                             Archived
                         </span>
                         </div>
                 </div>
+            </div>
 
+            <div className="flex flex-row gap-4 mr-10 mt-2">
                 {/* Search */}
-                <div className="h-8 w-70 mt-2 ml-15 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row">
+                <div className="h-8 w-70 mt-2 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row">
                     <Image src="/search-alt-2-svgrepo-com.svg" width={0} height={0} alt="Search" className="ml-5 w-[15px] h-auto" />
 
                     <input
@@ -138,14 +287,33 @@ const ReplenishmentPage = () => {
                         }}
                     className="ml-2 bg-transparent focus:outline-none" />
                 </div>
+
+                {/* Filter Date */}
+                <div className="flex gap-2 items-center">
+                    <label className="text-xs">From:</label>
+                    <input 
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="h-8 w-25 text-xs rounded border-[#d2bda7] border-2 bg-white"
+                    />
+
+                    <label className="text-xs">To:</label>
+                    <input 
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="h-8 w-25 text-xs rounded border-[#d2bda7] border-2 bg-white"
+                    />
+                </div>
                 
                 {/* Filter */}
-                <div className="relative">
+                {/* <div className="relative">
                     <div className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
                         <Image src="/filter-svgrepo-com.svg" width={20} height={20} alt="Filter" className="" />
                         <span className="text-sm text-[#482b0e] ml-2">Filter</span>
                     </div>
-                </div>
+                </div> */}
 
                 {/* Log New */}
                 <div className="relative">
@@ -157,13 +325,29 @@ const ReplenishmentPage = () => {
                 </Link>
                 </div>
 
-                <button
+                {/* <button
                 // {isExporting ? "Exporting..." : "Export"} either csv or pdf
                 className="bg-green-600 h-8 text-white px-2 rounded hover:bg-green-700 cursor-pointer">
                     Export to CSV
-                </button>
-            </section>
+                </button> */}
+                 <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className={`h-8 px-2 rounded text-white mt-1 ${isExporting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}>
+                                {isExporting ? "Exporting..." : "Export"}
+                            </button>
+                        </DropdownMenuTrigger>
+                                <DropdownMenuContent className="absolute right-0 z-100 bg-white shadow border rounded text-sm w-32">
+                                    <DropdownMenuItem onClick={() => handleExport("csv")}>
+                                            Export to CSV
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                                            Export to PDF
+                                    </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                            </DropdownMenu>
             </div>
+            
+            </section>
 
             <section className="flex-1 overflow-y-auto px-10 mt-5 min-h-[400px]">
                 <div className="bg-[#fffcf6] rounded shadow-md mb-2">

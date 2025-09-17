@@ -15,6 +15,9 @@ export default function MyAccountPage() {
     const [hasPin, setHasPin] = useState<boolean | null>(null);
     const [createdAt, setCreatedAt] = useState<string | null>(null);
     const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+    const [oldPin, setOldPin] = useState("");
+    const [newPin, setNewPin] = useState("");
+    const [confirmPin, setConfirmPin] = useState("");
 
     // check if PIN exist
     useEffect(() => {
@@ -23,6 +26,7 @@ export default function MyAccountPage() {
             try {
                 const res = await fetch("/api/warehouse_pin", { method: "GET" });
                 const data = await res.json();
+                setUpdatedAt(data.updatedAt);
 
                 if (res.ok) {
                     setHasPin(data.hasPin);
@@ -46,35 +50,72 @@ export default function MyAccountPage() {
     // save/update PIN
 
     const handleSavePin = async () => {
-        if (!/^\d{4}$/.test(pin)) {
-            toast.error("PIN must be 4 digits.");
-            return;
+    // validation first
+    if (hasPin) {
+        if (!oldPin) {
+        toast.error("Enter your current PIN.");
+        return;
+        }
+        if (!/^\d{4}$/.test(newPin) || !/^\d{4}$/.test(confirmPin)) {
+        toast.error("New PIN must be 4 digits.");
+        return;
+        }
+        if (newPin !== confirmPin) {
+        toast.error("New PINs do not match.");
+        setNewPin("");
+        setConfirmPin("");
+        return;
+        }
+    } else {
+        if (!/^\d{4}$/.test(newPin)) {
+        toast.error("PIN must be 4 digits.");
+        return;
+        }
+    }
+
+    setLoading(true);
+    try {
+        const body = hasPin ? { oldPin, newPin } : { newPin };
+        const res = await fetch("/api/warehouse_pin", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+        // show toast directly from server message
+        toast.error(data.error || "Failed to update PIN.");
+
+        // clear fields if incorrect PIN
+        if (data.error?.toLowerCase().includes("Current pin is incorrect. Please try again.")) {
+            setOldPin("");
+            setNewPin("");
+            setConfirmPin("");
         }
 
-        setLoading(true);
-        try {
-            const res = await fetch("/api/warehouse_pin", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ newPin: pin }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Failed to update PIN.");
-            }
-
-            toast.success("PIN updated successfully!");
-            setPin("");
-            setHasPin(true);
-        } catch (error) {
-            console.error("Failed to update PIN:", error);
-            toast.error("Failed to update PIN.");
-        } finally {
-            setLoading(false);
+        setLoading(false);
+        return; // stop here
         }
+
+        // success
+        toast.success("PIN updated successfully!");
+        setOldPin("");
+        setNewPin("");
+        setConfirmPin("");
+        setHasPin(true);
+        // if API returns updatedAt
+        if (data.updatedAt) setUpdatedAt(data.updatedAt);
+        else setUpdatedAt(new Date().toISOString());
+    } catch (error) {
+        console.error("Failed to update PIN:", error);
+        toast.error("Failed to update PIN. Please try again.");
+    } finally {
+        setLoading(false);
+    }
     };
+
 
     return (
         <main className="bg-[#ffedce] w-full h-full">
@@ -91,46 +132,93 @@ export default function MyAccountPage() {
                 
                 <div className="border-t pt-4 mt-4 w-[400px]">
                 {/* Pin update */}
-                <div className="space-y-5">
+                <div className="">
                     <label className="text-sm font-medium">Set / Update PIN</label>
-                    <div className="mt-5">
+                    <div className="mt-5 mb-5">
                         {hasPin === null ? (
                         <p className="text-gray-500 text-sm">Checking PIN status...</p>
                     ) : hasPin ? (
-                        <p className="text-green-600 text-sm mb-2"> ✅ You already have a PIN set. You can update it below.</p>
+                        <p className="text-green-600 text-sm"> ✅ You already have a PIN set. You can update it below.</p>
                     ) : (
-                        <p className="text-red-600 etxt-sm mb-2"> ⚠️ You don`&apos;`t have a PIN set yet. Please create one.</p>
+                        <p className="text-red-600 etxt-sm"> ⚠️ No PIN set yet. Please create one.</p>
                     )}
                     </div>
 
+                {hasPin ? (
+                    <>
+                    <p className="text-xs text-gray-600 mb-2">
+                            <strong>PIN created at:</strong>{" "}
+                            {createdAt ? new Date(createdAt).toLocaleString() : "N/A"}
+                    </p>
                     <Input 
                         type="password"
                         inputMode="numeric"
                         pattern="\d*"
-                        value={pin}
-                        onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} // strip non-digits
+                        value={oldPin}
+                        onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Enter your current PIN"
+                        maxLength={4}
+                        className=""
+                    />
+                    <div className="flex flex-row justify-center items-center mt-2">
+                        <span className="text-sm text-gray-400">Update below</span>
+                        <div className="ml-2 border-t pt-4 mt-4 w-[300px]"></div>
+                    </div>
+                    <Input 
+                        type="password"
+                        inputMode="numeric"
+                        pattern="\d*"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Enter your new PIN"
+                        maxLength={4}
+                        className="mb-2"
+                    />
+                    <Input 
+                        type="password"
+                        inputMode="numeric"
+                        pattern="\d*"
+                        value={confirmPin}
+                        onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Confirm new PIN"
+                        maxLength={4}
+                        className="mb-2"
+                    />
+                    <p className="text-xs text-gray-600 mb-5">
+                            <strong>PIN updated at:</strong>{" "}
+                            {updatedAt ? new Date(updatedAt).toLocaleString() : "N/A"}
+                    </p>
+                    </>
+                ) : (
+                    <Input 
+                        type="password"
+                        inputMode="numeric"
+                        pattern="\d*"
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
                         placeholder="Enter 4 digit PIN"
                         maxLength={4}
                         className="mt-2"
                     />
-
-                    <div className="space-y-3">
-                        {hasPin && (
-                            <>
-                            <p className="text-sm text-gray-600">
-                                <strong>PIN created at:</strong>{" "}
-                                {createdAt ? new Date(createdAt).toLocaleString() : "N/A"}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                                <strong>PIN updated at:</strong>{" "}
-                                {updatedAt ? new Date(updatedAt).toLocaleString() : "N/A"}
-                            </p>
-                            </>
-                        )}
-                    </div>
-                    <button onClick={handleSavePin} disabled={loading} className="w-full bg-[#642248] text-white py-2 rounded">
-                        {loading ? "Saving..." : hasPin ? "Update PIN" : "Set PIN"}
-                    </button>
+                )}
+                
+                {/* timestamp */}
+                {/* <div className="space-y-3">
+                    {hasPin && (
+                        <>
+                        
+                        
+                        </>
+                    )}
+                </div> */}
+                
+                <button
+                    onClick={handleSavePin}
+                    disabled={loading}
+                    className="w-full bg-[#642248] text-white py-2 rounded"
+                >
+                    {loading ? "Saving..." : hasPin ? "Update PIN" : "Set PIN"}
+                </button>
                 </div>
                 </div>
             </div>

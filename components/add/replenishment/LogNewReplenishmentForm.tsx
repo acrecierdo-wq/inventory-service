@@ -67,6 +67,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       variantName: null,
       unitName: null,
     });
+    console.log("New items:", newItem);
 
   // UI selections
   const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
@@ -446,7 +447,7 @@ useEffect(() => {
 
   return (
     <WarehousemanClientComponent>
-      <main className="bg-[#ffedce] w-full">
+      <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Replenishment</h1>
@@ -473,9 +474,19 @@ useEffect(() => {
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
+            {/* Remarks */}
+            <div>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Remarks:</label>
+              <input
+                type="text"
+                value={remarks}
+                onChange={(e) => setPoRefNum(e.target.value)}
+                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+              />
+            </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Recorded by: {recordedBy}</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {recordedBy}</label>
             </div>
 
             {/* Add Item Section */}
@@ -493,7 +504,7 @@ useEffect(() => {
                       setSelectedItem(item);
                     }}
                   />
-                  <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre>
+                  {/* <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre> */}
                 </div>
 
                 {/* Size */}
@@ -603,7 +614,7 @@ useEffect(() => {
                 type="button"
                 onClick={handleAddItem}
                 disabled={isAdding}
-                className="mt-3 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
+                className="mt-5 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
               >
                 {isAdding ? "Adding..." : "Add Item"}
               </button>

@@ -22,6 +22,7 @@ export type IssuanceItem = {
   status: string;
   createdAt: string; // ISO date string
   issuedAt: string;  // ISO date string
+  issuedBy: string;
   items: IssuanceItemDetail[];
 };
 
@@ -31,6 +32,7 @@ export type DraftIssuance = {
   dispatcherName: string;
   createdAt: string;
   issuedAt: string | null;
+  issuedBy: string;
   customerPoNumber: string;
   drNumber: string;
   prfNumber: string;

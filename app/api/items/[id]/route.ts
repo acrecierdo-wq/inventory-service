@@ -52,3 +52,19 @@ export async function DELETE(_req: NextRequest, context: RouteContext ) {
     return NextResponse.json({ success: false, error: (error as Error).message });
   }
 }
+
+export async function GET(_req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+  const itemId = Number(id);
+
+  try {
+    const item = await db.select().from(items).where(eq(items.id, itemId)).limit(1);
+    if (!item || item.length === 0) {
+      return NextResponse.json({ success: false, message: 'Item not found.' }, { status: 404 });
+    }
+
+    return NextResponse.json(item[0]);
+  } catch (error) {
+    return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
+  }
+}

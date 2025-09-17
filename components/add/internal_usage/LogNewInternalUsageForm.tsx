@@ -49,7 +49,7 @@ const NewInternalUsagePage = () => {
   const [pinError, setPinError] = useState(false);
 
   const [items, setItems] = useState<FormItem[]>([]);
-  const [, setNewItem] = useState<FormItem>({
+  const [newItem, setNewItem] = useState<FormItem>({
     itemId: "",
     sizeId: null,
     variantId: null,
@@ -60,6 +60,7 @@ const NewInternalUsagePage = () => {
     variantName: null,
     unitName: null,
   });
+  console.log("New items:", newItem);
 
   // UI selections
   const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
@@ -194,6 +195,33 @@ const NewInternalUsagePage = () => {
         toast.error("Failed to find matching item in inventory.");
         setIsAdding(false);
         return;
+      }
+
+      const stockRes = await fetch(`/api/items/${found.id}`);
+      if (!stockRes.ok) {
+        toast.error("Unable to fetch stock for item.");
+        setIsAdding(false);
+        return;
+      }
+
+      const stockData = await stockRes.json();
+      const qty = Number(quantity);
+
+      if (qty > stockData.stock) {
+        toast.warning(`⚠️ "${selectedItem.name}" currently has only ${stockData.stock} in stock. You are adding ${qty}.`);
+        setIsAdding(false);
+        setSelectedItem(null);
+        setSelectedSize(null);
+        setSelectedVariant(null);
+        setSelectedUnit(null);
+        setQuantity("");
+        return;
+      }
+      
+      if (stockData.stock - qty <= stockData.criticalLevel) {
+        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this issuance.`);
+      } else if (stockData.stock - qty <= stockData.reorderLevel) {
+        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this issuance.`);
       }
 
       const candidate: FormItem = {
@@ -375,7 +403,7 @@ const NewInternalUsagePage = () => {
 
   return (
     <WarehousemanClientComponent>
-      <main className="bg-[#ffedce] w-full">
+      <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Internal Usage</h1>
@@ -554,7 +582,7 @@ const NewInternalUsagePage = () => {
                 type="button"
                 onClick={handleAddItem}
                 disabled={isAdding}
-                className="mt-3 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
+                className="mt-5 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
               >
                 {isAdding ? "Adding..." : "Add Item"}
               </button>

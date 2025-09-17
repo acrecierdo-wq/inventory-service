@@ -151,6 +151,7 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
             </span>
           </div>
           <div><strong>Date | Time:</strong> {item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "Draft (Not Yet Issued)" }</div>
+          <div><strong>Logged by:</strong> {item.issuedBy}</div>
           
           <div className="border-t pt-4 mt-4 w-[350px]">
             <div className="text-center"><strong>ITEMS</strong></div>

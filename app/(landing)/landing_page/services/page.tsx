@@ -1,9 +1,16 @@
 
 import Image from "next/image";
+import { Header } from "../../header";
 
 const LandingServicesPage = () => {
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-t from-[#e3ae01] via-[#fed795] to-[#fcf4d2] px-6">
+    <div className="relative 
+        min-h-screen 
+        overflow-x-hidden 
+        bg-gradient-to-t 
+        from-[#e3ae01] via-[#fed795] to-[#fcf4d2]
+        flex flex-col items-center">
+          <Header />
       <h1 className="text-[#173f63] font-extrabold text-5xl text-center mt-5">SERVICES</h1>
 
       <div className="flex flex-row items-center mt-10 ml-10">

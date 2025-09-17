@@ -138,8 +138,9 @@ const ReplenishmentActions = ({ item, onDelete }: ReplenishmentActionsProps) => 
           </SheetHeader>
           <div className="ml-4 space-y-2">
           <div><strong>Supplier:</strong> {item.supplier}</div>
-          <div><strong>Po Reference Number:</strong> {item.poRefNum}</div>
-          <div><strong>DR Number:</strong> {item.drRefNum || "-"}</div>
+          <div><strong>PO Reference Number:</strong> {item.poRefNum}</div>
+          <div><strong>DR Number:</strong> {item.drRefNum}</div>
+          <div><strong>Remarks:</strong> {item.remarks || "-"}</div>
           <div className="flex items-center gap-2"><span><strong>Status:</strong></span>
             <span
             className={`px-2 py-0.5 rounded text-sm font-medium ${
@@ -151,6 +152,7 @@ const ReplenishmentActions = ({ item, onDelete }: ReplenishmentActionsProps) => 
             </span>
           </div>
           <div><strong>Date | Time:</strong> {item.replenishedAt ? new Date(item.replenishedAt).toLocaleString() : "Draft (Not Yet Replenished)" }</div>
+          <div><strong>Logged by:</strong> {item.recordedBy}</div>
           
           <div className="border-t pt-4 mt-4 w-[350px]">
             <div className="text-center"><strong>ITEMS</strong></div>

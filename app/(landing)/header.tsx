@@ -31,7 +31,7 @@ export const Header = () => {
         }
     }, [isSignedIn, isLoaded, user, router]);
     return (
-        <header className=" sticky z-1000 top-0 h-15 w-full border-b-2 bg-white px-4">
+        <header className=" sticky z-1000 top-0 h-15 w-full border-b-2 bg-white">
         <div className="lg:max-w-full-lg mx-auto flex items-center justify-between h-full">
             <div className="pt-8 pl-4 pb-7 flex items-center gap-x-3">
             <a href="/landing_page/home">

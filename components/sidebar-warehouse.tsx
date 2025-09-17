@@ -44,7 +44,7 @@ export const SideBarWarehouse = ({className}: Props) => {
                 }}
                 >
                     
-                <Image src="/document-1-svgrepo-com.svg" height={20} width={20} alt="Inventory" />
+                <Image src="/supplier-alt.png" height={20} width={20} alt="Inventory" />
                 <span className="flex- flex-col gap-y-1 flex-1">Inventory</span>
                 {/*<ChevronDown size={16} className={`transition-transform ${isInventoryOpen ? "rotate-180" : ""}`} />*/}
                 </Button>
@@ -53,12 +53,12 @@ export const SideBarWarehouse = ({className}: Props) => {
                     <SidebarItem
                     label="Inventory List"
                     href="/warehouse/w_inventory/w_inventory_list"
-                    iconSrc="/user-pen-svgrepo-com.svg"
+                    iconSrc="/report-data-svgrepo-com.svg"
                     />
                     <SidebarItem
                     label="Item Properties"
                     href="/warehouse/w_inventory/w_item_properties"
-                    iconSrc="/user-pen-svgrepo-com.svg"
+                    iconSrc="/report-data-svgrepo-com.svg"
                     />
                     {/*<SidebarItem
                     label="Categories"
@@ -101,17 +101,17 @@ export const SideBarWarehouse = ({className}: Props) => {
             <SidebarItem
                     label="Issuance Log"
                     href="/warehouse/issuance_log"
-                    iconSrc="/user-pen-svgrepo-com.svg"
+                    iconSrc="/drawer-alt.png"
             />
             <SidebarItem
                     label="Replenishment Log"
                     href="/warehouse/replenishment_log"
-                    iconSrc="/user-pen-svgrepo-com.svg"
+                    iconSrc="/drawer-alt.png"
             />
             <SidebarItem
                     label="Internal Usage Log"
                     href="/warehouse/internal_usage_log"
-                    iconSrc="/user-pen-svgrepo-com.svg"
+                    iconSrc="/drawer-alt.png"
             />
             </div>
             </div>

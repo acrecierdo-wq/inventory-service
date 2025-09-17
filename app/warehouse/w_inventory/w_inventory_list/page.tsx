@@ -16,6 +16,9 @@ import {
 import InventoryActions from "./inventory_action";
 import { toast } from "sonner";
 import { InventoryItem, InventoryCategory, InventoryUnit, InventoryVariant, InventorySize, } from "./types/inventory";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -36,6 +39,7 @@ const WarehouseInventoryListPage = () => {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   const fetchDropdownData = async () => {
     const [cats, uns, vars, sizs] = await Promise.all([
@@ -97,33 +101,147 @@ useEffect(() => {
       }
     });
 
+    // const exportToCSV = () => {
+    //     const headers = ["Item Name", "Category", "Unit", "Variant", "Size", "Stock", "Status"];
+    //     const rows = filteredItems.map((item) => [
+    //         item.name,
+    //         item.category?.name || "(None)",
+    //         item.unit?.name || "(None)",
+    //         item.variant?.name || "(None)",
+    //         item.size?.name || "(None)",
+    //         item.stock ?? 0,
+    //         item.status,
+    //     ]);
+
+    //     const BOM = "\uFEFF";
+    //     const csvContent =
+    //     BOM +
+    //     [headers, ...rows]
+    //     .map((row) => row.map((cell) => `"${cell}"`).join(","))
+    //     .join("\n");
+
+    //     const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+    //     const link = document.createElement("a");
+    //     link.setAttribute("href", encodedUri);
+    //     link.setAttribute("download", "inventory_report.csv");
+    //     document.body.appendChild(link);
+    //     link.click();
+    //     document.body.removeChild(link);
+    // };
+
     const exportToCSV = () => {
-        const headers = ["Item Name", "Category", "Unit", "Variant", "Size", "Stock", "Status"];
-        const rows = filteredItems.map((item) => [
-            item.name,
-            item.category?.name || "(None)",
-            item.unit?.name || "(None)",
-            item.variant?.name || "(None)",
-            item.size?.name || "(None)",
-            item.stock ?? 0,
-            item.status,
-        ]);
-
-        const BOM = "\uFEFF";
-        const csvContent =
-        BOM +
-        [headers, ...rows]
-        .map((row) => row.map((cell) => `"${cell}"`).join(","))
-        .join("\n");
-
-        const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "inventory_report.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+          return new Promise<void>((resolve) => {
+            const headers = ["Item name", "Category", "Size", "Variant", "Unit", "Stock", "Status"];
+            const rows = filteredItems.map((item) => [
+              item.name,
+              item.category,
+              item.size?.name || "None",
+              item.variant?.name || "None",
+              item.unit?.name || "None",
+              item.stock ?? 0,
+              item.status,
+              ]);
+        
+              const BOM = "\uFEFF";
+              const csvContent =
+              BOM +
+              [headers, ...rows]
+                .map((row) => row.map((cell) => `"${cell}"`).join(","))
+                .join("\n");
+        
+              const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+              const link = document.createElement("a");
+              link.setAttribute("href", encodedUri);
+              link.setAttribute("download", "Inventory_Report.csv");
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+        
+                resolve(); // signal completion
+              });
+              };
+        
+    const exportToPDF = () => {
+              if (typeof window === "undefined") return;
+            
+              const doc = new jsPDF("p", "pt", "a4"); // portrait, points, A4 size
+            
+              // Add a logo (use your own image or base64)
+              // e.g. import logo from "@/assets/logo.png"; then use it:
+              // doc.addImage(logo, "PNG", x, y, width, height);
+              // Or load from URL/base64 string:
+              // doc.addImage("data:image/png;base64,...", "PNG", 40, 20, 80, 40);
+            
+              // Company logo
+              doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80); // x=400, y=15, w=120 h=60
+            
+              // Company name at top
+              doc.setFontSize(18);
+              doc.setFont("garamond", "bold");
+              doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
+            
+              // Subtitle or report name
+              doc.setFontSize(12);
+              doc.text("Inventory Report", 40, 60);
+            
+              // A line under header
+              doc.setDrawColor(150);
+              doc.setLineWidth(0.5);
+              doc.line(40, 80, 420, 80);
+            
+              // Table data
+              const headers = [
+                "Item name",
+                "Category",
+                "Size",
+                "Variant",
+                "Unit",
+                "Stock",
+                "Status",
+              ];
+            
+              const rows = filteredItems.map((item) => [
+                item.name,
+                item.category?.name || "None",
+                item.unit?.name || "None",
+                item.variant?.name || "None",
+                item.size?.name || "None", 
+                item.stock,
+                item.status,
+              ]);
+            
+              autoTable(doc, {
+                head: [headers],
+                body: rows,
+                startY: 100,
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [166, 124, 82] }, // brown header
+              });
+            
+              // Footer: page numbers
+              const pageCount = doc.getNumberOfPages();
+              for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(9);
+                doc.text(`Page ${i} of ${pageCount}`, 500, 820, { align: "right" });
+              }
+            
+              doc.save("Inventory_Report.pdf");
+            };
+        
+            const handleExport = async (format: string) => {
+                setIsExporting(true);
+                try {
+                    if (format === "csv") {
+                        await exportToCSV();
+                    }
+                    if (format === "pdf") {
+                        exportToPDF();
+                    }
+                } finally {
+                    setIsExporting(false);
+                }  
+            };
 
     const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
     const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -164,9 +282,9 @@ useEffect(() => {
 
   return (
     <WarehousemanClientComponent>
-      <main className="h-screen w-full bg-[#ffedce] flex flex-col">
+      <main className="h-full w-full bg-[#ffedce] flex flex-col">
         <Header />
-        <div className="mx-auto mt-2">
+        <div className="flex flex-col mt-2 ">
             <AddItemModal
                 isOpen={isAddItemModalOpen}
                 onClose={() => setIsAddItemModalOpen(false)}
@@ -183,25 +301,13 @@ useEffect(() => {
                 }))}
                 onItemAdded={fetchItems}
       />
-      
-      <section className="flex flex-row justify-end mr-10">
 
-            <div className="relative">
-            <button
-                onClick={exportToCSV}
-                className="bg-green-600 h-8 text-white px-2 rounded hover:bg-green-700 cursor-pointer"
-                >
-                    Export to CSV
-                </button>
-                </div>
-                </section>
-
-        <section className="flex flex-row items-center gap-4 mt-2 px-10">
-            <span className="text-3xl text-[#173f63] font-bold pl-10">INVENTORY LIST</span>
+        <section className="flex justify-end gap-4 mt-2 mr-10 px-1">
+            {/* <span className="text-2xl text-[#173f63] font-bold pl-10">INVENTORY LIST</span> */}
 
             {/* Search, Category, Filter, Sort*/}
             
-            <div className="h-8 w-70 mt-2 ml-40 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row">
+            <div className="h-8 w-70 mt-2 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row">
               <Image src="/search-alt-2-svgrepo-com.svg" width={15} height={15} alt="Search" className="ml-5" />
               <input
               className="ml-2 bg-transparent focus:outline-none"
@@ -216,40 +322,40 @@ useEffect(() => {
             </div>
 
             <div className="relative" ref={categoryRef}>
-  <div
-    className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
-    onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-  >
-    <Image src="/select-category-svgrepo-com.svg" width={20} height={20} alt="Category" />
-    <span className=" text-sm text-[#482b0e]">{selectedCategory || "Categories"}</span>
-  </div>
+              <div
+                className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+                onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+              >
+                <Image src="/select-category-svgrepo-com.svg" width={20} height={20} alt="Category" />
+                <span className=" text-sm text-[#482b0e]">{selectedCategory || "Categories"}</span>
+              </div>
 
-  {categoryDropdownOpen && (
-    <div className="absolute z-10 bg-white border border-gray-200 mt-1 w-full rounded shadow">
-      <div
-      className="py-1 hover:bg-gray-100 cursor-pointer text-sm font-medium text-center"
-      onClick={() => {
-        setSelectedCategory(""); // Clear filter
-        setCategoryDropdownOpen(false);
-      }}
-      >
-        All Categories
-        </div>
-      {categories.map((cat) => (
-        <div
-          key={cat.id}
-          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-center"
-          onClick={() => {
-            setSelectedCategory(cat.name);
-            setCategoryDropdownOpen(false);
-          }}
-        >
-          {cat.name}
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+              {categoryDropdownOpen && (
+                <div className="absolute z-20 bg-white border-gray-200 mt-1 w-35 rounded shadow">
+                  <div
+                  className=" py-1 hover:bg-gray-100 cursor-pointer text-sm font-medium text-center"
+                  onClick={() => {
+                    setSelectedCategory(""); // Clear filter
+                    setCategoryDropdownOpen(false);
+                  }}
+                  >
+                    All Categories
+                    </div>
+                  {categories.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="py-1 hover:bg-gray-100 cursor-pointer text-sm text-center"
+                      onClick={() => {
+                        setSelectedCategory(cat.name);
+                        setCategoryDropdownOpen(false);
+                      }}
+                    >
+                      {cat.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="relative" ref={statusRef}>
             <div className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
@@ -260,16 +366,16 @@ useEffect(() => {
             </div>
 
             {statusDropdownOpen && (
-              <div className="absolute z-10 bg-white border border-gray-200 mt-1 w-full rounded shadow">
-      <div
-      className="py-1 hover:bg-gray-100 cursor-pointer text-sm font-medium text-center"
-      onClick={() => {
-        setSelectedStatus(""); // Clear filter
-        setStatusDropdownOpen(false);
-      }}
-      >
-        All Status
-        </div>
+              <div className="absolute z-20 bg-white border-gray-200 mt-1 w-35 rounded shadow">
+                <div
+                className="py-1 hover:bg-gray-100 cursor-pointer text-sm font-medium text-center"
+                onClick={() => {
+                  setSelectedStatus(""); // Clear filter
+                  setStatusDropdownOpen(false);
+                }}
+                >
+                  All Status
+                  </div>
                 {["Overstock", "In Stock", "Critical Level", "Reorder Level", "No Stock"].map((status) => (
                   <div
                 key={status}
@@ -298,9 +404,9 @@ useEffect(() => {
               </div>
 
               {sortDropdownOpen && (
-                <div className="absolute z-20 bg-white border-gray-200 mt-1 w-full rounded shadow">   
+                <div className="absolute z-20 bg-white border-gray-200 mt-1 w-35 rounded shadow">   
                   <div
-                  className="text-center py-2 hover:bg-gray-100 cursor-pointer text-sm font-medium"
+                  className="py-1 hover:bg-gray-100 cursor-pointer text-sm font-medium text-center"
                   onClick={() => {
                     setSortBy("");
                     setSortDropdownOpen(false);
@@ -308,7 +414,7 @@ useEffect(() => {
                   > No Sort
                   </div>
                   <div 
-                  className="text-center py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                  className="text-center py-1 hover:bg-gray-100 cursor-pointer text-sm"
                   onClick={() => {
                     setSortBy("name");
                     setSortDropdownOpen(false);
@@ -357,6 +463,25 @@ useEffect(() => {
             {/*</Button> */}
             </div>
             </div>
+
+            <div className="relative">
+            <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <button className={`h-8 px-2 rounded text-white mt-1 ${isExporting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}>
+                        {isExporting ? "Exporting..." : "Export"}
+                      </button>
+                  </DropdownMenuTrigger>
+                      <DropdownMenuContent className="absolute right-0 z-100 bg-white shadow border rounded text-sm w-32">
+                          <DropdownMenuItem onClick={() => handleExport("csv")}>
+                              Export to CSV
+                            </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                              Export to PDF
+                            </DropdownMenuItem>
+                      </DropdownMenuContent>
+            </DropdownMenu>
+                </div>
+
             </section>
 
         </div>
@@ -369,12 +494,12 @@ useEffect(() => {
 
           {!loading && !error && (
             <>
-            <div className="grid grid-cols-8 gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+            <div className="grid grid-cols-[2fr_1.5fr_2fr_2fr_1fr_1fr_1.5fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
               <span>ITEM NAME</span>
               <span>CATEGORY</span>
-              <span>UNIT</span>
-              <span>VARIANT</span>
               <span>SIZE</span>
+              <span>VARIANT</span>
+              <span>UNIT</span>
               <span>STOCKS</span>
               <span>STATUS</span>
               <span>ACTION</span>
@@ -382,12 +507,12 @@ useEffect(() => {
 
             {paginatedItems.length > 0 ? (
             paginatedItems.map((item) => (
-              <div key={item.id} className="grid grid-cols-8 gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c]">
-                  <span>{item.name}</span>
+              <div key={item.id} className="grid grid-cols-[2fr_1.5fr_2fr_2fr_1fr_1fr_1.5fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center">
+                  <span className="text-start">{item.name}</span>
                   <span>{item.category?.name}</span>
-                  <span>{item.unit?.name}</span>
-                  <span>{item.variant?.name || "(None)"}</span>
                   <span>{item.size?.name || "(None)"}</span>
+                  <span>{item.variant?.name || "(None)"}</span>
+                  <span>{item.unit?.name}</span>
                   <span className="text-center">{item.stock ?? 0}</span>
                     <span className={`text-white text-center px-5 text-sm py-1 rounded-4xl ${
                       item.status === "No Stock" ? "bg-slate-500" : 
