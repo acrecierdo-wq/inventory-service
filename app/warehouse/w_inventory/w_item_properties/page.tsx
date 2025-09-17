@@ -434,7 +434,7 @@ const ItemPropertiesPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [items, setItems] = useState<ItemType[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<"categories" | "sizes" | "variants" | "units">("categories");
     const [newItemName, setNewItemName] = useState("");
     const [editId, setEditId] = useState<number | null>(null);

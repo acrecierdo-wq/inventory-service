@@ -10,7 +10,6 @@ import { Header } from "@/components/header";
 
 export default function MyAccountPage() {
     const { user } = useUser();
-    const [pin, setPin] = useState("");
     const [loading, setLoading] = useState(false);
     const [hasPin, setHasPin] = useState<boolean | null>(null);
     const [createdAt, setCreatedAt] = useState<string | null>(null);
