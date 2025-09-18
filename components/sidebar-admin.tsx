@@ -17,10 +17,10 @@ export const SideBarAdmin = ({className}: Props) => {
     const [isServiceOpen, setIsServiceOpen] = useState(false);
     const [isInventoryOpen, setIsInventoryOpen] = useState(false);
    
-    const closeAllDropdowns = () => {       // Close both dropdowns when clicking outside
-        setIsServiceOpen(false);
-        setIsInventoryOpen(false);
-    };
+    // const closeAllDropdowns = () => {       // Close both dropdowns when clicking outside
+    //     setIsServiceOpen(false);
+    //     setIsInventoryOpen(false);
+    // };
     return (
         <div className={cn
         (" flex h-full w-[250px] fixed left-0 top-0 gap-y-2 px-4 border-r-2 flex-col",
@@ -38,30 +38,27 @@ export const SideBarAdmin = ({className}: Props) => {
                 label="Dashboard" 
                 href="/admin/admin_dashboard" 
                 iconSrc="/tray.svg"
-                onClick={closeAllDropdowns}
                 />
                 <SidebarItem 
                 label="Reports" 
                 href="/admin/reports" 
                 iconSrc="/tray.svg"
-                onClick={closeAllDropdowns}
                 />
                 <SidebarItem 
                 label="Customer Profile" 
                 href="/admin/customer_profile" 
                 iconSrc="/tray.svg"
-                onClick={closeAllDropdowns}
                 />
                 {/* Service Dropdown */}
                 <Button 
                 variant="ghost"
                 onClick={() => {setIsServiceOpen(!isServiceOpen)
-                    setIsInventoryOpen(false);
+                    // setIsInventoryOpen(false);
                 }}
                 >
                 <Image src="/tray.svg" height={20} width={20} alt="Service" />
                     <span className="flex flex-col gap-y-1 flex-1">Service</span>
-                    <ChevronDown size={16} className={`transition-transform ${isServiceOpen ? "rotate-180" : ""}`} />
+                    {/* <ChevronDown size={16} className={`transition-transform ${isServiceOpen ? "rotate-180" : ""}`} /> */}
                 </Button>
                 {isServiceOpen && (
                     <div className="pl-2 flex flex-col">
@@ -82,12 +79,12 @@ export const SideBarAdmin = ({className}: Props) => {
                 <Button 
                 variant="ghost"
                 onClick={() => {setIsInventoryOpen(!isInventoryOpen);
-                    setIsServiceOpen(false);
+                    // setIsServiceOpen(false);
                 }}
                 >
                 <Image src="/tray.svg" height={20} width={20} alt="Inventory" />
                     <span className="flex flex-col gap-y-1 flex-1">Inventory</span>
-                    <ChevronDown size={16} className={`transition-transform ${isInventoryOpen ? "rotate-180" : ""}`} />
+                    {/* <ChevronDown size={16} className={`transition-transform ${isInventoryOpen ? "rotate-180" : ""}`} /> */}
                 </Button>
                 {isInventoryOpen && (
                     <div className="pl-2 flex flex-col">
@@ -103,8 +100,13 @@ export const SideBarAdmin = ({className}: Props) => {
                         />
                 </div>
                 )}
+                <SidebarItem 
+                label="Accounts" 
+                href="/admin/accounts" 
+                iconSrc="/tray.svg"
+                />
             </div>
-            <div className="pb-5 flex justify-center">
+            {/* <div className="pb-5 flex justify-center">
                 <ClerkLoading>
                     <Loader className="text-muted-foreground animate-spin"/>
                 </ClerkLoading>
@@ -113,7 +115,7 @@ export const SideBarAdmin = ({className}: Props) => {
                     <Button variant="ghost" size="sm">Log Out</Button>
                     </SignOutButton>
                 </ClerkLoaded>
-            </div>
+            </div> */}
         </div>
     );
 };
