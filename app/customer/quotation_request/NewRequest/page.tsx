@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
+
 // Types
 type ToastProps = {
   message: string;
@@ -87,6 +88,11 @@ const NewRequest = () => {
   const [dragActive, setDragActive] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
+  const [profile, setProfile] = useState<{ name: string; address: string; contact: string } | null>(null);
+
+  const [showConfirm, setShowConfirm] = useState(false);
+
+
   const messageRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
@@ -94,6 +100,48 @@ const NewRequest = () => {
   const [toastType, setToastType] = useState<"success" | "error" | "info">(
     "success"
   );
+
+  const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40">
+      <div className="bg-white w-[400px] rounded-2xl shadow-xl p-8 text-center">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">
+          Are you sure?
+        </h2>
+        <p className="text-gray-600 mb-6">
+          Do you want to send this quotation request?
+        </p>
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-6 py-2 rounded-full bg-[#fed795] text-gray-700 hover:bg-[#fccc65] shadow"
+          >
+            Yes, Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
   const showToast = (
     message: string,
@@ -114,38 +162,37 @@ const NewRequest = () => {
     return fullname || "";
   }, [clerkUser]);
 
-  const requesterAddress = useMemo(() => {
-    const u: any = clerkUser as any;
-    return (
-      u?.publicMetadata?.address ||
-      u?.privateMetadata?.address ||
-      u?.unsafeMetadata?.address ||
-      ""
-    );
-  }, [clerkUser]);
+  // Fetch profile from DB
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!isLoaded || !isSignedIn) return;
 
-  const requesterContact = useMemo(() => {
-    const u: any = clerkUser as any;
-    return (
-      u?.primaryPhoneNumber ||
-      u?.phoneNumber ||
-      (u?.phoneNumbers && u.phoneNumbers[0]?.phoneNumber) ||
-      u?.primaryEmailAddress?.emailAddress ||
-      (u?.emailAddresses && u.emailAddresses[0]?.emailAddress) ||
-      u?.emailAddress ||
-      ""
-    );
-  }, [clerkUser]);
+      try {
+        const res = await fetch("/api/customer");
+        if (res.ok) {
+          const data = await res.json();
+          setProfile({
+            name: requesterName,
+            address: data?.address || "",
+            contact: data?.phone || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    }
+    fetchProfile();
+  }, [isLoaded, isSignedIn, requesterName]);
 
   // check if account is complete
   const isAccountComplete = useMemo(() => {
     return Boolean(
       isSignedIn &&
         requesterName.trim() !== "" &&
-        requesterAddress.trim() !== "" &&
-        requesterContact.trim() !== ""
+        profile?.address.trim() !== "" &&
+        profile?.contact.trim() !== ""
     );
-  }, [isSignedIn, requesterName, requesterAddress, requesterContact]);
+  }, [isSignedIn, requesterName, profile]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -212,8 +259,8 @@ const NewRequest = () => {
       formData.append("message", message);
 
       if (requesterName) formData.append("requester_name", requesterName);
-      if (requesterAddress) formData.append("requester_address", requesterAddress);
-      if (requesterContact) formData.append("requester_contact", requesterContact);
+      if (profile?.address) formData.append("requester_address", profile.address);
+      if (profile?.contact) formData.append("requester_contact", profile.contact);
       if ((clerkUser as any)?.id)
         formData.append("requester_user_id", (clerkUser as any).id);
 
@@ -262,9 +309,9 @@ const NewRequest = () => {
                   <p className="text-gray-500 italic">Loading...</p>
                 ) : isSignedIn ? (
                   <>
-                    <p>{requesterName || "No name on file"}</p>
-                    <p>{requesterAddress || "No address on file"}</p>
-                    <p>{requesterContact || "No contact on file"}</p>
+                    <p>{profile?.name || "No name on file"}</p>
+                    <p>{profile?.address || "No address on file"}</p>
+                    <p>{profile?.contact || "No contact on file"}</p>
                   </>
                 ) : (
                   <>
@@ -405,15 +452,26 @@ const NewRequest = () => {
                 Cancel
               </button>
               <button
-                className={`px-8 py-3 rounded-full font-medium text-lg shadow ${
-                  isSubmitDisabled
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-[#fed795] text-gray-700 hover:bg-[#fccc65]"
-                }`}
-                onClick={handleSubmit}
-              >
-                Send
-              </button>
+  className={`px-8 py-3 rounded-full font-medium text-lg shadow ${
+    isSubmitDisabled
+      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+      : "bg-[#fed795] text-gray-700 hover:bg-[#fccc65]"
+  }`}
+  disabled={isSubmitDisabled}
+  onClick={() => {
+    if (!isSubmitDisabled) {
+      setShowConfirm(true);
+    }
+  }}
+>
+  Send
+</button>
+<ConfirmModal
+  isOpen={showConfirm}
+  onClose={() => setShowConfirm(false)}
+  onConfirm={handleSubmit}
+/>
+
             </div>
           </div>
         </div>

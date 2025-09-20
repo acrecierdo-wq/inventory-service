@@ -6,6 +6,11 @@ import CustomerClientComponent from "@/app/validate/customer_validate";
 import { CustomerHeader } from "@/components/header-customer";
 import Image from "next/image";
 import { Plus, MoreHorizontal, X, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
+
+
 
 type QuotationRequest = {
   id: number;
@@ -70,6 +75,7 @@ const QuotationRequestPage = () => {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [selectedRequest, setSelectedRequest] = useState<QuotationRequest | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -81,11 +87,35 @@ const QuotationRequestPage = () => {
   const [toastType, setToastType] = useState<"success" | "error" | "info">("success");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"" | "Pending" | "Approved" | "Cancelled">("");
+  
   const [sortNewestFirst, setSortNewestFirst] = useState(true);
 
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  const [profileComlete, setProfileComplete] = useState(false);
+  
+  const searchParams = useSearchParams();
+const initialStatus = searchParams.get("status") as
+  | "Pending"
+  | "Approved"
+  | "Cancelled"
+  | "Accepted"
+  | null;
+
+const [statusFilter, setStatusFilter] = useState(initialStatus || "");
+
+useEffect(() => {
+  if (!Array.isArray(requests)) return;
+
+  let filtered = requests;
+
+  if (statusFilter) {
+    filtered = filtered.filter((r) => r.status === statusFilter);
+  }
+  setFilteredRequests(filtered);
+}, [requests, statusFilter]);
+  
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToastMessage(message);
@@ -93,7 +123,43 @@ const QuotationRequestPage = () => {
   };
 
   useEffect(() => {
+    async function checkProfile() {
+      try {
+        const res = await fetch("/api/customer");
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.phone && data?.address) {
+            setProfileComplete(true);
+          }  else {
+            setProfileComplete(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    }
+    checkProfile();
+  },[]);
+
+  const router = useRouter();
+ const handleNewRequest = () => {
+  if (!profileComlete) {
+    toast.warning("⚠️ Please complete your profile first (phone & address).");
+    router.push("/customer/cus_profile");
+    return;
+  }
+
+  // Step 2: Confirmation
+  const confirmSend = window.confirm("📨 Are you sure you want to create a new request?");
+  if (confirmSend) {
+    router.push("/customer/quotation_request/NewRequest");
+  }
+};
+
+
+  useEffect(() => {
     const fetchRequests = async () => {
+      setLoading(true);
       try {
         const res = await fetch("/api/q_request");
         const data = await res.json();
@@ -102,6 +168,8 @@ const QuotationRequestPage = () => {
       } catch (err) {
         console.error("Failed to fetch requests:", err);
         showToast("Failed to fetch requests", "error");
+      } finally {
+        setLoading(false);
       }
     };
     fetchRequests();
@@ -284,13 +352,20 @@ const confirmCancelRequest = async () => {
         <div className="px-10 py-6">
           <div className="flex justify-between items-center">
             <h1 className="text-4xl font-bold text-[#173f63]">QUOTATION REQUESTS</h1>
-            <Link
+            {/* <Link
               href="/customer/quotation_request/NewRequest"
               className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 shadow"
             >
               <Plus size={24} className="text-[#482b0e]" />
               <span className="ml-3 text-[#482b0e] font-medium text-lg">New Request</span>
-            </Link>
+            </Link> */}
+            <button
+              onClick={handleNewRequest}
+              className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 shadow"
+            >
+              <Plus size={24} className="text-[#482b0e]" />
+              <span className="ml-3 text-[#482b0e] font-medium text-lg">New Request</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-3 justify-end mt-4 relative z-10">
@@ -307,7 +382,7 @@ const confirmCancelRequest = async () => {
               </button>
               {showFilterDropdown && (
                 <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
-                  {["", "Pending", "Approved", "Cancelled"].map((status) => (
+                  {["", "Pending", "Approved", "Cancelled", "Accepted"].map((status) => (
                     <button
                       key={status}
                       className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
@@ -391,7 +466,13 @@ const confirmCancelRequest = async () => {
       </tr>
     </thead>
     <tbody>
-      {filteredRequests.length > 0 ? (
+      {loading ? (
+        <tr>
+          <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
+            Loading requests...
+          </td>
+        </tr>
+      ) : filteredRequests.length > 0 ? (
         filteredRequests.map((req, index) => (
           <tr key={req.id ?? index} className="border-b">
             <td className="px-6 py-4 font-semibold">{req.id ?? "-"}</td>
@@ -433,32 +514,32 @@ const confirmCancelRequest = async () => {
                   </button>
 
                   {/* Action Buttons */}
-{["Pending", "Approved"].includes(req.status?.trim()) ? (
-  <>
-    {req.status.trim() === "Pending" ? (
-      <button
-        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-        onClick={() => handleCancelClick(req.id)}
-      >
-        Cancel Request
-      </button>
-    ) : (
-      <button
-        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-orange-600"
-        onClick={() => handleCancelApprovedRequest(req.id)}
-      >
-        Request Cancellation
-      </button>
-    )}
-  </>
-) : req.status?.trim() === "Cancelled" ? (
-  <button
-    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-700 font-bold"
-    onClick={() => setDeleteRequestId(req.id)}
-  >
-    Delete Request
-  </button>
-) : null}
+                  {["Pending", "Approved"].includes(req.status?.trim()) ? (
+                    <>
+                      {req.status.trim() === "Pending" ? (
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+                          onClick={() => handleCancelClick(req.id)}
+                        >
+                          Cancel Request
+                        </button>
+                      ) : (
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-orange-600"
+                          onClick={() => handleCancelApprovedRequest(req.id)}
+                        >
+                          Request Cancellation
+                        </button>
+                      )}
+                    </>
+                  ) : req.status?.trim() === "Cancelled" ? (
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-700 font-bold"
+                      onClick={() => setDeleteRequestId(req.id)}
+                    >
+                      Delete Request
+                    </button>
+                  ) : null}
                 </div>
               )}
             </td>
@@ -474,6 +555,7 @@ const confirmCancelRequest = async () => {
     </tbody>
   </table>
 </div>
+
 </div>
 
      {/* Sliding Details Panel */}

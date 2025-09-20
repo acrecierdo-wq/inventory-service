@@ -181,57 +181,16 @@ export const quotation_request_files = pgTable("quotation_request_files", {
   uploaded_at: timestamp("uploaded_at").defaultNow(),
 });
 
-{/* Customers */}
+{/* Customer Profile */}
 
-export const customers = pgTable("customers", {
-  id: serial("id").primaryKey(),
-  customerName: varchar("customer_name", { length: 255 }).notNull(),
-  contactPerson: varchar("contact_person", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  phone: varchar("phone", { length: 20 }),
-  address: text("address"),
-  password: varchar("password", { length: 255 }),
+export const customer_profile = pgTable("customer_profile", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
+  fullName: text("full_name"),
+  email: text("email").notNull(),
+  address: varchar("address", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 255 }).notNull(),
 });
-
-{/* Quotations */}
-
-export const quotations = pgTable("quotations", {
-  id: serial("id").primaryKey(),
-  
-  requestId: integer("request_id")
-    .notNull()
-    .references(() => quotation_requests.id, { onDelete: "cascade" }),
-
-  delivery: text("delivery"),
-  warranty: text("warranty"),
-  validity: timestamp("validity"),
-  notes: text("notes"),
-
-  overallTotal: integer("overall_total").default(0), // could also be numeric/decimal
-  status: varchar("status", { length: 50 }).default("Draft"), // Draft, Sent, Approved, Rejected
-
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const quotation_items = pgTable("quotation_items", {
-  id: serial("id").primaryKey(),
-
-  quotationId: integer("quotation_id")
-    .notNull()
-    .references(() => quotations.id, { onDelete: "cascade" }),
-
-  itemName: text("item_name").notNull(),
-  scopeOfWork: text("scope_of_work"),
-  materials: text("materials"),
-
-  quantity: integer("quantity").notNull(),
-  unitPrice: integer("unit_price").notNull(),
-  totalPrice: integer("total_price").notNull(),
-});
-
-
-
 
 
   // //relation
