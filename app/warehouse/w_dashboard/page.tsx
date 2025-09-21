@@ -1,7 +1,6 @@
 //warehouse/w_dashboard/page.tsx
 "use client";
 
-import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
 import { Header } from "@/components/header";
 import { useEffect, useState } from "react";
 import { InventoryCategory, InventoryItemsReport, ChartData, PieChartData } from "@/app/warehouse/w_inventory/w_inventory_list/types/inventory";
@@ -44,15 +43,6 @@ const WarehouseInventoryReportsPage = () => {
     const totalItems = filteredItems.length;
     const totalStock = filteredItems.reduce((acc, item) => acc + (item.stock ?? 0), 0);
 
-    // const statusCounts = filteredItems.reduce(
-    //     (acc: Record<string, number>, item) => {
-    //         const status = item.status ?? "Unknown";
-    //         acc[status] = (acc[status] || 0) + 1;
-    //         return acc;
-    //     },
-    //     {}
-    // );
-
     const chartData: ChartData[] = selectedCategory
         ? items
             .filter((item) => !selectedCategory || item.category?.name === selectedCategory)
@@ -86,39 +76,8 @@ const WarehouseInventoryReportsPage = () => {
     
     const COLORS = ["#16A34A", "#62748e", "#0088FE", "#FFBB28", "#d12f2f"]
 
-    {/*
-        const exportToCSV = () => {
-        const headers = ["Item Name", "Category", "Unit", "Variant", "Size", "Stock", "Status"];
-        const rows = filteredItems.map((item) => [
-            item.name,
-            item.category?.name || "-",
-            item.unit?.name || "-",
-            item.variant?.name || "-",
-            item.size?.name || "-",
-            item.stock ?? 0,
-            item.status,
-        ]); 
-        
-
-        {/*const BOM = "\uFEFF";
-        const csvContent =
-        BOM +
-        [headers, ...rows]
-        .map((row) => row.map((cell) => `"${cell}"`).join(","))
-        .join("\n");
-
-        const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "inventory_report.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link); 
-    };
-    */}
 
     return (
-        <WarehousemanClientComponent>
         <div className="h-screen w-full bg-[#ffedce] flex flex-col">
             <Header />
             <div className="p-6">
@@ -230,7 +189,6 @@ const WarehouseInventoryReportsPage = () => {
                 </div>
             </div>
         </div>
-        </WarehousemanClientComponent>
     );
 };
 

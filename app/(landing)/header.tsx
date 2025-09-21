@@ -19,13 +19,9 @@ export const Header = () => {
                     router.push("/admin/admin_dashboard");
                 } else if (user?.publicMetadata?.role === 'sales') {
                         router.push("/sales/sales_dashboard");    
-                } else if (user?.publicMetadata?.role === 'purchasing') {
-                    router.push("/purchasing/purchasing_dashboard");
-                } else if (user?.publicMetadata?.role === 'warehouseman') {
+                }  else if (user?.publicMetadata?.role === 'warehouseman') {
                     router.push("/warehouse/w_dashboard");
-                }  else if (user?.publicMetadata?.role === 'manager') {
-                    router.push("/manager/m_dashboard");
-                } else {
+                }  else {
                     router.push("/customer/cus_dashboard");
                 }
         }

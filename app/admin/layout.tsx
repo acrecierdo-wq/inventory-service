@@ -1,4 +1,5 @@
 import { SideBarAdmin } from "@/components/sidebar-admin";
+import RoleGuard from "../validate/role_guard";
 
 type Props = {
     children: React.ReactNode;
@@ -6,7 +7,7 @@ type Props = {
 
 const AdminLayout = ({children,}: Props) => {
     return (
-
+        <RoleGuard allowedRoles={["admin"]}>
         <div className="min-h-screen flex flex-row bg-dash">
         <>
         <SideBarAdmin/>
@@ -17,6 +18,7 @@ const AdminLayout = ({children,}: Props) => {
           </main>
         </>
         </div>
+        </RoleGuard>
     );
 }
 

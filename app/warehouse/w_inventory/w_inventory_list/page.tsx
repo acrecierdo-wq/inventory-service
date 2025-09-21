@@ -2,7 +2,6 @@
 "use client"
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
 import { Header } from "@/components/header";
 import AddItemModal from "@/components/add/AddItemModal";
 import {
@@ -281,7 +280,7 @@ useEffect(() => {
       }, []);
 
   return (
-    <WarehousemanClientComponent>
+
       <main className="h-full w-full bg-[#ffedce] flex flex-col">
         <Header />
         <div className="flex flex-col mt-2 ">
@@ -581,8 +580,6 @@ useEffect(() => {
     </Pagination>
           </div>
           </main>
-      {/*</div>*/}
-    </WarehousemanClientComponent>
   );
 };
 

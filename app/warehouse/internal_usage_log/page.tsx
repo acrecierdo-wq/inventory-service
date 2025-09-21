@@ -1,7 +1,7 @@
 // app/warehouse/internal_usage_log/page.tsx
 
 "use client";
-import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
+
 import { Header } from "@/components/header";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import Image from "next/image";
@@ -203,7 +203,6 @@ const InternalUsagePage = () => {
     const paginatedInternalUsages = filteredInternalUsages.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
     return (
-        <WarehousemanClientComponent>
         <main className="h-screen w-full bg-[#ffedce] flex flex-col">
             <Header />
             <section className="flex flex-row justify-between mt-5">
@@ -414,7 +413,6 @@ const InternalUsagePage = () => {
     </Pagination>
           </div>     
         </main>
-        </WarehousemanClientComponent>
     );
 };
 

@@ -1,5 +1,5 @@
 import { SideBarWarehouse } from "@/components/sidebar-warehouse";
-import WarehousemanClientComponent from "../validate/warehouseman_validate";
+import RoleGuard from "../validate/role_guard";
 
 
 type Props = {
@@ -8,7 +8,7 @@ type Props = {
 
 const WarehouseLayout = ({children,}: Props) => {
     return (
-        <WarehousemanClientComponent>
+        <RoleGuard allowedRoles={["warehouseman"]}>
         <div className="h-full flex flex-row bg-dash">
         <>
         <SideBarWarehouse />
@@ -19,7 +19,7 @@ const WarehouseLayout = ({children,}: Props) => {
           </main>
         </>
         </div>
-        </WarehousemanClientComponent>
+        </RoleGuard>
     );
 }
 

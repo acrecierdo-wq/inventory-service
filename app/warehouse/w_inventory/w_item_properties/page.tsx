@@ -570,7 +570,6 @@ const ItemPropertiesPage = () => {
     const paginatedItems = filtereditems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
     return (
-        <WarehousemanClientComponent>
         <main className="h-screen w-full bg-[#ffedce] flex flex-col">
             <Header />
             <section className="flex flex-row justify-between mt-5">
@@ -852,7 +851,6 @@ const ItemPropertiesPage = () => {
     </Pagination>
           </div>     
         </main>
-        </WarehousemanClientComponent>
     );
 };
 

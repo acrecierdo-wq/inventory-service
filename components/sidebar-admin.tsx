@@ -3,8 +3,6 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { SidebarItem } from "./sidebar-items";
-import { ClerkLoaded, ClerkLoading, SignOutButton, } from "@clerk/nextjs";
-import { ChevronDown, Loader } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState} from "react";
 
