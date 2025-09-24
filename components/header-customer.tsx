@@ -20,12 +20,12 @@ export const CustomerHeader = ({className}: Props) => {
     });
     return (
         <div className={cn
-        ("z-50 sticky top-0 h-20 pl-[250px] flex flex-row items-center justify-between border-slate-200 px-4 bg-[#ffffff]",
+        ("z-50 sticky top-0 h-20 pl-[250px] flex flex-row items-center justify-between border-slate-200 px-4 bg-[#173f63]",
             className,
 
         )}>
             <div className="flex flex-col">
-                <div className="text-[#ffc922] font-bold text-lg sm:text-xl">
+                <div className="text-[#ffffff] font-bold text-lg sm:text-xl">
                 Canlubang Techno-Industrial Corporation 
                 {isSignedIn ? (
                     <div className="text-sm font-bold">- Welcome, {user.firstName}!</div>
@@ -33,7 +33,7 @@ export const CustomerHeader = ({className}: Props) => {
                     <div className="text-sm font-semibold">- Welcome, Guest!</div>
                 )}
                 </div>
-                <div className="text-[#5a4632] font-bold text-[10px] sm:text-xs">
+                <div className="text-[#ffffff] font-bold text-[10px] sm:text-xs">
                 {currentDate}
                 </div>
             </div>

@@ -44,7 +44,7 @@ const CustomerPage = () => {
 
   return (
     <CustomerClientComponent>
-      <div className="bg-[#fed795] min-h-screen w-full">
+      <div className="bg-[#ffffff] min-h-screen w-full">
         <CustomerHeader />
 
         <div className="h-30 mt-2 flex flex-row border-slate-200 px-4 bg-[#fff6f5]">
@@ -93,28 +93,6 @@ const CustomerPage = () => {
                 />
                 <div className="ml-30 text-white text-5xl font-bold">
                   {acceptedCount}
-                </div>
-              </div>
-            </div>
-
-            {/* Approved */}
-            <div
-              onClick={() => handleRedirect("Approved")}
-              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#4bf92d] ml-6 rounded-lg mt-3 p-1"
-            >
-              <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
-                Approved
-              </div>
-              <div className="flex items-center ml-1">
-                <Image
-                  src="/square-list-svgrepo-com.svg"
-                  alt="icon"
-                  width={50}
-                  height={50}
-                  className="invert"
-                />
-                <div className="ml-30 text-white text-5xl font-bold">
-                  {approvedCount}
                 </div>
               </div>
             </div>

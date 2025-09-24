@@ -3,12 +3,21 @@
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { useParams, useRouter } from "next/navigation";
-import QuotationForm from "./quotationform";
+import { toast } from "sonner";
+import QuotationFormSection from "./components/QuotationFormSection";
+import QuotationDraftsSection from "./components/QuotationDraftsSection";
 
 type QuotationFile = {
   id: number;
   path: string;
   uploaded_at: string;
+};
+
+type CustomerProfile = {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
 };
 
 type QuotationRequest = {
@@ -20,7 +29,23 @@ type QuotationRequest = {
   created_at: string;
   reason?: string;
   files?: QuotationFile[];
+  customer?: CustomerProfile;
   quotation_notes?: string;
+};
+
+type QuotationFormState = {
+  id: number;
+  saved: boolean;
+  notes?: string;
+  expanded?: boolean;
+};
+
+const statusColors: Record<string, string> = {
+  Pending: "bg-yellow-100 text-yellow-700",
+  Accepted: "bg-green-100 text-green-700",
+  Rejected: "bg-red-100 text-red-700",
+  CancelRequested: "bg-orange-100 text-orange-700",
+  Cancelled: "bg-gray-100 text-gray-700",
 };
 
 const PendingViewPage = () => {
@@ -32,40 +57,32 @@ const PendingViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [showFloatingValidation, setShowFloatingValidation] = useState(false);
-  const [actionType, setActionType] = useState<"Approved" | "Rejected" | "Cancelled" | null>(null);
+  const [actionType, setActionType] = useState<"Accepted" | "Rejected" | "Cancelled" | null>(null);
+  const [activeTab, setActiveTab] = useState<"request" | "quotation" | "drafts">("request");
+  const [quotationForms, setQuotationForms] = useState<QuotationFormState[]>([]);
 
-  // ✅ fetch logic is now inside useEffect
+  // Fetch request with customer
   useEffect(() => {
     const fetchRequest = async () => {
       if (!requestId) {
-        console.error("No request ID provided in URL");
         setLoading(false);
         return;
       }
-
-      setLoading(true);
-
       try {
-        const res = await fetch(`/api/q_request?id=${requestId}`);
-        if (!res.ok) throw new Error("Request not found");
-
-        const json = await res.json();
-        const data: QuotationRequest | null = Array.isArray(json) ? json[0] : json;
-        if (!data) throw new Error("Request not found");
-
-        setRequest(data);
+        const res = await fetch(`/api/q_request/${requestId}`);
+        const data = await res.json();
+        setRequest(data || null);
       } catch (err) {
-        console.error("Failed to fetch request:", err);
+        console.error(err);
         setRequest(null);
       } finally {
         setLoading(false);
       }
     };
-
     fetchRequest();
   }, [requestId]);
 
-  const initiateAction = (type: "Approved" | "Rejected" | "Cancelled") => {
+  const initiateAction = (type: "Accepted" | "Rejected" | "Cancelled") => {
     setActionType(type);
     setShowFloatingValidation(true);
   };
@@ -73,20 +90,20 @@ const PendingViewPage = () => {
   const confirmAction = async () => {
     if (!request || !actionType) return;
     setUpdating(true);
-
     try {
-      const res = await fetch("/api/q_request", {
+      const res = await fetch(`/api/q_request/${request.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: request.id, status: actionType }),
+        body: JSON.stringify({ status: actionType }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update status");
-
-      setRequest(data.data ?? data);
+      if (data) {
+        setRequest(data);
+        toast.success(`Request ${actionType.toLowerCase()} successfully!`);
+      }
     } catch (err) {
       console.error(err);
-      alert("Failed to update status");
+      toast.error("Failed to update request.");
     } finally {
       setUpdating(false);
       setShowFloatingValidation(false);
@@ -96,11 +113,57 @@ const PendingViewPage = () => {
 
   const handleBack = () => router.back();
 
+  const handleAddQuotation = () => {
+    const last = quotationForms[quotationForms.length - 1];
+    if (last && !last.saved) {
+      toast.error("Please complete and save the current quotation before adding a new one.");
+      return;
+    }
+    setQuotationForms((prev) => [...prev, { id: Date.now(), saved: false, notes: undefined }]);
+    setActiveTab("quotation");
+  };
+
+  const markQuotationSaved = (formId: number, data: Partial<QuotationRequest>) => {
+    setQuotationForms((prev) =>
+      prev.map((f) => (f.id === formId ? { ...f, saved: true, notes: data.quotation_notes ?? f.notes } : f))
+    );
+    setRequest((prev) => (prev ? { ...prev, ...data } : prev));
+    toast.success("Quotation saved as draft!");
+    setActiveTab("drafts");
+  };
+
+  const editDraft = (draftId: number) => {
+    setQuotationForms((prev) => {
+      const hasUnsaved = prev.some((f) => !f.saved && f.id !== draftId);
+      if (hasUnsaved) {
+        toast.error("Please finish the current working quotation before editing a draft.");
+        return prev;
+      }
+      const updated = prev.map((f) => (f.id === draftId ? { ...f, saved: false } : f));
+      const moved = updated.filter((f) => f.id !== draftId);
+      const draft = updated.find((f) => f.id === draftId);
+      if (draft) moved.push(draft);
+      return moved;
+    });
+    setActiveTab("quotation");
+  };
+
+  const removeDraft = (draftId: number) => {
+    setQuotationForms((prev) => prev.filter((f) => f.id !== draftId));
+    toast.success("Draft removed.");
+  };
+
+  const toggleExpandSaved = (formId: number) => {
+    setQuotationForms((prev) =>
+      prev.map((f) => (f.id === formId ? { ...f, expanded: !f.expanded } : f))
+    );
+  };
+
   if (loading) {
     return (
       <div className="bg-[#ffedce] min-h-screen w-full">
         <Header />
-        <div className="px-10 py-6 w-full text-center text-gray-500">Loading...</div>
+        <div className="px-10 py-6 text-center text-gray-500">Loading...</div>
       </div>
     );
   }
@@ -109,7 +172,7 @@ const PendingViewPage = () => {
     return (
       <div className="bg-[#ffedce] min-h-screen w-full">
         <Header />
-        <div className="px-10 py-6 w-full text-center text-gray-500">
+        <div className="px-10 py-6 text-center text-gray-500">
           {requestId ? "Request not found." : "Invalid URL. No request ID provided."}
         </div>
       </div>
@@ -117,147 +180,194 @@ const PendingViewPage = () => {
   }
 
   return (
-    <div className="bg-[#ffedce] min-h-screen w-full relative">
+    <div className="bg-gray-100 min-h-screen w-full">
       <Header />
-      <div className="px-10 py-6 w-full">
-        <button
-          className="mb-6 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 font-medium"
-          onClick={handleBack}
-        >
-          &larr; Back
-        </button>
 
-        {/* Container: side by side layout */}
-        <div className="flex flex-col lg:flex-row gap-6">
-          
-          {/* Request Details Paper */}
-          <div className="bg-white p-6 rounded-xl shadow flex-1">
-            <h1 className="text-3xl font-bold text-[#0c2a42] mb-4">Request Details</h1>
-            <p><strong>Request ID:</strong> {request.id}</p>
-            <p><strong>Project Name:</strong> {request.project_name}</p>
-            <p><strong>Mode:</strong> {request.mode}</p>
+      <div className="max-w-7xl mx-auto my-10 bg-white rounded-2xl shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#133657] to-[#2c5b7d] p-8 text-white flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold">Request #{request.id}</h2>
+            <p className="text-lg">Type of Request: Services</p>
+          </div>
+          <button
+            className="px-4 py-2 rounded-full bg-white text-[#133657] hover:bg-gray-100 font-medium"
+            onClick={handleBack}
+          >
+            &larr; Back
+          </button>
+        </div>
 
-            <p className="relative inline-block group">
-              <strong>Status:</strong>{" "}
-              <span
-                className={`px-2 py-1 rounded font-semibold ${
-                  request.status === "Pending" ? "bg-yellow-100 text-yellow-600" :
-                  request.status === "Approved" ? "bg-green-100 text-green-700" :
-                  request.status === "Rejected" ? "bg-red-100 text-red-600" :
-                  request.status === "Cancelled" ? "bg-gray-100 text-gray-600" :
-                  request.status === "CancelRequested" ? "bg-orange-100 text-orange-600" : ""
-                }`}
-              >
-                {request.status}
-              </span>
+        {/* Tabs */}
+        <div className="px-10 py-6">
+          <div className="flex gap-6 border-b border-gray-300 mb-6">
+            <button
+              className={`pb-2 font-semibold text-lg ${
+                activeTab === "request" ? "text-[#5a2347] border-b-2 border-[#5a2347]" : "text-gray-500 hover:text-[#5a2347]"
+              }`}
+              onClick={() => setActiveTab("request")}
+            >
+              Request Details
+            </button>
+            <button
+              className={`pb-2 font-semibold text-lg ${
+                activeTab === "quotation" ? "text-[#5a2347] border-b-2 border-[#5a2347]" : "text-gray-500 hover:text-[#5a2347]"
+              }`}
+              onClick={() => setActiveTab("quotation")}
+            >
+              Quotation Form
+            </button>
+            <button
+              className={`pb-2 font-semibold text-lg ${
+                activeTab === "drafts" ? "text-[#5a2347] border-b-2 border-[#5a2347]" : "text-gray-500 hover:text-[#5a2347]"
+              }`}
+              onClick={() => setActiveTab("drafts")}
+            >
+              Quotation Drafts
+            </button>
+          </div>
 
-              {request.reason && ["CancelRequested", "Cancelled"].includes(request.status) && (
-                <div className="absolute left-full top-0 ml-2 hidden group-hover:block w-80 p-3 rounded-xl shadow-lg border bg-white z-50">
-                  <p className={`font-semibold ${request.status === "Cancelled" ? "text-red-600" : "text-orange-600"}`}>
-                    Customer Cancellation Reason:
-                  </p>
-                  <p className="mt-1 text-gray-700">{request.reason}</p>
-                </div>
-              )}
-            </p>
+          <div className="bg-white shadow-lg rounded-2xl p-6 text-gray-700 text-lg">
+            {activeTab === "request" && (
+              <>
+                <h3 className="font-bold text-2xl text-[#5a2347] mb-6">Request Details</h3>
 
-            <p className="whitespace-pre-wrap break-words"><strong>Message:</strong> {request.message || "N/A"}</p>
-            <p><strong>Date & Time Requested:</strong> {new Date(request.created_at).toLocaleString()}</p>
-
-            {request.files && request.files.length > 0 && (
-              <div>
-                <strong>Uploaded Files:</strong>
-                <ul className="list-disc list-inside mt-2">
-                  {request.files.map((file) => (
-                    <li key={file.id}>
-                      <a href={file.path} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {file.path.split("/").pop()}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            {["Pending", "CancelRequested"].includes(request.status) && (
-              <div className="flex gap-4 mt-6 relative">
-                {request.status === "Pending" && (
-                  <>
-                    <button
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
-                      onClick={() => initiateAction("Approved")}
-                      disabled={updating}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
-                      onClick={() => initiateAction("Rejected")}
-                      disabled={updating}
-                    >
-                      Reject
-                    </button>
-                  </>
+                {/* Request Info */}
+                <p><span className="font-semibold">Project Name: </span>{request.project_name}</p>
+                <p><span className="font-semibold">Mode: </span>{request.mode}</p>
+                <p>
+                  <span className="font-semibold">Message: </span>
+                  <span className="whitespace-pre-wrap">{request.message || "N/A"}</span>
+                </p>
+                <p>
+                  <span className="font-semibold">Status: </span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[request.status] || ""}`}>
+                    {request.status}
+                  </span>
+                </p>
+                {request.reason && (
+                  <p><span className="font-semibold">Cancellation Reason: </span><span className="italic">{request.reason}</span></p>
                 )}
-                {request.status === "CancelRequested" && (
-                  <>
-                    <button
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
-                      onClick={() => initiateAction("Cancelled")}
-                      disabled={updating}
-                    >
-                      Approve Cancellation
-                    </button>
-                    <button
-                      className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
-                      onClick={() => initiateAction("Rejected")}
-                      disabled={updating}
-                    >
-                      Reject Cancellation
-                    </button>
-                  </>
+                <p><span className="font-semibold">Requested At: </span>{new Date(request.created_at).toLocaleString()}</p>
+
+                {/* Customer Info */}
+                {request.customer && (
+                  <div className="mt-6 bg-gray-50 p-4 rounded-xl shadow-sm">
+                    <h4 className="font-semibold text-xl mb-3 text-[#5a2347]">Customer Information</h4>
+                    <p><span className="font-semibold">Full Name: </span>{request.customer.fullName}</p>
+                    <p><span className="font-semibold">Email: </span>{request.customer.email}</p>
+                    <p><span className="font-semibold">Phone: </span>{request.customer.phone || "N/A"}</p>
+                    <p><span className="font-semibold">Address: </span>{request.customer.address || "N/A"}</p>
+                  </div>
                 )}
 
-                {showFloatingValidation && actionType && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full bg-white border shadow-lg p-4 rounded-xl z-50 w-80">
-                    <p className="mb-4 text-gray-700 text-center">
-                      Are you sure you want to {actionType.toLowerCase()} this request?
-                    </p>
-                    <div className="flex justify-center gap-4">
-                      <button className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400" onClick={() => setShowFloatingValidation(false)}>Cancel</button>
-                      <button
-                        className={`px-4 py-2 rounded-lg text-white ${
-                          actionType === "Approved" || actionType === "Cancelled"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-red-600 hover:bg-red-700"
-                        }`}
-                        onClick={confirmAction}
-                      >
-                        Confirm
-                      </button>
+                {/* Attachments */}
+                {request.files && request.files.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold text-lg mb-4">Attachments</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {request.files.map((file) => (
+                        <div
+                          key={file.id}
+                          className="relative border border-gray-300 rounded-xl p-3 bg-white shadow cursor-pointer hover:shadow-lg hover:scale-105 transition"
+                          onClick={() => window.open(file.path, "_blank")}
+                        >
+                          <div className="h-32 flex items-center justify-center text-sm text-gray-600 text-center">
+                            {file.path.split("/").pop()}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
-              </div>
+              </>
             )}
-          </div>
 
-          {/* Quotation Form Paper – Only show if Approved */}
-          {request.status === "Approved" && (
-            <div className="bg-white p-6 rounded-xl shadow flex-1">
-              <h1 className="text-3xl font-bold text-[#0c2a42] mb-4">Quotation Form</h1>
-              <QuotationForm
+            {activeTab === "quotation" && (
+              <QuotationFormSection
                 requestId={request.id}
                 projectName={request.project_name}
                 mode={request.mode}
-                initialNotes={request.quotation_notes}
-                onSaved={(data) => setRequest((prev) => prev ? { ...prev, ...data } : prev)}
+                status={request.status}
+                quotationForms={quotationForms}
+                handleAddQuotation={handleAddQuotation}
+                setQuotationForms={setQuotationForms}
               />
-            </div>
-          )}
+            )}
+            
+          </div>
         </div>
+
+        {/* Footer */}
+        {activeTab === "request" && (
+          <div className="flex justify-end gap-4 px-10 py-6 bg-gray-50 border-t">
+            {request.status === "Pending" && (
+              <>
+                <button
+                  className="px-8 py-3 rounded-full bg-green-600 text-white hover:bg-green-700 font-medium text-lg shadow"
+                  onClick={() => initiateAction("Accepted")}
+                  disabled={updating}
+                >
+                  Accept
+                </button>
+                <button
+                  className="px-8 py-3 rounded-full bg-red-600 text-white hover:bg-red-700 font-medium text-lg shadow"
+                  onClick={() => initiateAction("Rejected")}
+                  disabled={updating}
+                >
+                  Reject
+                </button>
+              </>
+            )}
+            {request.status === "CancelRequested" && (
+              <>
+                <button
+                  className="px-8 py-3 rounded-full bg-green-600 text-white hover:bg-green-700 font-medium text-lg shadow"
+                  onClick={() => initiateAction("Cancelled")}
+                  disabled={updating}
+                >
+                  Approve Cancellation
+                </button>
+                <button
+                  className="px-8 py-3 rounded-full bg-red-600 text-white hover:bg-red-700 font-medium text-lg shadow"
+                  onClick={() => initiateAction("Rejected")}
+                  disabled={updating}
+                >
+                  Reject Cancellation
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {showFloatingValidation && actionType && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
+            <p className="mb-4 text-gray-700 text-center">
+              Are you sure you want to {actionType.toLowerCase()} this request?
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
+                onClick={() => setShowFloatingValidation(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg text-white ${
+                  actionType === "Accepted" || actionType === "Cancelled"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+                onClick={confirmAction}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import CustomerClientComponent from "@/app/validate/customer_validate";
 import { CustomerHeader } from "@/components/header-customer";
@@ -10,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 
+type StatusFilter = "" | "Pending" | "Accepted" | "Cancelled" | "Approved";
 
 
 type QuotationRequest = {
@@ -20,12 +20,16 @@ type QuotationRequest = {
   status: string;
   created_at: string;
   files?: { path: string }[];
-  reason?: string; 
+  reason?: string;
+    requester_name?: string;
+  requester_address?: string;
+  requester_contact?: string;
+  requester_email?: string; 
 };
 
 const statusColors: Record<string, string> = {
   Pending: "text-yellow-600 bg-yellow-100",
-  Approved: "text-green-700 bg-green-100",
+  Accepted: "text-green-700 bg-green-100",
   Cancelled: "text-red-600 bg--100",
   Rejected: "text-gray-600 bg-red-100",
 };
@@ -98,12 +102,13 @@ const QuotationRequestPage = () => {
   const searchParams = useSearchParams();
 const initialStatus = searchParams.get("status") as
   | "Pending"
-  | "Approved"
-  | "Cancelled"
   | "Accepted"
+  | "Cancelled"
+  | "Approved"
   | null;
 
-const [statusFilter, setStatusFilter] = useState(initialStatus || "");
+const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus || "");
+
 
 useEffect(() => {
   if (!Array.isArray(requests)) return;
@@ -149,11 +154,8 @@ useEffect(() => {
     return;
   }
 
-  // Step 2: Confirmation
-  const confirmSend = window.confirm("📨 Are you sure you want to create a new request?");
-  if (confirmSend) {
     router.push("/customer/quotation_request/NewRequest");
-  }
+  
 };
 
 
@@ -200,13 +202,6 @@ useEffect(() => {
     setFilteredRequests(updated);
   }, [requests, statusFilter, searchQuery, sortNewestFirst]);
 
-  // SINGLE DROPDOWN OPEN LOGIC
-  const closeAllDropdowns = () => {
-    setOpenDropdownId(null);
-    setShowFilterDropdown(false);
-    setShowSortDropdown(false);
-  };
-
   const toggleDropdown = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
@@ -237,7 +232,7 @@ useEffect(() => {
     setShowCancelModal(true);
   };
 
-  const handleCancelApprovedRequest = async (id: number) => {
+  const handleCancelAcceptedRequest = async (id: number) => {
   try {
     const res = await fetch("/api/q_request", {
       method: "PATCH",
@@ -340,7 +335,6 @@ const confirmCancelRequest = async () => {
   };
 
   const closeDetailsPanel = () => setSelectedRequest(null);
-  const openModal = (path: string) => setModalImage(path);
   const closeModal = () => setModalImage(null);
 
   return (
@@ -382,20 +376,19 @@ const confirmCancelRequest = async () => {
               </button>
               {showFilterDropdown && (
                 <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
-                  {["", "Pending", "Approved", "Cancelled", "Accepted"].map((status) => (
-                    <button
-                      key={status}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                        statusFilter === status ? "font-bold text-blue-600" : ""
-                      }`}
-                      onClick={() => {
-                        setStatusFilter(status as any);
-                        setShowFilterDropdown(false);
-                      }}
-                    >
-                      {status || "All Statuses"}
-                    </button>
-                  ))}
+                  {(["", "Pending", "Accepted", "Cancelled", "Approved"] as const).map((status) => (
+               <button
+    key={status}
+    onClick={() => {
+      setStatusFilter(status); // ✅ no more error
+      setShowFilterDropdown(false);
+            }}
+  >
+    {status || "All Statuses"}
+  </button>
+))}
+
+
                 </div>
               )}
             </div>
@@ -514,7 +507,7 @@ const confirmCancelRequest = async () => {
                   </button>
 
                   {/* Action Buttons */}
-                  {["Pending", "Approved"].includes(req.status?.trim()) ? (
+                  {["Pending", "Accepted"].includes(req.status?.trim()) ? (
                     <>
                       {req.status.trim() === "Pending" ? (
                         <button
@@ -526,7 +519,7 @@ const confirmCancelRequest = async () => {
                       ) : (
                         <button
                           className="w-full text-left px-4 py-2 hover:bg-gray-100 text-orange-600"
-                          onClick={() => handleCancelApprovedRequest(req.id)}
+                          onClick={() => handleCancelAcceptedRequest(req.id)}
                         >
                           Request Cancellation
                         </button>
@@ -572,6 +565,27 @@ const confirmCancelRequest = async () => {
       <h2 className="text-4xl font-bold mb-6 text-[#173f63]">Quotation Details</h2>
 
       <div className="space-y-5 overflow-y-auto flex-1 pr-3 text-lg scrollbar-hidden">
+        {/* Customer Info */}
+        <div className="bg-gray-50 p-5 rounded-xl shadow-inner space-y-2">
+          <h3 className="font-semibold text-xl mb-2 text-[#5a2347]">Customer Information</h3>
+          <p>
+            <span className="font-semibold">Name: </span>
+            {selectedRequest.requester_name || "-"}
+          </p>
+          <p>
+            <span className="font-semibold">Address: </span>
+            {selectedRequest.requester_address || "-"}
+          </p>
+          <p>
+            <span className="font-semibold">Contact: </span>
+            {selectedRequest.requester_contact || "-"}
+          </p>
+          <p>
+            <span className="font-semibold">Email: </span>
+            {selectedRequest.requester_email || "-"}
+          </p>
+        </div>
+
         {/* Display Request ID */}
         <p>
           <span className="font-semibold">Request ID: </span>

@@ -1,7 +1,8 @@
 // db/schema.ts
 
-import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid } from "drizzle-orm/pg-core";
-
+import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid, numeric, date } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { int } from "drizzle-orm/mysql-core";
 
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -192,6 +193,113 @@ export const customer_profile = pgTable("customer_profile", {
   phone: varchar("phone", { length: 255 }).notNull(),
 });
 
+{/* Quotations */}
+
+export const quotations = pgTable("quotations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  requestId: integer("request_id").notNull(),
+  quotationNumber: varchar("quotation_number", { length: 50 }).notNull().unique(),
+  revisionNumber: integer("revision_number").default(0),
+  baseQuotationId: integer("base_quotation_id"),
+  projectName: varchar("project_name", { length: 255 }),
+  mode: varchar("mode", { length: 50 }),
+  status: varchar("status", { length: 20 })
+    .notNull()
+    .$type<
+      | "draft"
+      | "sent"
+      | "revision_requested"
+      | "accepted"
+      | "rejected"
+      | "expired"
+    >()
+    .default("draft"),
+  validity: date("validity").notNull(),
+  delivery: varchar("delivery", { length: 100 }).notNull(),
+  warranty: varchar("warranty", { length: 50 }).notNull(),
+  quotationNotes: text("quotation_notes"),
+  cadSketch: varchar("cad_sketch", { length: 255 }),
+
+  vat: numeric("vat", { precision: 5, scale: 2 }).default("12.00"),
+  markup: numeric("markup", { precision: 5, scale: 2 }).default("0.00"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+{/* Quotation Items */}
+
+export const quotationItems = pgTable("quotation_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  quotationId: uuid("quotation_id").notNull().references(() => quotations.id, { onDelete: "cascade" }),
+
+  itemName: varchar("item_name", { length: 255 }).notNull(),
+  scopeOfWork: text("scope_of_work").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  totalPrice: numeric("total_price", { precision: 14, scale: 2 }),
+});
+
+{/* Quotation Materials */}
+
+export const quotationMaterials = pgTable("quotation_materials", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  quotationItemId: uuid("quotation_item_id")
+    .notNull()
+    .references(() => quotationItems.id, { onDelete: "cascade" }),
+
+  name: varchar("name", { length: 255 }).notNull(),
+  specification: varchar("specification", { length: 255 }).notNull(),
+  quantity: integer("quantity").notNull(),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+{/* Quotation Files */}
+
+export const quotationFiles = pgTable("quotation_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  quotationId: uuid("quotation_id")
+    .notNull()
+    .references(() => quotations.id, { onDelete: "cascade" }),
+
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  filePath: varchar("file_path", { length: 500 }).notNull(),
+
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow(),
+});
+
+
+// Quotations → Items
+export const quotationsRelations = relations(quotations, ({ many }) => ({
+  items: many(quotationItems),
+  files: many(quotationFiles),
+}));
+
+// Items → Materials
+export const quotationItemsRelations = relations(quotationItems, ({ one, many }) => ({
+  quotation: one(quotations, {
+    fields: [quotationItems.quotationId],
+    references: [quotations.id],
+  }),
+  materials: many(quotationMaterials),
+}));
+
+// Materials → Item
+export const quotationMaterialsRelations = relations(quotationMaterials, ({ one }) => ({
+  item: one(quotationItems, {
+    fields: [quotationMaterials.quotationItemId],
+    references: [quotationItems.id],
+  }),
+}));
+
+// Files → Quotation
+export const quotationFilesRelations = relations(quotationFiles, ({ one }) => ({
+  quotation: one(quotations, {
+    fields: [quotationFiles.quotationId],
+    references: [quotations.id],
+  }),
+}));
 
   // //relation
   // export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({

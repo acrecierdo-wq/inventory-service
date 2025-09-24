@@ -3,8 +3,6 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { SidebarItem } from "./sidebar-items";
-import { ChevronDown } from "lucide-react";
-import { Button } from "./ui/button";
 import { useState} from "react";
 
 
@@ -39,88 +37,31 @@ export const SideBarCustomer = ({className}: Props) => {
                 href="/customer/cus_dashboard" 
                 iconSrc="/board-chart-svgrepo-com.svg"
                 onClick={closeAllDropdowns}
-                />
+                /> 
                 <SidebarItem
                 label="Quotation Request"
                 href="/customer/quotation_request"
                 iconSrc="/document-add-svgrepo-com.svg"
                 onClick={closeAllDropdowns}
                 />  
-                <SidebarItem
-                label="Request Management"
-                href="/customer/request_management"
+                 <SidebarItem
+                label="My Request"
+                href="/customer/cus_myrequest"
                 iconSrc="/document-add-svgrepo-com.svg"
                 onClick={closeAllDropdowns}
-                />  
+                /> 
                  <SidebarItem
                 label="My Profile"
                 href="/customer/cus_profile"
-                iconSrc="/document-add-svgrepo-com.svg"
+                iconSrc="/profile-round-1342-svgrepo-com.svg"
                 onClick={closeAllDropdowns}
                 />  
                 <SidebarItem
                 label="Order History"
-                href="/customer/order_history"
+                href="/customer/cus_orderhistory"
                 iconSrc="/document-add-svgrepo-com.svg"
                 onClick={closeAllDropdowns}
                 />  
-    
-                {/* Products and Services Dropdown */}
-                <Button 
-                variant="ghost"
-                onClick={() => {setIsPandSOpen(!isPandSOpen)
-                    setIsMyOrdersOpen(false);
-                }}
-                >
-                <Image src="/document-1-svgrepo-com.svg" 
-                height={20} 
-                width={20} 
-                alt="Service"
-                />
-                    <span className="flex flex-col gap-y-1 flex-1">Products & Services</span>
-                    <ChevronDown size={16} className={`transition-transform ${isPandSOpen ? "rotate-180" : ""}`} />
-                </Button>
-                {isPandSOpen && (
-                    <div className="pl-2 flex flex-col">
-                        <SidebarItem 
-                        label="Consumables" 
-                        href="/customer/p&s/consumables_2" 
-                        iconSrc="/document-add-svgrepo-com.svg"
-                        />
-                        <SidebarItem 
-                        label="Non-Consumables" 
-                        href="/customer/p&s/non-consumables" 
-                        iconSrc="/document-add-svgrepo-com.svg"
-                        />
-                    </div>
-                )}
-
-                {/* My Orders Dropdown */}
-                <Button 
-                variant="ghost"
-                onClick={() => {setIsMyOrdersOpen(!isMyOrdersOpen)
-                    setIsPandSOpen(false);
-                }}
-                >
-                <Image src="/cart-shopping-svgrepo-com.svg" height={20} width={20} alt="Service" />
-                    <span className="flex flex-col gap-y-1 flex-1">My Orders</span>
-                    <ChevronDown size={16} className={`transition-transform ${isMyOrdersOpen ? "rotate-180" : ""}`} />
-                </Button>
-                {isMyOrdersOpen && (
-                    <div className="pl-2 flex flex-col">
-                        <SidebarItem 
-                        label="Order History" 
-                        href="/customer/my_orders/order_history" 
-                        iconSrc="/document-add-svgrepo-com.svg"
-                        />
-                        <SidebarItem 
-                    label="Customer Profile" 
-                    href="/sales/s_customer_profile" 
-                    iconSrc="/user-pen-svgrepo-com.svg"
-                    onClick={closeAllDropdowns}
-                        />
-                    </div>
-                )}
             </div>
         </div>
     );

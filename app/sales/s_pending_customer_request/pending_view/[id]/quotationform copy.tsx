@@ -12,7 +12,6 @@ type QuotationFormProps = {
   baseQuotationId?: number; // pass this if creating a revision
   initialRevisionNumber?: number; // initial revision (0 = original)
   onSaved?: (data: SavedQuotation) => void;
-  onSavedDraft?: (data: SavedQuotation) => void;
 };
 
 type MaterialRow = {
@@ -344,7 +343,7 @@ export default function QuotationForm({
     </div>
   );
 
-  const handleSave = async (status: "draft" | "sent") => {
+  const handleSave = async () => {
      if (!validateAllFields()) {
     alert("Please fix the validation errors before saving.");
     return;
@@ -356,7 +355,7 @@ export default function QuotationForm({
     itemName: it.itemName,
     scopeOfWork: it.scopeOfWork,
     quantity: toNumber(it.quantity),
-    unitPrice: toNumber(it.price), 
+    unitPrice: toNumber(it.price), // ✅ renamed
     materials: it.materials.map((m) => ({
       name: m.name,
       specification: m.specification,
@@ -386,7 +385,6 @@ export default function QuotationForm({
     markup,
     attachedFiles,
     items: itemsForSave,
-    status,
   };
     try {
       const res = await fetch("/api/quotations", {
@@ -410,73 +408,6 @@ export default function QuotationForm({
     }
   };
 
-  const handleSend = async () => {
-  if (!validateAllFields()) {
-    alert("Please fix the validation errors before sending.");
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    const itemsForSend = items.map((it) => ({
-      itemName: it.itemName,
-      scopeOfWork: it.scopeOfWork,
-      quantity: toNumber(it.quantity),
-      unitPrice: toNumber(it.price),
-      materials: it.materials.map((m) => ({
-        name: m.name,
-        specification: m.specification,
-        quantity: toNumber(m.quantity),
-      })),
-    }));
-
-    const attachedFiles = cadSketchFile.map((f) => ({
-      fileName: f.name,
-      filePath: `/uploads/${f.name}`,
-    }));
-
-    const payload = {
-      requestId,
-      quotationNumber,
-      revisionNumber,
-      baseQuotationId: baseId ?? undefined,
-      projectName: projectName || "",
-      mode: mode || "",
-      validity,
-      delivery,
-      warranty,
-      quotationNotes: notes,
-      cadSketch: cadSketchFile.length > 0 ? cadSketchFile[0].name : null,
-      vat,
-      markup,
-      status: "sent",
-      attachedFiles,
-      items: itemsForSend,
-    };
-
-    const res = await fetch("/api/quotations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await res.json();
-    if (res.ok && result.success) {
-      alert("Quotation sent successfully!");
-      setShowPreview(false); // go back to form
-      onSaved?.(result.quotation); // optional callback
-    } else {
-      alert(`Failed to send quotation: ${result.error || "Unknown error"}`);
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Error sending quotation. Please try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
   // If preview requested, pass itemsWithTotals to PreviewDocument (so totalPrice is defined)
   if (showPreview) {
     const itemsForPreview = buildItemsWithTotals();
@@ -495,7 +426,6 @@ export default function QuotationForm({
         revisionNumber={revisionNumber}
         baseQuotationId={baseId ?? requestId}
         onBack={() => setShowPreview(false)}
-        onSend={handleSend}
       />
     );
   }
@@ -757,33 +687,31 @@ export default function QuotationForm({
         );
       })()}
 
-     {/* Actions */}
-<div className="flex justify-end gap-4">
-  <button
-    type="button"
-    onClick={() => {
-      if (validateAllFields()) {
-        setShowPreview(true);
-      } else {
-        alert("Complete the form before proceeding.");
-      }
-    }}
-    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-  >
-    Next
-  </button>
+      {/* Actions */}
+      <div className="flex justify-end gap-4">
+        <button
+          type="button"
+          onClick={() => {
+            if (validateAllFields()) {
+              setShowPreview(true);
+            } else {
+              alert("Please fix the validation errors before previewing.");
+            }
+          }}
+          className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+        >
+          Preview
+        </button>
 
-  <button
-    type="button"
-    onClick={() => handleSave("draft")}
-    disabled={isLoading}
-    className={`px-6 py-2 rounded-lg transition ${
-      isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
-    }`}
-  >
-    {isLoading ? "Saving..." : "Save as Draft"}
-  </button>
-</div>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isLoading}
+          className={`px-6 py-2 rounded-lg transition ${isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+        >
+          {isLoading ? "Saving..." : "Save as Draft"}
+        </button>
+      </div>
     </div>
   );
-};  
+}

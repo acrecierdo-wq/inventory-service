@@ -16,7 +16,7 @@ type QuotationRequest = {
 
 const statusColors: Record<string, string> = {
   Pending: "text-yellow-600 bg-yellow-100",
-  Approved: "text-green-700 bg-green-100",
+  Accepted: "text-green-700 bg-green-100",
   Rejected: "text-red-600 bg-red-100",
   Cancelled: "text-gray-600 bg-gray-100",
   CancelRequested: "text-orange-600 bg-orange-100",
@@ -28,7 +28,7 @@ const SPendingCustomerRequestPage = () => {
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
   const [actionRequestId, setActionRequestId] = useState<number | null>(null);
-  const [actionType, setActionType] = useState<"Approved" | "Rejected" | "Cancelled" | null>(null);
+  const [actionType, setActionType] = useState<"Accepted" | "Rejected" | "Cancelled" | null>(null);
   const [showActionConfirm, setShowActionConfirm] = useState(false);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -54,7 +54,7 @@ const SPendingCustomerRequestPage = () => {
   // Filter requests to show in table
   const filteredRequests = requests.filter(
     (req) =>
-      ["Pending", "Approved", "Rejected", "Cancelled", "CancelRequested"].includes(req.status) &&
+      ["Pending", "Accepted", "Rejected", "Cancelled", "CancelRequested"].includes(req.status) &&
       (req.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         req.mode.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -68,7 +68,7 @@ const SPendingCustomerRequestPage = () => {
   };
 
   // Show confirmation before updating
-  const handleAccept = (id: number, type: "Approved" | "Cancelled") => {
+  const handleAccept = (id: number, type: "Accepted" | "Cancelled") => {
     setActionRequestId(id);
     setActionType(type);
     setShowActionConfirm(true);
@@ -205,7 +205,7 @@ const SPendingCustomerRequestPage = () => {
                             <>
                               <button
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-green-600"
-                                onClick={() => handleAccept(req.id, "Approved")}
+                                onClick={() => handleAccept(req.id, "Accepted")}
                               >
                                 Accept
                               </button>
@@ -250,7 +250,7 @@ const SPendingCustomerRequestPage = () => {
           <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
             <div className="bg-white p-6 rounded-xl shadow-xl w-96 pointer-events-auto">
               <h2 className="text-xl font-bold mb-2">
-                {actionType === "Approved" ? "Accept Request" : actionType === "Cancelled" ? "Approve Cancellation" : "Reject Request"}
+                {actionType === "Accepted" ? "Accept Request" : actionType === "Cancelled" ? "Approve Cancellation" : "Reject Request"}
               </h2>
               <p className="mb-4">
                 Are you sure you want to {actionType?.toLowerCase()} this request?
@@ -264,7 +264,7 @@ const SPendingCustomerRequestPage = () => {
                 </button>
                 <button
                   className={`px-4 py-2 rounded-lg text-white ${
-                    actionType === "Approved" || actionType === "Cancelled"
+                    actionType === "Accepted" || actionType === "Cancelled"
                       ? "bg-green-600 hover:bg-green-700"
                       : "bg-red-600 hover:bg-red-700"
                   }`}

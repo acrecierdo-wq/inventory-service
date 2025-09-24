@@ -6,7 +6,7 @@ import { CustomerHeader } from "@/components/header-customer";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-
+import { UserResource } from "@clerk/types";
 
 // Types
 type ToastProps = {
@@ -58,7 +58,7 @@ const Modal = ({
           Complete Your Account
         </h2>
         <p className="text-gray-600 mb-6">
-          You need to complete your account details (name, address, and contact)
+          You need to complete your account details (name, address, contact, and email)
           before submitting a request.
         </p>
         <div className="flex justify-center gap-4">
@@ -88,65 +88,54 @@ const NewRequest = () => {
   const [dragActive, setDragActive] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  const [profile, setProfile] = useState<{ name: string; address: string; contact: string } | null>(null);
-
+  // ✅ include email in profile
+  const [profile, setProfile] = useState<{ name: string; address: string; contact: string; email: string } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-
 
   const messageRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
   const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error" | "info">(
-    "success"
-  );
+  const [toastType, setToastType] = useState<"success" | "error" | "info">("success");
 
   const ConfirmModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40">
-      <div className="bg-white w-[400px] rounded-2xl shadow-xl p-8 text-center">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">
-          Are you sure?
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Do you want to send this quotation request?
-        </p>
-        <div className="flex justify-center gap-4">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className="px-6 py-2 rounded-full bg-[#fed795] text-gray-700 hover:bg-[#fccc65] shadow"
-          >
-            Yes, Send
-          </button>
+    isOpen,
+    onClose,
+    onConfirm,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+  }) => {
+    if (!isOpen) return null;
+    return (
+      <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40">
+        <div className="bg-white w-[400px] rounded-2xl shadow-xl p-8 text-center">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Are you sure?</h2>
+          <p className="text-gray-600 mb-6">Do you want to send this quotation request?</p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onConfirm();
+                onClose();
+              }}
+              className="px-6 py-2 rounded-full bg-[#fed795] text-gray-700 hover:bg-[#fccc65] shadow"
+            >
+              Yes, Send
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-
-  const showToast = (
-    message: string,
-    type: "success" | "error" | "info" = "success"
-  ) => {
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToastMessage(message);
     setToastType(type);
   };
@@ -154,12 +143,15 @@ const NewRequest = () => {
   // Clerk user
   const { isLoaded, isSignedIn, user: clerkUser } = useUser();
 
-  // derive display values with fallbacks
+  // derive display values
   const requesterName = useMemo(() => {
-    const u: any = clerkUser as any;
-    const fullname =
-      u?.fullName || `${u?.firstName || ""} ${u?.lastName || ""}`.trim();
+    const u = clerkUser as UserResource | null;
+    const fullname = u?.fullName || `${u?.firstName ?? ""} ${u?.lastName ?? ""}`.trim();
     return fullname || "";
+  }, [clerkUser]);
+
+  const requesterEmail = useMemo(() => {
+    return (clerkUser?.primaryEmailAddress?.emailAddress || "").trim();
   }, [clerkUser]);
 
   // Fetch profile from DB
@@ -175,6 +167,7 @@ const NewRequest = () => {
             name: requesterName,
             address: data?.address || "",
             contact: data?.phone || "",
+            email: requesterEmail,
           });
         }
       } catch (err) {
@@ -182,15 +175,16 @@ const NewRequest = () => {
       }
     }
     fetchProfile();
-  }, [isLoaded, isSignedIn, requesterName]);
+  }, [isLoaded, isSignedIn, requesterName, requesterEmail]);
 
   // check if account is complete
   const isAccountComplete = useMemo(() => {
     return Boolean(
       isSignedIn &&
-        requesterName.trim() !== "" &&
-        profile?.address.trim() !== "" &&
-        profile?.contact.trim() !== ""
+      requesterName.trim() !== "" &&
+      profile?.address.trim() !== "" &&
+      profile?.contact.trim() !== "" &&
+      profile?.email.trim() !== ""
     );
   }, [isSignedIn, requesterName, profile]);
 
@@ -213,8 +207,7 @@ const NewRequest = () => {
     e.stopPropagation();
     setDragActive(false);
     const fileList = e.dataTransfer.files;
-    if (fileList && fileList.length > 0)
-      setFiles((prev) => [...prev, ...Array.from(fileList)]);
+    if (fileList && fileList.length > 0) setFiles((prev) => [...prev, ...Array.from(fileList)]);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLLabelElement>) => {
@@ -222,13 +215,10 @@ const NewRequest = () => {
     setDragActive(true);
   }, []);
 
-  const handleDragLeave = useCallback(
-    (e: React.DragEvent<HTMLLabelElement>) => {
-      e.preventDefault();
-      setDragActive(false);
-    },
-    []
-  );
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setDragActive(false);
+  }, []);
 
   const handleRemoveFile = (indexToRemove: number) => {
     setFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
@@ -261,8 +251,8 @@ const NewRequest = () => {
       if (requesterName) formData.append("requester_name", requesterName);
       if (profile?.address) formData.append("requester_address", profile.address);
       if (profile?.contact) formData.append("requester_contact", profile.contact);
-      if ((clerkUser as any)?.id)
-        formData.append("requester_user_id", (clerkUser as any).id);
+      if (profile?.email) formData.append("requester_email", profile.email); // ✅ added email
+      if (clerkUser?.id) formData.append("requester_user_id", clerkUser.id);
 
       files.forEach((file) => formData.append("files", file));
 
@@ -312,6 +302,7 @@ const NewRequest = () => {
                     <p>{profile?.name || "No name on file"}</p>
                     <p>{profile?.address || "No address on file"}</p>
                     <p>{profile?.contact || "No contact on file"}</p>
+                    <p>{profile?.email || "No email on file"}</p> {/* ✅ show email */}
                   </>
                 ) : (
                   <>
@@ -332,15 +323,11 @@ const NewRequest = () => {
 
             {/* Request Details */}
             <div className="px-10 py-8 space-y-8">
-              <h3 className="font-bold text-2xl text-[#5a2347]">
-                Request Details
-              </h3>
+              <h3 className="font-bold text-2xl text-[#5a2347]">Request Details</h3>
 
               {/* Project Name */}
               <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Project Name
-                </label>
+                <label className="block text-lg font-medium text-gray-700 mb-2">Project Name</label>
                 <input
                   type="text"
                   value={projectName}
@@ -352,9 +339,7 @@ const NewRequest = () => {
 
               {/* Mode */}
               <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Mode
-                </label>
+                <label className="block text-lg font-medium text-gray-700 mb-2">Mode</label>
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value)}
@@ -370,9 +355,7 @@ const NewRequest = () => {
 
               {/* Message */}
               <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Message
-                </label>
+                <label className="block text-lg font-medium text-gray-700 mb-2">Message</label>
                 <textarea
                   ref={messageRef}
                   className="w-full px-5 py-3 border rounded-xl text-lg focus:ring-2 focus:ring-blue-500 resize-none"
@@ -384,36 +367,19 @@ const NewRequest = () => {
 
               {/* Upload */}
               <div>
-                <label className="block text-lg font-medium text-gray-700 mb-2">
-                  Upload Files
-                </label>
+                <label className="block text-lg font-medium text-gray-700 mb-2">Upload Files</label>
                 <label
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   htmlFor="upload-file"
                   className={`h-52 border-2 border-dashed rounded-xl cursor-pointer flex flex-col justify-center items-center transition ${
-                    dragActive
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-300 hover:bg-gray-50"
+                    dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  <input
-                    id="upload-file"
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                  <Image
-                    src="/upload-cloud-svgrepo-com.svg"
-                    width={70}
-                    height={70}
-                    alt="upload"
-                  />
-                  <p className="text-base text-gray-600 mt-3">
-                    Drag & drop files here, or click to upload
-                  </p>
+                  <input id="upload-file" type="file" multiple className="hidden" onChange={handleFileChange} />
+                  <Image src="/upload-cloud-svgrepo-com.svg" width={70} height={70} alt="upload" />
+                  <p className="text-base text-gray-600 mt-3">Drag & drop files here, or click to upload</p>
                 </label>
               </div>
 
@@ -452,44 +418,25 @@ const NewRequest = () => {
                 Cancel
               </button>
               <button
-  className={`px-8 py-3 rounded-full font-medium text-lg shadow ${
-    isSubmitDisabled
-      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-      : "bg-[#fed795] text-gray-700 hover:bg-[#fccc65]"
-  }`}
-  disabled={isSubmitDisabled}
-  onClick={() => {
-    if (!isSubmitDisabled) {
-      setShowConfirm(true);
-    }
-  }}
->
-  Send
-</button>
-<ConfirmModal
-  isOpen={showConfirm}
-  onClose={() => setShowConfirm(false)}
-  onConfirm={handleSubmit}
-/>
-
+                className={`px-8 py-3 rounded-full font-medium text-lg shadow ${
+                  isSubmitDisabled ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#fed795] text-gray-700 hover:bg-[#fccc65]"
+                }`}
+                disabled={isSubmitDisabled}
+                onClick={() => {
+                  if (!isSubmitDisabled) setShowConfirm(true);
+                }}
+              >
+                Send
+              </button>
+              <ConfirmModal isOpen={showConfirm} onClose={() => setShowConfirm(false)} onConfirm={handleSubmit} />
             </div>
           </div>
         </div>
 
         {/* Modal */}
-        <Modal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          onGoProfile={() => router.push("/customer/profile")}
-        />
+        <Modal isOpen={showModal} onClose={() => setShowModal(false)} onGoProfile={() => router.push("/customer/profile")} />
 
-        {toastMessage && (
-          <Toast
-            message={toastMessage}
-            type={toastType}
-            onClose={() => setToastMessage("")}
-          />
-        )}
+        {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />}
       </div>
     </CustomerClientComponent>
   );
