@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import CustomerClientComponent from "@/app/validate/customer_validate";
 import { CustomerHeader } from "@/components/header-customer";
 import Image from "next/image";
 
@@ -43,8 +42,13 @@ const CustomerPage = () => {
   };
 
   return (
+<<<<<<< HEAD
     <CustomerClientComponent>
       <div className="bg-[#ffffff] min-h-screen w-full">
+=======
+    
+      <div className="bg-[#fed795] min-h-screen w-full">
+>>>>>>> 973138f (chore: admin(create user acc), my account page)
         <CustomerHeader />
 
         <div className="h-30 mt-2 flex flex-row border-slate-200 px-4 bg-[#fff6f5]">
@@ -122,7 +126,7 @@ const CustomerPage = () => {
           </div>
         </div>
       </div>
-    </CustomerClientComponent>
+    
   );
 };
 

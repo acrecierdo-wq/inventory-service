@@ -14,6 +14,8 @@ export const Header = () => {
     useEffect(() => {
         // Check if the user is signed in and user data is loaded
         if (isSignedIn && isLoaded) {
+            console.log('Role:', user?.publicMetadata?.role);
+
             // Assuming you have 'role' stored in publicMetadata of the user
                 if (user?.publicMetadata?.role === 'admin') {
                     router.push("/admin/admin_dashboard");

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import CustomerClientComponent from "@/app/validate/customer_validate";
 import { CustomerHeader } from "@/components/header-customer";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -275,7 +274,6 @@ const NewRequest = () => {
   };
 
   return (
-    <CustomerClientComponent>
       <div className="bg-[#FFCD7A] min-h-screen w-full">
         <CustomerHeader />
 
@@ -438,7 +436,6 @@ const NewRequest = () => {
 
         {toastMessage && <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage("")} />}
       </div>
-    </CustomerClientComponent>
   );
 };
 

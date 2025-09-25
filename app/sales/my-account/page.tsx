@@ -1,11 +1,11 @@
-// app/warehouse/my-account/page.tsx
+// app/sales/my-account/page.tsx
 
 "use client";
 
 import ChangePasswordForm from "@/components/change-password/change-password-form";
 import { Header } from "@/components/header";
 
-export default function WarehousemanMyAccountPage() {
+export default function SalesMyAccountPage() {
     return(
         <main className="bg-[#ffedce] w-full h-full flex flex-col">
             <Header />

@@ -68,7 +68,18 @@ export const Header = ({className}: Props) => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="absolute right-0 z-100 bg-white shadow border rounded text-sm w-32 ">
                             <DropdownMenuItem
-                                onClick={() => router.push("/warehouse/my-account")}
+                                onClick={() => {
+                                    if (!user) return;
+
+                                    const role = user.publicMetadata?.role;
+                                    let myAccountRoute = "/my-account";
+
+                                    if (role === "warehouseman") myAccountRoute = "/warehouse/my-account";
+                                    if (role === "sales") myAccountRoute = "/sales/my-account";
+                                    if (role === "admin") myAccountRoute = "/admin/my-account";
+
+                                    router.push(myAccountRoute);
+                                }}
                             >
                                 My Account
                             </DropdownMenuItem>

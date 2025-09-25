@@ -1,5 +1,8 @@
+// app/warehouse/layout.tsx
+
 import { SideBarWarehouse } from "@/components/sidebar-warehouse";
 import RoleGuard from "../validate/role_guard";
+import MustChangePasswordRedirect from "@/components/change-password/change-password-redirect";
 
 
 type Props = {
@@ -9,7 +12,8 @@ type Props = {
 const WarehouseLayout = ({children,}: Props) => {
     return (
         <RoleGuard allowedRoles={["warehouseman"]}>
-        <div className="h-full flex flex-row bg-dash">
+            <MustChangePasswordRedirect>
+                <div className="h-full flex flex-row bg-dash">
         <>
         <SideBarWarehouse />
           <main className="flex-grow pl-[250px]">
@@ -19,6 +23,7 @@ const WarehouseLayout = ({children,}: Props) => {
           </main>
         </>
         </div>
+            </MustChangePasswordRedirect>
         </RoleGuard>
     );
 }

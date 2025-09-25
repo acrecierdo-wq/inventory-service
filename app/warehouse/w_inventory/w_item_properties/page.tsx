@@ -413,7 +413,6 @@
 // app/warehouse/w_inventory/w_item_properties/page.tsx
 
 "use client";
-import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
 import { Header } from "@/components/header";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import Image from "next/image";

@@ -463,7 +463,7 @@ useEffect(() => {
 
   useEffect(() => {
         if (user) {
-          setIssuedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+          setIssuedBy(user.username || ""); 
         }
       }, [user]);
 

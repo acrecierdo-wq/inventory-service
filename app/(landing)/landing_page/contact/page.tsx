@@ -3,12 +3,16 @@ import { Header } from "../../header";
 
 const LandingContactPage = () => {
     return (
-        <div className="h-screen overflow-hidden bg-gradient-to-t from-[#e3ae01] via-[#fed79relative 
+        <div
+      className="
+        relative 
         min-h-screen 
         overflow-x-hidden 
         bg-gradient-to-t 
         from-[#e3ae01] via-[#fed795] to-[#fcf4d2]
-        flex flex-col items-center">
+        flex flex-col items-center
+      "
+    >
             <Header />
             <h1 className="text-[#173f63] font-extrabold text-5xl text-center mt-5">CONTACT INFORMATION</h1>
             <hr className="mt-10 border-t border-[#173f63] w-[1100px] ml-50" />
