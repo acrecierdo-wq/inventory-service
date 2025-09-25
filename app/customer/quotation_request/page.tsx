@@ -201,16 +201,6 @@ useEffect(() => {
     setFilteredRequests(updated);
   }, [requests, statusFilter, searchQuery, sortNewestFirst]);
 
-<<<<<<< HEAD
-=======
-  // SINGLE DROPDOWN OPEN LOGIC
-  // const closeAllDropdowns = () => {
-  //   setOpenDropdownId(null);
-  //   setShowFilterDropdown(false);
-  //   setShowSortDropdown(false);
-  // };
-
->>>>>>> 973138f (chore: admin(create user acc), my account page)
   const toggleDropdown = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
@@ -344,10 +334,6 @@ const confirmCancelRequest = async () => {
   };
 
   const closeDetailsPanel = () => setSelectedRequest(null);
-<<<<<<< HEAD
-=======
-  //const openModal = (path: string) => setModalImage(path);
->>>>>>> 973138f (chore: admin(create user acc), my account page)
   const closeModal = () => setModalImage(null);
 
   return (
