@@ -161,7 +161,6 @@ export const replenishmentItems = pgTable("replenishment_items", {
   quantity: integer("quantity").notNull(),
 });
 
-
 {/* Quotation Requests */}
 
 export const quotation_requests = pgTable("quotation_requests", {
@@ -170,6 +169,7 @@ export const quotation_requests = pgTable("quotation_requests", {
   mode: text("mode"),
   message: text("message"),
   status: text("status").default("Pending"),
+  customer_id: uuid("customer_id").notNull().references(() => customer_profile.id),
   created_at: timestamp("created_at").defaultNow(),
 });
 

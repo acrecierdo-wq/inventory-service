@@ -7,11 +7,13 @@ import { PreviewDocument } from "./components/quotationcomponents/PreviewDocumen
 type QuotationFormProps = {
   requestId: number;
   projectName?: string;
+  customerId?: string;
   mode?: string;
   initialNotes?: string;
   baseQuotationId?: number; // pass this if creating a revision
   initialRevisionNumber?: number; // initial revision (0 = original)
   onSaved?: (data: SavedQuotation) => void;
+  onSavedDraft?: (data: SavedQuotation) => void;
 };
 
 type MaterialRow = {
@@ -56,6 +58,14 @@ type SavedQuotation = {
   markup?: number;
 };
 
+type Customer = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+};
+
 function uid(prefix = "") {
   return prefix + Math.random().toString(36).slice(2, 9);
 }
@@ -85,7 +95,12 @@ export default function QuotationForm({
   baseQuotationId,
   initialRevisionNumber = 0,
   onSaved,
+  customerId,
 }: QuotationFormProps) {
+
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [project, setProject] = useState<string>("");
+  const [modeName, setMode] = useState<string>("");
   const [quotationNumber, setQuotationNumber] = useState<string>("");
   const [revisionNumber] = useState<number>(initialRevisionNumber);
   const [baseId] = useState<number | null>(baseQuotationId ?? null);
@@ -119,6 +134,25 @@ export default function QuotationForm({
   }>({});
 
   const [isLoading, setIsLoading] = useState(false);
+
+   useEffect(() => {
+    async function fetchRequest() {
+      try {
+        const res = await fetch(`/api/q_request/${requestId}`);
+        if (!res.ok) throw new Error("Failed to fetch request");
+        const data = await res.json();
+
+        if (data.customer) setCustomer (data.customer);
+        if (data.project_name) setProject (data.project_name);
+        if (data.mode) setMode (data.mode);
+        if (data.message) setNotes(data.message);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    fetchRequest();
+  }, [requestId]);
 
   useEffect(() => {
     // default validity to 30 days from today
@@ -343,7 +377,7 @@ export default function QuotationForm({
     </div>
   );
 
-  const handleSave = async () => {
+  const handleSave = async (status: "draft" | "sent") => {
      if (!validateAllFields()) {
     alert("Please fix the validation errors before saving.");
     return;
@@ -355,7 +389,7 @@ export default function QuotationForm({
     itemName: it.itemName,
     scopeOfWork: it.scopeOfWork,
     quantity: toNumber(it.quantity),
-    unitPrice: toNumber(it.price), // ✅ renamed
+    unitPrice: toNumber(it.price), 
     materials: it.materials.map((m) => ({
       name: m.name,
       specification: m.specification,
@@ -385,6 +419,7 @@ export default function QuotationForm({
     markup,
     attachedFiles,
     items: itemsForSave,
+    status,
   };
     try {
       const res = await fetch("/api/quotations", {
@@ -408,6 +443,73 @@ export default function QuotationForm({
     }
   };
 
+  const handleSend = async () => {
+  if (!validateAllFields()) {
+    alert("Please fix the validation errors before sending.");
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const itemsForSend = items.map((it) => ({
+      itemName: it.itemName,
+      scopeOfWork: it.scopeOfWork,
+      quantity: toNumber(it.quantity),
+      unitPrice: toNumber(it.price),
+      materials: it.materials.map((m) => ({
+        name: m.name,
+        specification: m.specification,
+        quantity: toNumber(m.quantity),
+      })),
+    }));
+
+    const attachedFiles = cadSketchFile.map((f) => ({
+      fileName: f.name,
+      filePath: `/uploads/${f.name}`,
+    }));
+
+    const payload = {
+      requestId,
+      quotationNumber,
+      revisionNumber,
+      baseQuotationId: baseId ?? undefined,
+      projectName: projectName || "",
+      mode: mode || "",
+      validity,
+      delivery,
+      warranty,
+      quotationNotes: notes,
+      cadSketch: cadSketchFile.length > 0 ? cadSketchFile[0].name : null,
+      vat,
+      markup,
+      status: "sent",
+      attachedFiles,
+      items: itemsForSend,
+    };
+
+    const res = await fetch("/api/quotations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await res.json();
+    if (res.ok && result.success) {
+      alert("Quotation sent successfully!");
+      setShowPreview(false); // go back to form
+      onSaved?.(result.quotation); // optional callback
+    } else {
+      alert(`Failed to send quotation: ${result.error || "Unknown error"}`);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error sending quotation. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
   // If preview requested, pass itemsWithTotals to PreviewDocument (so totalPrice is defined)
   if (showPreview) {
     const itemsForPreview = buildItemsWithTotals();
@@ -425,34 +527,47 @@ export default function QuotationForm({
         cadSketchFile={cadSketchFile}
         revisionNumber={revisionNumber}
         baseQuotationId={baseId ?? requestId}
+        quotationNumber=""
+        customer={customer}
         onBack={() => setShowPreview(false)}
+        onSend={handleSend}
       />
     );
   }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="p-4 bg-gray-100 rounded-lg shadow-sm">
-        <p>
-          <strong>Quotation Number:</strong> {quotationNumber}
-        </p>
-        <p>
-          <strong>Revision:</strong> {revisionNumber}
-        </p>
-        <p>
-          <strong>Base Quotation ID:</strong> {baseId ?? requestId}
-        </p>
-        <p>
-          <strong>Request ID:</strong> {requestId}
-        </p>
-        <p>
-          <strong>Project Name:</strong> {projectName || "Not provided"}
-        </p>
-        <p>
-          <strong>Mode:</strong> {mode || "Not provided"}
-        </p>
+      <div className="p-6 bg-gray-50 rounded-xl shadow-sm border border-gray-200">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* Customer Info */}
+    <div>
+      <h3 className="font-bold text-xl text-gray-800 border-b pb-2 mb-3">Customer Information</h3>
+      {customer ? (
+        <div className="space-y-2 text-gray-700">
+          <p><span className="font-medium">Name:</span> {customer.fullName}</p>
+          <p><span className="font-medium">Email:</span> {customer.email}</p>
+          <p><span className="font-medium">Phone:</span> {customer.phone}</p>
+          <p><span className="font-medium">Address:</span> {customer.address}</p>
+        </div>
+      ) : (
+        <p className="text-gray-500">Loading customer info...</p>
+      )}
+    </div>
+
+    {/* Quotation & Request Info */}
+    <div>
+      <h3 className="font-bold text-xl text-gray-800 border-b pb-2 mb-3">Quotation Details</h3>
+      <div className="space-y-2 text-gray-700">
+        <p><span className="font-medium">Quotation Number:</span> {quotationNumber}</p>
+        <p><span className="font-medium">Revision:</span> {revisionNumber}</p>
+        <p><span className="font-medium">Base Quotation ID:</span> {baseId ?? requestId}</p>
+        <p><span className="font-medium">Request ID:</span> {requestId}</p>
+        <p><span className="font-medium">Project Name:</span> {projectName || "Not provided"}</p>
+        <p><span className="font-medium">Mode:</span> {mode || "Not provided"}</p>
       </div>
+    </div>
+  </div>
+</div>
 
       {/* CAD Upload */}
       {renderCadUpload()}
@@ -687,31 +802,33 @@ export default function QuotationForm({
         );
       })()}
 
-      {/* Actions */}
-      <div className="flex justify-end gap-4">
-        <button
-          type="button"
-          onClick={() => {
-            if (validateAllFields()) {
-              setShowPreview(true);
-            } else {
-              alert("Please fix the validation errors before previewing.");
-            }
-          }}
-          className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-        >
-          Preview
-        </button>
+     {/* Actions */}
+<div className="flex justify-end gap-4">
+  <button
+    type="button"
+    onClick={() => {
+      if (validateAllFields()) {
+        setShowPreview(true);
+      } else {
+        alert("Complete the form before proceeding.");
+      }
+    }}
+    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+  >
+    Next
+  </button>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isLoading}
-          className={`px-6 py-2 rounded-lg transition ${isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
-        >
-          {isLoading ? "Saving..." : "Save as Draft"}
-        </button>
-      </div>
+  <button
+    type="button"
+    onClick={() => handleSave("draft")}
+    disabled={isLoading}
+    className={`px-6 py-2 rounded-lg transition ${
+      isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
+    }`}
+  >
+    {isLoading ? "Saving..." : "Save as Draft"}
+  </button>
+</div>
     </div>
   );
-}
+};  

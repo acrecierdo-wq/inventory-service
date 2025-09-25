@@ -7,6 +7,7 @@ import { PreviewDocument } from "./components/quotationcomponents/PreviewDocumen
 type QuotationFormProps = {
   requestId: number;
   projectName?: string;
+  customerId?: string;
   mode?: string;
   initialNotes?: string;
   baseQuotationId?: number; // pass this if creating a revision
@@ -57,6 +58,14 @@ type SavedQuotation = {
   markup?: number;
 };
 
+type Customer = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+};
+
 function uid(prefix = "") {
   return prefix + Math.random().toString(36).slice(2, 9);
 }
@@ -86,7 +95,12 @@ export default function QuotationForm({
   baseQuotationId,
   initialRevisionNumber = 0,
   onSaved,
+  customerId,
 }: QuotationFormProps) {
+
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [project, setProject] = useState<string>("");
+  const [modeName, setMode] = useState<string>("");
   const [quotationNumber, setQuotationNumber] = useState<string>("");
   const [revisionNumber] = useState<number>(initialRevisionNumber);
   const [baseId] = useState<number | null>(baseQuotationId ?? null);
@@ -120,6 +134,25 @@ export default function QuotationForm({
   }>({});
 
   const [isLoading, setIsLoading] = useState(false);
+
+   useEffect(() => {
+    async function fetchRequest() {
+      try {
+        const res = await fetch(`/api/q_request/${requestId}`);
+        if (!res.ok) throw new Error("Failed to fetch request");
+        const data = await res.json();
+
+        if (data.customer) setCustomer (data.customer);
+        if (data.project_name) setProject (data.project_name);
+        if (data.mode) setMode (data.mode);
+        if (data.message) setNotes(data.message);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    fetchRequest();
+  }, [requestId]);
 
   useEffect(() => {
     // default validity to 30 days from today
@@ -494,6 +527,8 @@ export default function QuotationForm({
         cadSketchFile={cadSketchFile}
         revisionNumber={revisionNumber}
         baseQuotationId={baseId ?? requestId}
+        quotationNumber={quotationNumber}
+        customer={customer}
         onBack={() => setShowPreview(false)}
         onSend={handleSend}
       />
@@ -502,27 +537,37 @@ export default function QuotationForm({
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="p-4 bg-gray-100 rounded-lg shadow-sm">
-        <p>
-          <strong>Quotation Number:</strong> {quotationNumber}
-        </p>
-        <p>
-          <strong>Revision:</strong> {revisionNumber}
-        </p>
-        <p>
-          <strong>Base Quotation ID:</strong> {baseId ?? requestId}
-        </p>
-        <p>
-          <strong>Request ID:</strong> {requestId}
-        </p>
-        <p>
-          <strong>Project Name:</strong> {projectName || "Not provided"}
-        </p>
-        <p>
-          <strong>Mode:</strong> {mode || "Not provided"}
-        </p>
+      <div className="p-6 bg-gray-50 rounded-xl shadow-sm border border-gray-200">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* Customer Info */}
+    <div>
+      <h3 className="font-bold text-xl text-gray-800 border-b pb-2 mb-3">Customer Information</h3>
+      {customer ? (
+        <div className="space-y-2 text-gray-700">
+          <p><span className="font-medium">Name:</span> {customer.fullName}</p>
+          <p><span className="font-medium">Email:</span> {customer.email}</p>
+          <p><span className="font-medium">Phone:</span> {customer.phone}</p>
+          <p><span className="font-medium">Address:</span> {customer.address}</p>
+        </div>
+      ) : (
+        <p className="text-gray-500">Loading customer info...</p>
+      )}
+    </div>
+
+    {/* Quotation & Request Info */}
+    <div>
+      <h3 className="font-bold text-xl text-gray-800 border-b pb-2 mb-3">Quotation Details</h3>
+      <div className="space-y-2 text-gray-700">
+        <p><span className="font-medium">Quotation Number:</span> {quotationNumber}</p>
+        <p><span className="font-medium">Revision:</span> {revisionNumber}</p>
+        <p><span className="font-medium">Base Quotation ID:</span> {baseId ?? requestId}</p>
+        <p><span className="font-medium">Request ID:</span> {requestId}</p>
+        <p><span className="font-medium">Project Name:</span> {projectName || "Not provided"}</p>
+        <p><span className="font-medium">Mode:</span> {mode || "Not provided"}</p>
       </div>
+    </div>
+  </div>
+</div>
 
       {/* CAD Upload */}
       {renderCadUpload()}

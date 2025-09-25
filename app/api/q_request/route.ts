@@ -1,9 +1,9 @@
 // app/api/q_request/route.ts
 
 import { db } from "@/db/drizzle";
-import { quotation_requests, quotation_request_files } from "@/db/schema";
+import { quotation_requests, quotation_request_files, customer_profile } from "@/db/schema";
 import { NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNotNull } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
 
@@ -73,14 +73,43 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
+
+    // Extract fields
     const project_name = formData.get("project_name")?.toString() || "";
     const mode = formData.get("mode")?.toString() || "";
     const message = formData.get("message")?.toString() || "";
+    const requesterName = formData.get("requester_name")?.toString() || "";
+    const requesterAddress = formData.get("requester_address")?.toString() || "";
+    const requesterContact = formData.get("requester_contact")?.toString() || "";
+    const requesterEmail = formData.get("requester_email")?.toString() || "";
 
-    if (!project_name || !mode || !message) {
+    // Validate required fields
+    if (!project_name || !mode || !message || !requesterName || !requesterAddress || !requesterContact || !requesterEmail) {
       return NextResponse.json({ error: "All fields are required." }, { status: 400 });
     }
 
+    // Find existing customer by email
+    let [customer] = await db
+      .select()
+      .from(customer_profile)
+      .where(eq(customer_profile.email, requesterEmail));
+
+    // If customer doesn't exist, create a new one
+    if (!customer) {
+      [customer] = await db
+        .insert(customer_profile)
+        .values({
+          fullName: requesterName,
+          email: requesterEmail,
+          address: requesterAddress,
+          phone: requesterContact,
+          clerkId: requesterEmail,
+          id: requesterEmail,
+        })
+        .returning();
+    }
+
+    // Insert quotation request
     const [newRequest] = await db
       .insert(quotation_requests)
       .values({
@@ -88,10 +117,12 @@ export async function POST(req: Request) {
         mode,
         message,
         status: "Pending",
+        customer_id: customer.id,
         created_at: new Date(),
       })
       .returning();
 
+    // Handle multiple file uploads
     for (const [key, value] of formData.entries()) {
       if ((key === "files" || key === "file") && value instanceof File) {
         const timestamp = Date.now();
@@ -116,80 +147,5 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("POST /api/q_request error:", err);
     return NextResponse.json({ error: "Failed to submit quotation request." }, { status: 500 });
-  }
-}
-
-// PATCH handler – update quotation request status (Accept / Reject / Cancel)
-export async function PATCH(req: Request) {
-  try {
-    const { id, status } = await req.json();
-
-    if (!id || !status) {
-      return NextResponse.json({ error: "ID and status are required." }, { status: 400 });
-    }
-
-    // Update the status
-    const updated = await db
-      .update(quotation_requests)
-      .set({ status })
-      .where(eq(quotation_requests.id, id))
-      .returning();
-
-    if (!updated.length) {
-      return NextResponse.json({ error: "Request not found." }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      message: `Request ${status.toLowerCase()} successfully.`,
-      data: updated[0],
-    });
-  } catch (err) {
-    console.error("PATCH /api/q_request error:", err);
-    return NextResponse.json({ error: "Failed to update request." }, { status: 500 });
-  }
-}
-
-// DELETE handler – only allow if status = Cancelled
-export async function DELETE(req: Request) {
-  try {
-    const { id } = await req.json();
-
-    if (!id) {
-      return NextResponse.json({ error: "ID is required." }, { status: 400 });
-    }
-
-    const [request] = await db
-      .select()
-      .from(quotation_requests)
-      .where(eq(quotation_requests.id, id));
-
-    if (!request) {
-      return NextResponse.json({ error: "Request not found." }, { status: 404 });
-    }
-
-    if (request.status !== "Cancelled") {
-      return NextResponse.json(
-        { error: "Request must be cancelled before deletion." },
-        { status: 400 }
-      );
-    }
-
-    const files = await db
-      .select()
-      .from(quotation_request_files)
-      .where(eq(quotation_request_files.request_id, id));
-
-    for (const file of files) {
-      const filePath = path.join(process.cwd(), "public", file.path);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-
-    await db.delete(quotation_request_files).where(eq(quotation_request_files.request_id, id));
-    await db.delete(quotation_requests).where(eq(quotation_requests.id, id));
-
-    return NextResponse.json({ message: "Request deleted successfully." });
-  } catch (err) {
-    console.error("DELETE /api/q_request error:", err);
-    return NextResponse.json({ error: "Failed to delete request." }, { status: 500 });
   }
 }
