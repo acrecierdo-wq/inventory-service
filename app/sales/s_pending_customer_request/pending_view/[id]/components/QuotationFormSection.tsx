@@ -1,6 +1,7 @@
 "use client";
 
 import QuotationForm from "../quotationform";
+import { PreviewDocument } from "../components/quotationcomponents/PreviewDocument";
 
 type Props = {
   requestId: number;
@@ -18,31 +19,40 @@ const QuotationFormSection = ({
   mode,
   status,
   quotationForms,
-  handleAddQuotation,
   setQuotationForms,
+  
 }: Props) => {
   // ✅ Save draft and remove form from section
   const handleDraftSaved = (formId: number, draft: any) => {
-    console.log("Removing form with ID:", formId);
+    console.log("Saving draft for ID:", formId);
 
-    // 1. Remove the form from active quotationForms
+    // Remove form from active state
     setQuotationForms((prev) => prev.filter((ff) => ff.id !== formId));
 
-    // 2. Save draft into localStorage
+    // Save draft into localStorage
     if (typeof window !== "undefined") {
       const existing = JSON.parse(localStorage.getItem("quotationDrafts") || "[]");
       localStorage.setItem("quotationDrafts", JSON.stringify([...existing, draft]));
 
-      // 3. Notify QuotationDraftsSection
+      // Notify QuotationDraftsSection
       window.dispatchEvent(new Event("drafts-updated"));
     }
+  };
+
+  // ✅ Mark as sent
+  const handleSendQuotation = (formId: number) => {
+    setQuotationForms((prev) =>
+      prev.map((f) =>
+        f.id === formId ? { ...f, status: "sent" } : f
+      )
+    );
   };
 
   // ✅ Add quotation with unique ID
   const handleAddNewQuotation = () => {
     setQuotationForms((prev) => [
       ...prev,
-      { id: Date.now(), notes: "" }, // ✅ unique id
+      { id: Date.now(), notes: "", status: "draft" }, // default draft
     ]);
   };
 
@@ -81,14 +91,23 @@ const QuotationFormSection = ({
                 Remove
               </button>
 
-              {/* Quotation Form */}
-              <QuotationForm
-                requestId={requestId}
-                projectName={projectName}
-                mode={mode}
-                initialNotes={form.notes}
-                onSavedDraft={(draft) => handleDraftSaved(form.id, draft)} // ✅ handle draft
-              />
+              {form.status === "draft" ? (
+                <QuotationForm
+                  requestId={requestId}
+                  projectName={projectName}
+                  mode={mode}
+                  initialNotes={form.notes}
+                  onSavedDraft={(draft) => handleDraftSaved(form.id, draft)}
+                  onSendQuotation={() => handleSendQuotation(form.id)} // ✅ now handled
+                />
+              ) : (
+                <PreviewDocument
+                  {...form}
+                  isSent={true} 
+                  onBack={() => {}}
+                  onSend={() => {}}
+                />
+              )}
             </div>
           ))}
         </div>

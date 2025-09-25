@@ -23,6 +23,7 @@ const CustomerPage = () => {
       try {
         const res = await fetch("/api/q_request");
         if (!res.ok) return;
+
         const data: QuotationRequest[] = await res.json();
 
         setPendingCount(data.filter((r) => r.status === "Pending").length);
@@ -46,13 +47,13 @@ const CustomerPage = () => {
       <div className="bg-[#fed795] min-h-screen w-full">
         <CustomerHeader />
 
-        <div className="h-30 mt-2 flex flex-row border-slate-200 px-4 bg-[#fff6f5]">
-          <div className="mx-4 mt-2 flex flex-row gap-2">
-            
+        <div className="h-auto mt-2 flex flex-row border-slate-200 px-4 bg-[#fff6f5]">
+          <div className="mx-4 mt-2 flex flex-row gap-4">
+
             {/* Pending */}
             <div
               onClick={() => handleRedirect("Pending")}
-              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#edf346] ml-6 rounded-lg mt-3 p-1"
+              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#edf346] rounded-lg p-2 flex flex-col justify-center"
             >
               <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
                 Pending
@@ -66,7 +67,7 @@ const CustomerPage = () => {
                   className="invert"
                 />
                 <div
-                  className="ml-30 text-white text-5xl font-bold"
+                  className="ml-[30px] text-white text-3xl font-bold"
                   style={{ textShadow: "2px 2px 6px rgba(0,0,0,0.6)" }}
                 >
                   {pendingCount}
@@ -77,7 +78,7 @@ const CustomerPage = () => {
             {/* Accepted */}
             <div
               onClick={() => handleRedirect("Accepted")}
-              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#4350fe] ml-6 rounded-lg mt-3 p-1"
+              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#4350fe] rounded-lg p-2 flex flex-col justify-center"
             >
               <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
                 Accepted
@@ -90,7 +91,7 @@ const CustomerPage = () => {
                   height={50}
                   className="invert"
                 />
-                <div className="ml-30 text-white text-5xl font-bold">
+                <div className="ml-[30px] text-white text-3xl font-bold">
                   {acceptedCount}
                 </div>
               </div>
@@ -99,7 +100,7 @@ const CustomerPage = () => {
             {/* Cancelled */}
             <div
               onClick={() => handleRedirect("Cancelled")}
-              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#f55d49] ml-6 rounded-lg mt-3 p-1"
+              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#f55d49] rounded-lg p-2 flex flex-col justify-center"
             >
               <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
                 Cancelled
@@ -112,16 +113,36 @@ const CustomerPage = () => {
                   height={50}
                   className="invert"
                 />
-                <div className="ml-30 text-white text-5xl font-bold">
+                <div className="ml-[30px] text-white text-3xl font-bold">
                   {cancelledCount}
                 </div>
               </div>
             </div>
 
+            {/* Approved */}
+            <div
+              onClick={() => handleRedirect("Approved")}
+              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#34d399] rounded-lg p-2 flex flex-col justify-center"
+            >
+              <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
+                Approved
+              </div>
+              <div className="flex items-center ml-1">
+                <Image
+                  src="/square-list-svgrepo-com.svg"
+                  alt="icon"
+                  width={50}
+                  height={50}
+                  className="invert"
+                />
+                <div className="ml-[30px] text-white text-3xl font-bold">
+                  {approvedCount}
+                </div>
+              </div>
           </div>
         </div>
       </div>
-    
+    </div>
   );
 };
 

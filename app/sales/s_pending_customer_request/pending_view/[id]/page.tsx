@@ -5,7 +5,6 @@ import { Header } from "@/components/header";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import QuotationFormSection from "./components/QuotationFormSection";
-import QuotationDraftsSection from "./components/QuotationDraftsSection";
 
 type QuotationFile = {
   id: number;
@@ -121,42 +120,6 @@ const PendingViewPage = () => {
     }
     setQuotationForms((prev) => [...prev, { id: Date.now(), saved: false, notes: undefined }]);
     setActiveTab("quotation");
-  };
-
-  const markQuotationSaved = (formId: number, data: Partial<QuotationRequest>) => {
-    setQuotationForms((prev) =>
-      prev.map((f) => (f.id === formId ? { ...f, saved: true, notes: data.quotation_notes ?? f.notes } : f))
-    );
-    setRequest((prev) => (prev ? { ...prev, ...data } : prev));
-    toast.success("Quotation saved as draft!");
-    setActiveTab("drafts");
-  };
-
-  const editDraft = (draftId: number) => {
-    setQuotationForms((prev) => {
-      const hasUnsaved = prev.some((f) => !f.saved && f.id !== draftId);
-      if (hasUnsaved) {
-        toast.error("Please finish the current working quotation before editing a draft.");
-        return prev;
-      }
-      const updated = prev.map((f) => (f.id === draftId ? { ...f, saved: false } : f));
-      const moved = updated.filter((f) => f.id !== draftId);
-      const draft = updated.find((f) => f.id === draftId);
-      if (draft) moved.push(draft);
-      return moved;
-    });
-    setActiveTab("quotation");
-  };
-
-  const removeDraft = (draftId: number) => {
-    setQuotationForms((prev) => prev.filter((f) => f.id !== draftId));
-    toast.success("Draft removed.");
-  };
-
-  const toggleExpandSaved = (formId: number) => {
-    setQuotationForms((prev) =>
-      prev.map((f) => (f.id === formId ? { ...f, expanded: !f.expanded } : f))
-    );
   };
 
   if (loading) {

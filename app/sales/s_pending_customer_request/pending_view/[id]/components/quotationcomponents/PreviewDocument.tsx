@@ -47,6 +47,7 @@ type PreviewDocumentProps = {
   mode?: string;
   onBack: () => void;
   onSend: () => void;
+  isSent: boolean;
 };
 
 // Currency formatter
@@ -83,8 +84,7 @@ export function PreviewDocument({
   projectName,
   cadSketchFile,
   requestId,
-  baseQuotationId,
-  mode
+  isSent,
 }: PreviewDocumentProps) {
   const { subtotal, markupAmount, vatAmount, grandTotal } = calculateSummary(items, vat, markup);
 
@@ -108,7 +108,7 @@ export function PreviewDocument({
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 uppercase leading-tight">Canlubang Techno-Industrial Corporation</h1>
-              <p className="text-xs sm:text-sm italic text-gray-600">"GEARING TOWARDS EXCELLENCE"</p>
+              <p className="text-xs sm:text-sm italic text-gray-600">&quot;GEARING TOWARDS EXCELLENCE&quot;</p>
             </div>
           </div>
         </header>
@@ -277,22 +277,29 @@ export function PreviewDocument({
 )}
 
         {/* Action Buttons */}
-        <footer className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-6 py-2 rounded-lg transition bg-gray-200 text-gray-800 hover:bg-gray-300"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={onSend}
-            className="px-6 py-2 rounded-lg transition bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          >
-            Send Quotation
-          </button>
-        </footer>
+<footer className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-200">
+  {!isSent? (
+    <>
+      <button
+        type="button"
+        onClick={onBack}
+        className="px-6 py-2 rounded-lg transition bg-gray-200 text-gray-800 hover:bg-gray-300"
+      >
+        Back
+      </button>
+      <button
+        type="button"
+        onClick={onSend}
+        className="px-6 py-2 rounded-lg transition bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+      >
+        Send Quotation
+      </button>
+    </>
+  ) : (
+    <p className="text-gray-500 italic text-sm">This quotation has already been sent.</p>
+  )}
+</footer>
+
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import { db } from "@/db/drizzle";
 import { quotation_requests, quotation_request_files, customer_profile } from "@/db/schema";
 import { NextResponse } from "next/server";
-import { desc, eq, isNotNull } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
 

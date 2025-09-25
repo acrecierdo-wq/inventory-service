@@ -14,6 +14,7 @@ type QuotationFormProps = {
   initialRevisionNumber?: number; // initial revision (0 = original)
   onSaved?: (data: SavedQuotation) => void;
   onSavedDraft?: (data: SavedQuotation) => void;
+  onSendQuotation: () => void;
 };
 
 type MaterialRow = {
@@ -95,15 +96,18 @@ export default function QuotationForm({
   baseQuotationId,
   initialRevisionNumber = 0,
   onSaved,
-  customerId,
+  customerId, //
 }: QuotationFormProps) {
 
   const [customer, setCustomer] = useState<Customer | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [project, setProject] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [modeName, setMode] = useState<string>("");
   const [quotationNumber, setQuotationNumber] = useState<string>("");
   const [revisionNumber] = useState<number>(initialRevisionNumber);
   const [baseId] = useState<number | null>(baseQuotationId ?? null);
+  const [isSent, setIsSent] = useState<boolean>(false);
 
   const [items, setItems] = useState<QuotationItem[]>([
     {
@@ -145,7 +149,7 @@ export default function QuotationForm({
         if (data.customer) setCustomer (data.customer);
         if (data.project_name) setProject (data.project_name);
         if (data.mode) setMode (data.mode);
-        if (data.message) setNotes(data.message);
+        
       } catch (err) {
         console.error(err);
       }
@@ -195,7 +199,6 @@ export default function QuotationForm({
       isValid = false;
     }
 
-    // Validate items and materials
     newItems.forEach((item, itemIndex) => {
       const itemError: NonNullable<QuotationItem['error']> = {};
       if (!String(item.itemName).trim()) {
@@ -217,6 +220,7 @@ export default function QuotationForm({
 
       item.error = itemError;
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       item.materials.forEach((mat, materialIndex) => {
         const materialError: NonNullable<MaterialRow['error']> = {};
         if (!String(mat.name).trim()) {
@@ -250,7 +254,7 @@ export default function QuotationForm({
   const updateItem = (index: number, field: keyof QuotationItem, value: string | number) => {
     const newItems = [...items];
     const updatedValue = (field === "quantity" || field === "price") ? toNumber(value) : value;
-    // @ts-ignore
+    // @ts-expect-error: dynamic field assignment
     newItems[index][field] = updatedValue;
     setItems(newItems);
   };
@@ -293,7 +297,7 @@ export default function QuotationForm({
   ) => {
     const newItems = [...items];
     const updatedValue = (field === "quantity") ? toNumber(value) : value;
-    // @ts-ignore
+    // @ts-expect-error: dynamic field assignment
     newItems[itemIndex].materials[materialIndex][field] = updatedValue;
     setItems(newItems);
   };
@@ -497,8 +501,8 @@ export default function QuotationForm({
     const result = await res.json();
     if (res.ok && result.success) {
       alert("Quotation sent successfully!");
-      setShowPreview(false); // go back to form
-      onSaved?.(result.quotation); // optional callback
+      setIsSent(true);        // ✅ mark as sent
+      onSaved?.(result.quotation);
     } else {
       alert(`Failed to send quotation: ${result.error || "Unknown error"}`);
     }
@@ -531,6 +535,7 @@ export default function QuotationForm({
         customer={customer}
         onBack={() => setShowPreview(false)}
         onSend={handleSend}
+        isSent={isSent}
       />
     );
   }

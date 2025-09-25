@@ -55,11 +55,9 @@ export async function POST(req: NextRequest) {
     }
 
     let newQuotationId: string | undefined;
-    let newQuotationItemId: string | undefined;
 
     try {
       // 1. Insert into the main quotations table.
-      // We will now use a direct insert without a transaction.
       const [newQuotation] = await db
         .insert(quotations)
         .values({
@@ -69,7 +67,7 @@ export async function POST(req: NextRequest) {
           baseQuotationId: data.baseQuotationId,
           projectName: data.projectName,
           mode: data.mode,
-          status: data.status?? "draft",
+          status: data.status ?? "draft",
           validity: data.validity,
           delivery: data.delivery,
           warranty: data.warranty,
@@ -107,7 +105,6 @@ export async function POST(req: NextRequest) {
         if (!newItem?.id) {
           throw new Error("Failed to create a quotation item.");
         }
-        newQuotationItemId = newItem.id;
 
         // Prepare the materials for this item for a later batch insert.
         for (const material of item.materials) {
@@ -136,32 +133,108 @@ export async function POST(req: NextRequest) {
       if (quotationFilesToInsert.length > 0) {
         await db.insert(quotationFiles).values(quotationFilesToInsert);
       }
-
-    } catch (innerError: any) {
-      // 5. Rollback logic: Clean up any records created if a later step fails.
+    } catch (innerError: unknown) {
       console.error("Inner transaction failed, initiating rollback...", innerError);
 
       if (newQuotationId) {
         // Attempt to delete the quotation and all cascade-related items
         await db.delete(quotations).where(eq(quotations.id, newQuotationId));
       }
-      
+
       throw innerError; // Rethrow the error to be caught by the outer try-catch
     }
-    
+
     return NextResponse.json({
       success: true,
       message: "Quotation and all related data saved successfully.",
       quotation: { id: newQuotationId },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error saving quotation:", error);
+
+    const message =
+      error instanceof Error ? error.message : "Unknown error occurred";
+
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to save quotation. " + error.message,
+        error: "Failed to save quotation. " + message,
       },
       { status: 500 }
     );
   }
 }
+
+
+// // app/api/quotations/route.ts
+
+// import { db } from "@/db/drizzle";
+// import { quotations, quotation_items } from "@/db/schema";
+// import { NextResponse } from "next/server";
+
+// interface Item {
+//   quotationId?: number; // assigned later when saving
+//   itemName: string;
+//   scopeOfWork: string;
+//   materials: string;
+//   quantity: number;
+//   unitPrice: number;
+//   totalPrice: number;
+// }
+
+// interface QuotationRequest {
+//   requestId: number;
+//   status: string;
+//   delivery?: string;
+//   warranty?: string;
+//   validity?: string;
+//   notes?: string;
+//   items?: Item[];
+//   overallTotal: number;
+// }
+
+// export async function POST(req: Request) {
+//   try {
+//     const body: QuotationRequest = await req.json();
+
+//     const { requestId, status, delivery, warranty, validity, notes, items, overallTotal } = body;
+
+//     if (!requestId || !status) {
+//       return NextResponse.json({ error: "ID and status are required." }, { status: 400 });
+//     }
+
+//     // Insert quotation
+//     const [quotation] = await db
+//       .insert(quotations)
+//       .values({
+//         requestId,
+//         status,
+//         delivery,
+//         warranty,
+//         validity: validity ? new Date(validity) : null,
+//         notes,
+//         overallTotal,
+//       })
+//       .returning();
+
+//     if (items && items.length > 0) {
+//       await db.insert(quotation_items).values(
+//         items.map((item) => ({
+//           quotationId: quotation.id,
+//           itemName: item.itemName,
+//           scopeOfWork: item.scopeOfWork,
+//           materials: item.materials,
+//           quantity: item.quantity,
+//           unitPrice: item.unitPrice,
+//           totalPrice: item.totalPrice,
+//         }))
+//       );
+//     }
+
+//     return NextResponse.json({ success: true, data: quotation });
+//   } catch (error) {
+//     console.error("POST error:", error);
+//     return NextResponse.json({ error: String(error) }, { status: 500 });
+//   }
+// }
+

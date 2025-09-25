@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import { CustomerHeader } from "@/components/header-customer";
 import CustomerClientComponent from "@/app/validate/customer_validate";
 import { Package, Truck, FileCheck, CheckCircle2 } from "lucide-react"; // added icons
-import { Button } from "@/components/ui/button";
 
 type QuotationRequest = {
   id: number;
