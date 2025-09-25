@@ -132,17 +132,17 @@ const CustomerPage = () => {
                   src="/square-list-svgrepo-com.svg"
                   alt="icon"
                   width={50}
-                  height={50}
+                  height={50} 
                   className="invert"
                 />
                 <div className="ml-[30px] text-white text-3xl font-bold">
                   {approvedCount}
                 </div>
               </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
