@@ -90,10 +90,10 @@ export default function AutoComplete({
       const data: Suggestion[] = await res.json();
 
       // auto-select if 1 match AND not already selected
-      if (data.length === 1 && (!value || value.id !== data[0].id)) {
-        handleSelect(data[0]);
-        return;
-      }
+      // if (data.length === 1 && (!value || value.id !== data[0].id)) {
+      //   handleSelect(data[0]);
+      //   return;
+      // }
 
       setSuggestions(data);
     } catch (e) {
