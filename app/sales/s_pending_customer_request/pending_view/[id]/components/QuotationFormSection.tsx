@@ -1,19 +1,28 @@
+// app/sales/s_pending_customer_request/pending_view/[id]/components/QuotationFormSection.tsx
+
 "use client";
 
 import QuotationForm from "../quotationform";
 import { PreviewDocument } from "../components/quotationcomponents/PreviewDocument";
+import { SavedQuotation } from "@/app/sales/types/quotation";
+
+export interface QuotationFormData {
+  id: number,
+  notes?: string,
+  status: "draft" | "sent",
+}
 
 type Props = {
   requestId: number;
   projectName: string;
   mode: string;
   status: string;
-  quotationForms: any[];
+  quotationForms: SavedQuotation[];
   handleAddQuotation: () => void;
-  setQuotationForms: React.Dispatch<React.SetStateAction<any[]>>;
+  setQuotationForms: React.Dispatch<React.SetStateAction<SavedQuotation[]>>;
 };
 
-const QuotationFormSection = ({
+export function QuotationFormSection({
   requestId,
   projectName,
   mode,
@@ -21,9 +30,9 @@ const QuotationFormSection = ({
   quotationForms,
   setQuotationForms,
   
-}: Props) => {
+}: Props){
   // ✅ Save draft and remove form from section
-  const handleDraftSaved = (formId: number, draft: any) => {
+  const handleDraftSaved = (formId: number, draft: SavedQuotation) => {
     console.log("Saving draft for ID:", formId);
 
     // Remove form from active state
@@ -31,9 +40,11 @@ const QuotationFormSection = ({
 
     // Save draft into localStorage
     if (typeof window !== "undefined") {
-      const existing = JSON.parse(localStorage.getItem("quotationDrafts") || "[]");
+      const existing: QuotationFormData[] = JSON.parse(
+        localStorage.getItem("quotationDrafts") || "[]"
+      );
       localStorage.setItem("quotationDrafts", JSON.stringify([...existing, draft]));
-
+      
       // Notify QuotationDraftsSection
       window.dispatchEvent(new Event("drafts-updated"));
     }
@@ -50,11 +61,23 @@ const QuotationFormSection = ({
 
   // ✅ Add quotation with unique ID
   const handleAddNewQuotation = () => {
-    setQuotationForms((prev) => [
-      ...prev,
-      { id: Date.now(), notes: "", status: "draft" }, // default draft
-    ]);
+    setQuotationForms(prev => [
+  ...prev,
+  {
+    id: Date.now(),
+    requestId,
+    quotationNotes: "",
+    vat: 0,
+    markup: 0,
+    items: [],
+    delivery: "",
+    warranty: "",
+    validity: "",
+    status: "draft",
+  }
+]);
   };
+
 
   return (
     <>
@@ -96,13 +119,27 @@ const QuotationFormSection = ({
                   requestId={requestId}
                   projectName={projectName}
                   mode={mode}
-                  initialNotes={form.notes}
+                  initialNotes={form.quotationNotes}
                   onSavedDraft={(draft) => handleDraftSaved(form.id, draft)}
                   onSendQuotation={() => handleSendQuotation(form.id)} // ✅ now handled
                 />
               ) : (
                 <PreviewDocument
                   {...form}
+                  key={form.id}
+                  vat={0}
+                  markup={0}
+                  items={[]}
+                  delivery={""}
+                  warranty={""}
+                  validity={""}
+                  quotationNotes={""}
+                  requestId={0}
+                  cadSketchFile={[]}
+                  revisionLabel={""}
+                  baseQuotationId={0}
+                  customer={null}
+                  quotationNumber={""}
                   isSent={true} 
                   onBack={() => {}}
                   onSend={() => {}}
@@ -121,5 +158,4 @@ const QuotationFormSection = ({
     </>
   );
 };
-
 export default QuotationFormSection;

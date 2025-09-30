@@ -2,7 +2,7 @@
 
 import { SideBarWarehouse } from "@/components/sidebar-warehouse";
 import RoleGuard from "../validate/role_guard";
-import MustChangePasswordRedirect from "@/components/change-password/change-password-redirect";
+import MustChangePasswordRedirect from "@/components/change-password/change-password-redirect"; 
 
 
 type Props = {

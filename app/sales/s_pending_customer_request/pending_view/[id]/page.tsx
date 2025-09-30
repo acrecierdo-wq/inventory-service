@@ -1,10 +1,12 @@
+// app/sales/s_pending_customer_request/pending_view/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import QuotationFormSection from "./components/QuotationFormSection";
+import { QuotationFormSection } from "./components/QuotationFormSection";
+import { QuotationItem } from "@/app/sales/types/quotation";
 
 type QuotationFile = {
   id: number;
@@ -13,7 +15,8 @@ type QuotationFile = {
 };
 
 type CustomerProfile = {
-  fullName: string;
+  companyName: string;
+  contactPerson: string;
   email: string;
   phone: string;
   address: string;
@@ -34,9 +37,13 @@ type QuotationRequest = {
 
 type QuotationFormState = {
   id: number;
-  saved: boolean;
+  saved?: boolean;
   notes?: string;
   expanded?: boolean;
+  items: QuotationItem[];
+  delivery: string;
+  warranty: string;
+  validity: string;
 };
 
 const statusColors: Record<string, string> = {
@@ -68,7 +75,7 @@ const PendingViewPage = () => {
         return;
       }
       try {
-        const res = await fetch(`/api/q_request/${requestId}`);
+        const res = await fetch(`/api/sales/my_request/${requestId}`);
         const data = await res.json();
         setRequest(data || null);
       } catch (err) {
@@ -90,8 +97,8 @@ const PendingViewPage = () => {
     if (!request || !actionType) return;
     setUpdating(true);
     try {
-      const res = await fetch(`/api/q_request/${request.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/sales/my_request/${request.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: actionType }),
       });
@@ -118,7 +125,7 @@ const PendingViewPage = () => {
       toast.error("Please complete and save the current quotation before adding a new one.");
       return;
     }
-    setQuotationForms((prev) => [...prev, { id: Date.now(), saved: false, notes: undefined }]);
+    setQuotationForms((prev) => [...prev, { id: Date.now(), saved: false, notes: undefined, items: [], delivery: "", warranty: "", validity: "" }]);
     setActiveTab("quotation");
   };
 
@@ -217,7 +224,9 @@ const PendingViewPage = () => {
                 {request.customer && (
                   <div className="mt-6 bg-gray-50 p-4 rounded-xl shadow-sm">
                     <h4 className="font-semibold text-xl mb-3 text-[#5a2347]">Customer Information</h4>
-                    <p><span className="font-semibold">Full Name: </span>{request.customer.fullName}</p>
+
+                    <p><span className="font-semibold">Company: </span>{request.customer.companyName} <span className=""></span></p>
+                    <p><span className="font-semibold">Contact Person: </span>{request.customer.contactPerson}</p>
                     <p><span className="font-semibold">Email: </span>{request.customer.email}</p>
                     <p><span className="font-semibold">Phone: </span>{request.customer.phone || "N/A"}</p>
                     <p><span className="font-semibold">Address: </span>{request.customer.address || "N/A"}</p>
@@ -257,6 +266,27 @@ const PendingViewPage = () => {
                 setQuotationForms={setQuotationForms}
               />
             )}
+
+
+{activeTab === "drafts" && (
+  <div>
+    <h3 className="font-bold text-2xl text-[#5a2347] mb-6">Quotation Drafts</h3>
+    {quotationForms.length === 0 ? (
+      <p className="text-gray-500">No drafts yet.</p>
+    ) : (
+      <ul className="space-y-4">
+        {quotationForms.map((form) => (
+          <li key={form.id} className="p-4 border rounded-lg shadow-sm bg-gray-50">
+            <p>Draft #{form.id}</p>
+            <p>Status: {form.saved ? "Saved" : "In Progress"}</p>
+            {form.notes && <p>Notes: {form.notes}</p>}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+)}
+
             
           </div>
         </div>

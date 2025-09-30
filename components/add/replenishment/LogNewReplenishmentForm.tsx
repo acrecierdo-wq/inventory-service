@@ -77,43 +77,43 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const [quantity, setQuantity] = useState<string>("");
 
   // raw row-level combos returned by API
-  const [combinations, setCombinations] = useState<Combination[]>([]);
-
-  // Derived option arrays (unique and filtered)
-  const availableSizes = Array.from(
-    new Map(
-      combinations
-        .filter((c) => c.sizeId != null && c.sizeName)
-        .map((c) => [String(c.sizeId), { id: String(c.sizeId), name: c.sizeName! }])
-    ).values()
-  );
-
-  const availableVariants = Array.from(
-    new Map(
-      combinations
-        .filter((c) => (!selectedSize || c.sizeId === Number(selectedSize.id)) && c.variantId != null && c.variantName)
-        .map((c) => [String(c.variantId), { id: String(c.variantId), name: c.variantName! }])
-    ).values()
-  );
-
-  const availableUnits = Array.from(
-    new Map(
-      combinations
-        .filter((c) => {
-          // units must match selected size and selected variant (if provided)
-          if (selectedSize && selectedVariant) {
-            return c.sizeId === Number(selectedSize.id) && c.variantId === Number(selectedVariant.id) && c.unitId != null && c.unitName;
-          }
-          // if variant isn't chosen yet (but size is), show units for size across variants
-          if (selectedSize && !selectedVariant) {
-            return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
-          }
-          // otherwise show all units (fallback)
-          return c.unitId != null && c.unitName;
-        })
-        .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
-    ).values()
-  );
+    const [combinations, setCombinations] = useState<Combination[]>([]);
+  
+    // Derived option arrays (unique and filtered)
+    const availableSizes = Array.from(
+      new Map(
+        combinations
+          .filter((c) => c.sizeId != null && c.sizeName)
+          .map((c) => [String(c.sizeId), { id: String(c.sizeId), name: c.sizeName! }])
+      ).values()
+    );
+  
+    const availableVariants = Array.from(
+      new Map(
+        combinations
+          .filter((c) => (!selectedSize || c.sizeId === Number(selectedSize.id)) && c.variantId != null && c.variantName)
+          .map((c) => [String(c.variantId), { id: String(c.variantId), name: c.variantName! }])
+      ).values()
+    );
+  
+    const availableUnits = Array.from(
+      new Map(
+        combinations
+          .filter((c) => {
+            // units must match selected size and selected variant (if provided)
+            if (selectedSize && selectedVariant) {
+              return c.sizeId === Number(selectedSize.id) && c.variantId === Number(selectedVariant.id) && c.unitId != null && c.unitName;
+            }
+            // if variant isn't chosen yet (but size is), show units for size across variants
+            if (selectedSize && !selectedVariant) {
+              return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
+            }
+            // otherwise show all units (fallback)
+            return c.unitId != null && c.unitName;
+          })
+          .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
+      ).values()
+    );
 
   // debug-like object similar to previous UI
 useEffect(() => {
@@ -142,11 +142,16 @@ useEffect(() => {
     }
 
     const fetchOptions = async () => {
+      
       try {
+        
         
         // pass itemName so API aggregates across all itemIds that share the same name
         const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(String(selectedItem.name))}`);
         if (!res.ok) {
+          const data: Combination[] = await res.json();
+      console.log("inventory-options response", data);
+
           console.warn("inventory-options returned non-ok status");
           setCombinations([]);
           return;

@@ -1,3 +1,5 @@
+// app/customer/quotation_request/NewRequest/page.tsx
+
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
@@ -57,7 +59,7 @@ const Modal = ({
           Complete Your Account
         </h2>
         <p className="text-gray-600 mb-6">
-          You need to complete your account details (name, address, contact, and email)
+          You need to complete your account details (name, address, contact, email, and code)
           before submitting a request.
         </p>
         <div className="flex justify-center gap-4">
@@ -88,7 +90,7 @@ const NewRequest = () => {
   const [showModal, setShowModal] = useState(false);
 
   // ✅ include email in profile
-  const [profile, setProfile] = useState<{ name: string; address: string; contact: string; email: string } | null>(null);
+  const [profile, setProfile] = useState<{ companyName: string; contactPerson: string; address: string; email: string; phone: string;  clientCode: string; } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const messageRef = useRef<HTMLTextAreaElement>(null);
@@ -145,8 +147,8 @@ const NewRequest = () => {
   // derive display values
   const requesterName = useMemo(() => {
     const u = clerkUser as UserResource | null;
-    const fullname = u?.fullName || `${u?.firstName ?? ""} ${u?.lastName ?? ""}`.trim();
-    return fullname || "";
+    const fullName = u?.fullName || `${u?.firstName ?? ""} ${u?.lastName ?? ""}`.trim();
+    return fullName || "";
   }, [clerkUser]);
 
   const requesterEmail = useMemo(() => {
@@ -161,13 +163,11 @@ const NewRequest = () => {
       try {
         const res = await fetch("/api/customer");
         if (res.ok) {
-          const data = await res.json();
-          setProfile({
-            name: requesterName,
-            address: data?.address || "",
-            contact: data?.phone || "",
-            email: requesterEmail,
-          });
+          const result = await res.json();
+
+          if (result.status  === "ok" && result.data) {
+            setProfile(result.data);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
@@ -180,10 +180,12 @@ const NewRequest = () => {
   const isAccountComplete = useMemo(() => {
     return Boolean(
       isSignedIn &&
+      profile?.companyName.trim() !== "" &&
       requesterName.trim() !== "" &&
       profile?.address.trim() !== "" &&
-      profile?.contact.trim() !== "" &&
-      profile?.email.trim() !== ""
+      profile?.phone.trim() !== "" &&
+      profile?.email.trim() !== "" &&
+      profile?.clientCode.trim() !== ""
     );
   }, [isSignedIn, requesterName, profile]);
 
@@ -226,7 +228,7 @@ const NewRequest = () => {
   const isSubmitDisabled =
     projectName.trim() === "" ||
     mode === "" ||
-    message.trim() === "" ||
+    //message.trim() === "" ||
     files.length === 0;
 
   // Submit handler
@@ -247,15 +249,17 @@ const NewRequest = () => {
       formData.append("mode", mode);
       formData.append("message", message);
 
+      if (profile?.companyName) formData.append("company_name", profile.companyName);
       if (requesterName) formData.append("requester_name", requesterName);
       if (profile?.address) formData.append("requester_address", profile.address);
-      if (profile?.contact) formData.append("requester_contact", profile.contact);
+      if (profile?.phone) formData.append("requester_phone", profile.phone);
       if (profile?.email) formData.append("requester_email", profile.email); // ✅ added email
       if (clerkUser?.id) formData.append("requester_user_id", clerkUser.id);
+      if (profile?.clientCode) formData.append("client_code", profile.clientCode);
 
       files.forEach((file) => formData.append("files", file));
 
-      const res = await fetch("/api/q_request", {
+      const res = await fetch("/api/customer/q_request", {
         method: "POST",
         body: formData,
       });
@@ -297,10 +301,12 @@ const NewRequest = () => {
                   <p className="text-gray-500 italic">Loading...</p>
                 ) : isSignedIn ? (
                   <>
-                    <p>{profile?.name || "No name on file"}</p>
+                    <p>{profile?.companyName || "No name on file"}</p>
+                    <p>{requesterName || "No name on file"}</p>
                     <p>{profile?.address || "No address on file"}</p>
-                    <p>{profile?.contact || "No contact on file"}</p>
+                    <p>{profile?.phone || "No contact on file"}</p>
                     <p>{profile?.email || "No email on file"}</p> {/* ✅ show email */}
+                    <p>{profile?.clientCode || "No client code on file"}</p>
                   </>
                 ) : (
                   <>
@@ -313,7 +319,7 @@ const NewRequest = () => {
 
               <div className="text-right">
                 <p className="font-semibold">Request to:</p>
-                <p>Canlubang Techno-Preneurship Industrial Corporation</p>
+                <p>Canlubang Techno-Industrial Corporation</p>
                 <p>Siranglupa, Canlubang, Calamba City, 4027</p>
                 <p>000-0000-000</p>
               </div>

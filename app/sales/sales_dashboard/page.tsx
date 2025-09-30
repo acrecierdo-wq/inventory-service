@@ -15,19 +15,29 @@ const SalesPage = () => {
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
 
-  useEffect(() => {
-    const fetchPending = async () => {
-      try {
-        const res = await fetch("/api/q_request");
-        const data: QuotationRequest[] = await res.json();
-        const pending = data.filter((req) => req.status === "Pending");
-        setPendingCount(pending.length);
-      } catch (err) {
-        console.error(err);
-      }
-    };
+  const [, setRequests] = useState<QuotationRequest[]>([]);
 
-    fetchPending();
+const fetchRequests = async () => {
+  try {
+    const res = await fetch("/api/sales/my_request");
+    const json = await res.json();
+    console.log("🔎 API response:", json);
+
+    const data = Array.isArray(json) ? json : json.data || [];
+    setRequests(data);
+
+    // count only "Pending" requests
+    const pending = data.filter((req: QuotationRequest) => req.status === "Pending");
+    setPendingCount(pending.length);
+  } catch (err) {
+    console.error(err);
+    setRequests([]);
+    setPendingCount(0);
+  }
+};
+
+  useEffect(() => {
+    fetchRequests();
   }, []);
 
   return (

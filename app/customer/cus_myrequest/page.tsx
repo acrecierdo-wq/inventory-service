@@ -33,13 +33,18 @@ const MyOrdersPage = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await fetch("/api/my_request");
-        if (!res.ok) throw new Error("Failed to fetch requests");
+        const res = await fetch("/api/sales/my_request");
+
+        if (!res.ok) {
+          console.error("Failed to fetch requests:", res.statusText);
+          return;
+        }
+        
         const data = await res.json();
         setRequests(data);
         setFilteredRequests(data);
       } catch (err) {
-        console.error(err);
+        console.error("Network or parsing error", err);
       }
     };
     fetchRequests();

@@ -222,6 +222,7 @@ const IssuanceLogPage = () => {
         searchTerm
             ? issuance.clientName.toLowerCase().includes(searchTerm.toLowerCase())
                 || issuance.drNumber.toLowerCase().includes(searchTerm.toLowerCase())
+                || issuance.dispatcherName.toLowerCase().includes(searchTerm.toLowerCase())
             : true
     ).filter((issuance) => {
         // which date to filter by: issued or created

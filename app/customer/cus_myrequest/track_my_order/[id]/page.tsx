@@ -24,7 +24,7 @@ const TrackMyOrderPage = () => {
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const res = await fetch(`/api/my_request/${id}`);
+        const res = await fetch(`/api/sales/my_request/${id}`);
         if (!res.ok) throw new Error("Failed to fetch request");
         const data = await res.json();
         setRequest(data);

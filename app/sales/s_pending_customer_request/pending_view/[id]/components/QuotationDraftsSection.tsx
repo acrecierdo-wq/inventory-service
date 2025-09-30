@@ -1,35 +1,44 @@
+// app/sales/s_pending_customer_request/pending_view/[id]/components/QuotationDraftsSection.tsx
+
 "use client";
 import { useEffect, useState } from "react";
 
 type Draft = {
+  id: number;
   quotationNumber: string;
   projectName: string;
   quotationNotes: string;
+  status: string;
 };
 
-const QuotationDraftsSection = () => {
+type Props = {
+  newDraft?: Draft | null;
+};
+
+const QuotationDraftsSection = ({ newDraft }: Props) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
 
   useEffect(() => {
-    const loadDrafts = () => {
+    const loadDrafts = async () => {
       try {
-        const saved: Draft[] = JSON.parse(
-          localStorage.getItem("quotationDrafts") || "[]"
-        );
-        setDrafts(saved);
+        const res = await fetch("/api/sales/quotations?status=draft");
+        if (!res.ok) throw new Error("Failed to fetch draft");
+        const data = await res.json();
+        setDrafts(data.quotations || []);
       } catch (err) {
-        console.error("Failed to parse drafts from localStorage", err);
+        console.error("Error loading drafts:", err);
         setDrafts([]);
       }
     };
 
     loadDrafts();
-    window.addEventListener("drafts-updated", loadDrafts);
-
-    return () => {
-      window.removeEventListener("drafts-updated", loadDrafts);
-    };
   }, []);
+
+  useEffect(() => {
+    if (newDraft) {
+      setDrafts((prev) => [newDraft, ... prev]);
+    }
+  }, [newDraft]);
 
   return (
     <>
@@ -41,8 +50,8 @@ const QuotationDraftsSection = () => {
         <p className="text-gray-500 italic">No drafts saved yet.</p>
       ) : (
         <div className="space-y-4">
-          {drafts.map((draft, idx) => (
-            <div key={idx} className="border p-4 rounded shadow bg-white">
+          {drafts.map((draft) => (
+            <div key={draft.id} className="border p-4 rounded shadow bg-white">
               <p>
                 <strong>Quotation #:</strong> {draft.quotationNumber}
               </p>
@@ -52,11 +61,12 @@ const QuotationDraftsSection = () => {
               <p>
                 <strong>Notes:</strong> {draft.quotationNotes}
               </p>
-              <p className="text-sm text-gray-500">Status: Draft</p>
+              <p className="text-sm text-gray-500">Status: {draft.status}</p>
             </div>
           ))}
         </div>
       )}
+
     </>
   );
 };

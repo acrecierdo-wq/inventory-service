@@ -2,30 +2,29 @@
 
 import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid, numeric, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { int } from "drizzle-orm/mysql-core";
 
 export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: varchar("name", { length: 100 }).notNull(),
 });
 
 export const units = pgTable("units", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: varchar("name", { length: 50 }).notNull(), // e.g. "pcs", "m", "kg"
 });
 
 export const variants = pgTable("variants", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: varchar("name", { length: 100 }).notNull(),
 });
 
 export const sizes = pgTable("sizes", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: varchar("name", { length: 100 }).notNull(),
 });
 
 export const items = pgTable("items", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: varchar("name", { length: 255 }).notNull(),
 
   categoryId: integer("category_id").notNull().references(() => categories.id),   // FK to categories table
@@ -45,7 +44,7 @@ export const items = pgTable("items", {
 {/* Item Issuances */}
 
 export const itemIssuances = pgTable("item_issuances", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
 clientName: varchar("client_name", { length: 255 }).notNull(),
 dispatcherName: varchar("dispatcher_name", { length: 255 }).notNull(),
@@ -67,7 +66,7 @@ restocked: boolean("restocked").default(false),
 {/* Item Issuance Items */}
 
 export const itemIssuanceItems = pgTable("item_issuance_items", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
   issuanceId: integer("issuance_id").notNull().references(() => itemIssuances.id, { onDelete: "cascade" }),
 
@@ -83,7 +82,7 @@ export const itemIssuanceItems = pgTable("item_issuance_items", {
 {/* Internal Usages */}
 
 export const internalUsages = pgTable("internal_usages", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   
   personnelName: varchar("personnel_name", { length: 255 }).notNull(),
   department: varchar("department", { length: 255 }).notNull(),
@@ -103,8 +102,7 @@ export const internalUsages = pgTable("internal_usages", {
 {/* Internal Usage Items */}
 
 export const internalUsageItems = pgTable("internal_usage_items", {
-  id: serial("id").primaryKey(),
-
+ id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   usageId: integer("usage_id").notNull().references(() => internalUsages.id, { onDelete: "cascade" }),
 
   itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict"}),
@@ -131,7 +129,7 @@ export const appUsers = pgTable("app_users", {
 {/* Item replenishments */}
 
 export const itemReplenishments = pgTable("item_replenishments", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
   supplier: varchar("supplier").notNull(),
   poRefNum: varchar("po_ref_num", { length: 100 }).notNull(),
@@ -148,7 +146,7 @@ export const itemReplenishments = pgTable("item_replenishments", {
 
 {/* Replenishment Items */}
 export const replenishmentItems = pgTable("replenishment_items", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
   replenishmentId: integer("replenishment_id").notNull().references(() => itemReplenishments.id, { onDelete: "cascade" }),
 
@@ -164,20 +162,20 @@ export const replenishmentItems = pgTable("replenishment_items", {
 {/* Quotation Requests */}
 
 export const quotation_requests = pgTable("quotation_requests", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   project_name: text("project_name").notNull(),
   mode: text("mode"),
   message: text("message"),
   status: text("status").default("Pending"),
-  customer_id: uuid("customer_id").notNull().references(() => customer_profile.id),
+  customer_id: integer("customer_id").notNull().references(() => customer_profile.id),
   created_at: timestamp("created_at").defaultNow(),
 });
 
 {/* Quotation Request Files */}
 
 export const quotation_request_files = pgTable("quotation_request_files", {
-  id: serial("id").primaryKey(),
-  request_id: integer("request_id").notNull(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  request_id: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
   path: text("path").notNull(),
   uploaded_at: timestamp("uploaded_at").defaultNow(),
 });
@@ -185,12 +183,18 @@ export const quotation_request_files = pgTable("quotation_request_files", {
 {/* Customer Profile */}
 
 export const customer_profile = pgTable("customer_profile", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
-  fullName: text("full_name"),
+
+  companyName: text("company_name").notNull(),
+  contactPerson: text("contact_person").notNull(),
   email: text("email").notNull(),
   address: varchar("address", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 255 }).notNull(),
+  clientCode: varchar("client_code", { length: 10 }).notNull(),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 {/* Quotations */}
@@ -198,9 +202,14 @@ export const customer_profile = pgTable("customer_profile", {
 export const quotations = pgTable("quotations", {
   id: uuid("id").primaryKey().defaultRandom(),
   requestId: integer("request_id").notNull(),
-  quotationNumber: varchar("quotation_number", { length: 50 }).notNull().unique(),
+
+  quotationSeq: serial("quotation_seq").notNull().unique(),
+
+  quotationNumber: varchar("quotation_number", { length: 50 }).unique(),
+  
   revisionNumber: integer("revision_number").default(0),
   baseQuotationId: integer("base_quotation_id"),
+
   projectName: varchar("project_name", { length: 255 }),
   mode: varchar("mode", { length: 50 }),
   status: varchar("status", { length: 20 })

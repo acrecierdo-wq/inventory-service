@@ -1,3 +1,5 @@
+// app/sales/s_pending_customer_request/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -39,7 +41,7 @@ const SPendingCustomerRequestPage = () => {
   // Fetch all requests including CancelRequested
   const fetchRequests = async () => {
     try {
-      const res = await fetch("/api/q_request");
+      const res = await fetch("/api/sales/my_request");
       const data: QuotationRequest[] = await res.json();
       setRequests(data);
     } catch (err) {
@@ -52,12 +54,15 @@ const SPendingCustomerRequestPage = () => {
   }, []);
 
   // Filter requests to show in table
-  const filteredRequests = requests.filter(
-    (req) =>
-      ["Pending", "Accepted", "Rejected", "Cancelled", "CancelRequested"].includes(req.status) &&
-      (req.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.mode.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredRequests = Array.isArray(requests)
+  ? requests.filter(
+      (req) =>
+        ["Pending", "Accepted", "Rejected", "Cancelled", "CancelRequested"].includes(req.status) &&
+        (req.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          req.mode.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+  : [];
+
 
   const toggleDropdown = (id: number) => {
     setOpenDropdownId(openDropdownId === id ? null : id);
@@ -85,8 +90,8 @@ const SPendingCustomerRequestPage = () => {
     setShowActionConfirm(false);
 
     try {
-      const res = await fetch("/api/q_request", {
-        method: "PATCH",
+      const res = await fetch("/api/sales/my_request", {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: actionRequestId, status: actionType }),
       });

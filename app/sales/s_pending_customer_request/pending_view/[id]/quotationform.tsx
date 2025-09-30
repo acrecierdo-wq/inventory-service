@@ -1,8 +1,12 @@
+// app/sales/s_pending_customer_request/pending_view/[id]/quotationform.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
-import { UploadCloud, Trash2, X } from "lucide-react";
+import { UploadCloud, Trash2, } from "lucide-react";
 import { PreviewDocument } from "./components/quotationcomponents/PreviewDocument";
+import { PreviewFile } from "@/app/sales/types/quotation";
+import { toast } from "sonner";
 
 type QuotationFormProps = {
   requestId: number;
@@ -34,12 +38,13 @@ type QuotationItem = {
   scopeOfWork: string;
   materials: MaterialRow[];
   quantity: number;
-  price: number;
+  unitPrice: number;
+  totalPrice: number;
   error?: {
     itemName?: string;
     scopeOfWork?: string;
     quantity?: string;
-    price?: string;
+    unitPrice?: string;
   };
 };
 
@@ -61,7 +66,8 @@ type SavedQuotation = {
 
 type Customer = {
   id: string;
-  fullName: string;
+  companyName: string;
+  contactPerson: string;
   email: string;
   phone: string;
   address: string;
@@ -71,12 +77,6 @@ function uid(prefix = "") {
   return prefix + Math.random().toString(36).slice(2, 9);
 }
 
-// Generate quotation number (local mock — real app should use DB counter)
-function generateQuotationNumber() {
-  const year = new Date().getFullYear();
-  const seq = Math.floor(Math.random() * 900) + 100;
-  return `Q-${year}-${String(seq).padStart(3, "0")}`;
-}
 
 /** Helper: convert string|number to finite number, fallback 0 */
 function toNumber(v: string | number | undefined | null) {
@@ -88,15 +88,47 @@ function toNumber(v: string | number | undefined | null) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// function getFileName(f: PreviewFile) {
+//   return f instanceof File ? f.name : f.name;
+// }
+
+// function isPreviewFile(file: any): file is PreviewFile {
+//   return (
+//     typeof file.id === "number" &&
+//     typeof file.fileName === "string" &&
+//     typeof file.filePath === "string"
+//   );
+// }
+
+// function getFilePath(f: PreviewFile) {
+//   return f instanceof File 
+//     ? URL.createObjectURL(f)
+//     : f.filePath;
+// }
+
+async function uploadCadFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/sales/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("Upload failed");
+  return res.json();
+}
+
 export default function QuotationForm({
   requestId,
   projectName,
   mode,
   initialNotes,
   baseQuotationId,
-  initialRevisionNumber = 0,
+  //initialRevisionNumber = 0,
   onSaved,
-  customerId, //
+  onSavedDraft,
+  //customerId, //
 }: QuotationFormProps) {
 
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -105,7 +137,6 @@ export default function QuotationForm({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [modeName, setMode] = useState<string>("");
   const [quotationNumber, setQuotationNumber] = useState<string>("");
-  const [revisionNumber] = useState<number>(initialRevisionNumber);
   const [baseId] = useState<number | null>(baseQuotationId ?? null);
   const [isSent, setIsSent] = useState<boolean>(false);
 
@@ -115,34 +146,60 @@ export default function QuotationForm({
       scopeOfWork: "",
       materials: [{ id: uid(), name: "", specification: "", quantity: 0, error: {} }],
       quantity: 0,
-      price: 0,
+      unitPrice: 0,
+      totalPrice: 0,
       error: {},
     },
   ]);
   const [validity, setValidity] = useState("");
   const [delivery, setDelivery] = useState("");
   const [warranty, setWarranty] = useState("");
-  const [notes, setNotes] = useState(initialNotes || "");
-  const [cadSketchFile, setCadSketchFile] = useState<File[]>([]);
+  const [quotationNotes, setQuotationNotes] = useState(initialNotes || "");
+  const [cadSketchFile, setCadSketchFile] = useState<PreviewFile[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [vat, setVat] = useState<number>(12);
   const [markup, setMarkup] = useState<number>(0);
+
+  const [revisionLabel, setRevisionLabel] = useState<string>("REVISION-00");
 
   const [fieldErrors, setFieldErrors] = useState<{
     delivery?: string;
     warranty?: string;
     validity?: string;
-    notes?: string;
+    quotationNotes?: string;
     cadSketch?: string;
     items?: string;
   }>({});
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // async function handleCadUpload(file: File) {
+  //   const formData = new FormData();
+  //   formData.append("file", file);
+
+  //   const res = await fetch("/api/sales/upload", {
+  //     method: "POST",
+  //     body: formData,
+  //   });
+
+  //   const result = await res.json();
+
+  //   if (res.ok && result.success) {
+  //     if (res.ok && result.success) {
+  //       setCadSketchFile([
+  //         { name: result.file.name, filePath: result.file.filePath },
+  //       ]);
+  //     }
+  //   } else {
+  //     toast.error("Failed to upload file: " + result.error);
+  //     return null;
+  //   }
+  // }
+
    useEffect(() => {
     async function fetchRequest() {
       try {
-        const res = await fetch(`/api/q_request/${requestId}`);
+        const res = await fetch(`/api/sales/my_request/${requestId}`);
         if (!res.ok) throw new Error("Failed to fetch request");
         const data = await res.json();
 
@@ -165,11 +222,8 @@ export default function QuotationForm({
       today.setDate(today.getDate() + 30);
       setValidity(today.toISOString().split("T")[0]);
     }
-    // generate a quotation number once (demo/local)
-    if (!quotationNumber) {
-      setQuotationNumber(generateQuotationNumber());
-    }
-  }, [validity, quotationNumber]);
+    
+  }, [validity]);
 
   // === Validation helpers ===
   const validateAllFields = () => {
@@ -190,16 +244,16 @@ export default function QuotationForm({
       newFieldErrors.validity = "Validity is required";
       isValid = false;
     }
-    if (!notes) {
-      newFieldErrors.notes = "Quotation notes are required";
-      isValid = false;
-    }
-    if (cadSketchFile.length === 0) {
-      newFieldErrors.cadSketch = "CAD Sketch is required";
-      isValid = false;
-    }
+    // if (!quotationNotes) {
+    //   newFieldErrors.quotationNotes = "Quotation notes are required";
+    //   isValid = false;
+    // }
+    // if (cadSketchFile.length === 0) {
+    //   newFieldErrors.cadSketch = "CAD Sketch is required";
+    //   isValid = false;
+    // }
 
-    newItems.forEach((item, itemIndex) => {
+    newItems.forEach((item) => {
       const itemError: NonNullable<QuotationItem['error']> = {};
       if (!String(item.itemName).trim()) {
         itemError.itemName = "Item Name is required";
@@ -213,15 +267,14 @@ export default function QuotationForm({
         itemError.quantity = "Quantity must be > 0";
         isValid = false;
       }
-      if (toNumber(item.price) <= 0) {
-        itemError.price = "Unit Price must be > 0";
+      if (toNumber(item.unitPrice) <= 0) {
+        itemError.unitPrice = "Unit Price must be > 0";
         isValid = false;
       }
 
       item.error = itemError;
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      item.materials.forEach((mat, materialIndex) => {
+      item.materials.forEach((mat) => {
         const materialError: NonNullable<MaterialRow['error']> = {};
         if (!String(mat.name).trim()) {
           materialError.name = "Material Name required";
@@ -253,7 +306,7 @@ export default function QuotationForm({
   // === Item & Material Handlers ===
   const updateItem = (index: number, field: keyof QuotationItem, value: string | number) => {
     const newItems = [...items];
-    const updatedValue = (field === "quantity" || field === "price") ? toNumber(value) : value;
+    const updatedValue = (field === "quantity" || field === "unitPrice") ? toNumber(value) : value;
     // @ts-expect-error: dynamic field assignment
     newItems[index][field] = updatedValue;
     setItems(newItems);
@@ -267,7 +320,8 @@ export default function QuotationForm({
         scopeOfWork: "",
         materials: [{ id: uid(), name: "", specification: "", quantity: 0, error: {} }],
         quantity: 0,
-        price: 0,
+        unitPrice: 0,
+        totalPrice: 0,
         error: {},
       },
     ]);
@@ -320,7 +374,7 @@ export default function QuotationForm({
   // === Calculations ===
   const calculateSummary = () => {
     const subtotal = items.reduce((sum, i) => {
-      return sum + toNumber(i.quantity) * toNumber(i.price);
+      return sum + toNumber(i.quantity) * toNumber(i.unitPrice);
     }, 0);
     const markupAmount = subtotal * (toNumber(markup) / 100);
     const totalWithMarkup = subtotal + markupAmount;
@@ -333,32 +387,50 @@ export default function QuotationForm({
   const buildItemsWithTotals = () => {
     return items.map((it) => ({
       ...it,
-      totalPrice: toNumber(it.quantity) * toNumber(it.price),
+      totalPrice: toNumber(it.quantity) * toNumber(it.unitPrice),
     }));
   };
 
   // === CAD Upload UI ===
+  
   const renderCadUpload = () => (
     <div className="border p-4 rounded-lg bg-gray-50">
       <label className="block text-gray-700 font-medium mb-2">Upload CAD Sketch</label>
       <div className="flex items-center gap-4">
-        <input
+        <input 
           type="file"
-          accept=".pdf,.jpg,.png,.dwg"
-          multiple
-          onChange={(e) => {
-            if (e.target.files) {
-              setCadSketchFile(Array.from(e.target.files));
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.dwg"
+          onChange={async (e) => {
+            if (e.target.files && e.target.files[0]) {
+              const file = e.target.files[0];
+              const MAX_FILE_SIZE = 10* 1024 * 1024;
+
+              if (file.size > MAX_FILE_SIZE) {
+                toast.error(`File "${file.name}" is too large. Max is 10MB.`);
+                return;
+              }
+              try {
+                const uploadResult = await uploadCadFile(e.target.files[0]);
+                if (uploadResult.success) {
+                  
+                  setCadSketchFile([ { id: Date.now(), name: uploadResult.file.name, filePath: uploadResult.file.filePath }, ]);
+                } else {
+                  toast.error("Upload failed: " + uploadResult.error);
+                }
+              } catch {
+                toast.error("Upload failed");
+              }
             }
           }}
+          disabled={isSent}
           className="hidden"
           id="cad-upload"
         />
         <label
           htmlFor="cad-upload"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition flex item-center gap-2"
         >
-          <UploadCloud size={18} /> Upload File
+          <UploadCloud size={18} />Upload File
         </label>
         {cadSketchFile.length > 0 && (
           <ul className="text-sm text-gray-700">
@@ -370,97 +442,166 @@ export default function QuotationForm({
                   onClick={() => setCadSketchFile(cadSketchFile.filter((_, idx) => idx !== i))}
                   className="text-red-600 hover:text-red-800"
                 >
-                  <X size={14} />
+                  ✕
                 </button>
               </li>
             ))}
           </ul>
         )}
       </div>
+      <p className="text-xs text-gray-500 mt-2">
+        Allowed types: PDF, JPG, PNG, DOC, XLS, DWG — Max size: 10MB
+      </p>
       {fieldErrors.cadSketch && <p className="text-red-600 text-sm mt-2">{fieldErrors.cadSketch}</p>}
     </div>
   );
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
   const handleSave = async (status: "draft" | "sent") => {
-     if (!validateAllFields()) {
-    alert("Please fix the validation errors before saving.");
-    return;
-  }
+    // only require validation when saving as final (sent)
+    if (status === "sent" && !validateAllFields()) {
+      toast.error("Please fill in all required fields before saving.");
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  const itemsForSave = items.map((it) => ({
-    itemName: it.itemName,
-    scopeOfWork: it.scopeOfWork,
-    quantity: toNumber(it.quantity),
-    unitPrice: toNumber(it.price), 
-    materials: it.materials.map((m) => ({
-      name: m.name,
-      specification: m.specification,
-      quantity: toNumber(m.quantity),
-    })),
-  }));
-
-  // Build attachedFiles array
-  const attachedFiles = cadSketchFile.map((f) => ({
-    fileName: f.name,
-    filePath: `/uploads/${f.name}`, // ✅ adjust to your storage logic
-  }));
-
-  const savedData = {
-    requestId,
-    quotationNumber,
-    revisionNumber,
-    baseQuotationId: baseId ?? undefined,
-    projectName: projectName || "",
-    mode: mode || "",
-    validity,
-    delivery,
-    warranty,
-    quotationNotes: notes, // ✅ renamed
-    cadSketch: cadSketchFile.length > 0 ? cadSketchFile[0].name : null,
-    vat,
-    markup,
-    attachedFiles,
-    items: itemsForSave,
-    status,
-  };
     try {
-      const res = await fetch("/api/quotations", {
+      let uploadedFilePath: string | null = null;
+
+      if (cadSketchFile.length > 0 && cadSketchFile[0] instanceof File) {
+        if (cadSketchFile[0].size > MAX_FILE_SIZE) {
+          toast.error("File too large. Maximum is 10MB.");
+          setIsLoading(false);
+          return;
+        }
+        const uploadResult = await uploadCadFile(cadSketchFile[0]);
+        if (uploadResult.succses) {
+          uploadedFilePath = uploadResult.file.filePath;
+        } else {
+          toast.error("Failed to uplaod file: " + uploadResult.error);
+          setIsLoading(false);
+          return;
+        }
+      } else if (cadSketchFile.length > 0) {
+        const first = cadSketchFile[0];
+        if (!(first instanceof File)) {
+          uploadedFilePath = first.filePath || null;
+        }
+      }
+
+      const itemsForSave = items.map((it) => ({
+        itemName: it.itemName,
+        scopeOfWork: it.scopeOfWork,
+        quantity: toNumber(it.quantity),
+        unitPrice: toNumber(it.unitPrice),
+        materials: it.materials.map((m) => ({
+          name: m.name,
+          specification: m.specification,
+          quantity: toNumber(m.quantity),
+        })),
+      }));
+
+      const attachedFiles = cadSketchFile.map((f) => 
+      f instanceof File
+        ? {
+          fileName: f.name,
+          filePath: `/uploads/${f.name}`,
+        }
+      : {
+          fileName: f.name,
+          filePath: f.filePath || `/uploads/${f.name}`,
+      });
+
+      const payLoad = {
+        requestId,
+        baseQuotationId: baseId ?? undefined,
+        projectName: projectName || "",
+        mode: mode || "",
+        validity,
+        delivery,
+        warranty,
+        quotationNotes,
+        cadSketch: uploadedFilePath,
+        vat,
+        markup,
+        attachedFiles,
+        items: itemsForSave,
+        status,
+      };
+
+      const res = await fetch("/api/sales/quotations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(savedData),
+        body: JSON.stringify(payLoad),
       });
 
       const result = await res.json();
+
       if (res.ok && result.success) {
-        alert("Quotation saved successfully!");
-        onSaved?.(result.quotation); // optional callback
+        // normaize possible shapes from api
+        const savedQuotation = result.quotation || result.data || result;
+
+        setQuotationNumber(savedQuotation?.quotationNumber || "");
+        setRevisionLabel(savedQuotation?.revisionLabel || "");
+
+        toast.success(status === "draft" ? "Draft saved successfully!" : "Quotation saved successfully!");
+
+        if (status === "draft") {
+          onSavedDraft?.(savedQuotation);
+        } else {
+          onSaved?.(savedQuotation);
+        }
       } else {
-        alert(`Failed to save quotation: ${result.error || "Unknown error"}`);
+        toast.error(`Failed to save quotation: ${result.error || "Unknown error"}`);
       }
     } catch (err) {
-      console.error("Error saving quotation:", err);
-      alert("Error saving quotation. Please try again.");
+      console.error("Error sabing quotation:", err);
+      toast.error("Error saving quotation. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSend = async () => {
+    
   if (!validateAllFields()) {
-    alert("Please fix the validation errors before sending.");
+    toast.error("Please fix the validation errors before sending.");
     return;
   }
 
   setIsLoading(true);
 
   try {
+    let uploadedFilePath: string | null = null;
+
+    if (cadSketchFile.length > 0 && cadSketchFile[0] instanceof File) {
+      if (cadSketchFile[0].size > MAX_FILE_SIZE) {
+        toast.error("File too large. Max size is 10MB.");
+        setIsLoading(false);
+        return;
+      }
+      const uploadResult = await uploadCadFile(cadSketchFile[0]);
+      if (uploadResult.success) {
+        uploadedFilePath = uploadResult.file.filePath;
+      } else {
+        toast.error("Failed to upload file: " + uploadResult.error);
+        setIsLoading(false);
+        return;
+      }
+    } else if (cadSketchFile.length > 0) {
+      const first = cadSketchFile[0];
+      if(!(first instanceof File)) {
+        uploadedFilePath = first.filePath || null;
+      }
+    }
+
     const itemsForSend = items.map((it) => ({
       itemName: it.itemName,
       scopeOfWork: it.scopeOfWork,
       quantity: toNumber(it.quantity),
-      unitPrice: toNumber(it.price),
+      unitPrice: toNumber(it.unitPrice),
       materials: it.materials.map((m) => ({
         name: m.name,
         specification: m.specification,
@@ -468,47 +609,55 @@ export default function QuotationForm({
       })),
     }));
 
-    const attachedFiles = cadSketchFile.map((f) => ({
-      fileName: f.name,
-      filePath: `/uploads/${f.name}`,
-    }));
+    // Build attachedFiles array
+  const attachedFiles = cadSketchFile.map((f) => 
+      f instanceof File
+        ? {
+          fileName: f.name,
+          filePath: `/uploads/${f.name}`,
+        }
+      : {
+        fileName: f.name,
+        filePath: f.filePath || `/uploads/${f.name}`,
+      }
+    );
 
-    const payload = {
+    const payLoad = {
       requestId,
-      quotationNumber,
-      revisionNumber,
       baseQuotationId: baseId ?? undefined,
       projectName: projectName || "",
       mode: mode || "",
       validity,
       delivery,
       warranty,
-      quotationNotes: notes,
-      cadSketch: cadSketchFile.length > 0 ? cadSketchFile[0].name : null,
+      quotationNotes,
+      cadSketch: uploadedFilePath,
       vat,
       markup,
-      status: "sent",
       attachedFiles,
+      status: "sent",
       items: itemsForSend,
     };
 
-    const res = await fetch("/api/quotations", {
+    const res = await fetch("/api/sales/quotations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      headers: { "Content-Type" : "application/json" },
+      body: JSON.stringify(payLoad),
     });
 
     const result = await res.json();
     if (res.ok && result.success) {
-      alert("Quotation sent successfully!");
-      setIsSent(true);        // ✅ mark as sent
+      toast.success("Quotation sent successfully!");
+      setIsSent(true);
+      setQuotationNumber(result.quotation.quotationNumber);
+      setRevisionLabel(result.quotation.revisionLabel);
       onSaved?.(result.quotation);
     } else {
-      alert(`Failed to send quotation: ${result.error || "Unknown error"}`);
+      toast.error(`Failed to send quotation: ${result.error || "Unknown error"}`);
     }
   } catch (err) {
-    console.error(err);
-    alert("Error sending quotation. Please try again.");
+    console.error("Error sending quotation:", err);
+    toast.error("Error sending quotation.Please try again.");
   } finally {
     setIsLoading(false);
   }
@@ -523,13 +672,13 @@ export default function QuotationForm({
         delivery={delivery}
         warranty={warranty}
         validity={validity}
-        notes={notes}
+        quotationNotes={quotationNotes}
         requestId={requestId}
         projectName={projectName}
         vat={vat}
         markup={markup}
         cadSketchFile={cadSketchFile}
-        revisionNumber={revisionNumber}
+        revisionLabel={revisionLabel}
         baseQuotationId={baseId ?? requestId}
         quotationNumber={quotationNumber}
         customer={customer}
@@ -549,7 +698,8 @@ export default function QuotationForm({
       <h3 className="font-bold text-xl text-gray-800 border-b pb-2 mb-3">Customer Information</h3>
       {customer ? (
         <div className="space-y-2 text-gray-700">
-          <p><span className="font-medium">Name:</span> {customer.fullName}</p>
+          <p><span className="font-medium">Company:</span> {customer.companyName}</p>
+          <p><span className="font-medium">Contact Person:</span> {customer.contactPerson}</p>
           <p><span className="font-medium">Email:</span> {customer.email}</p>
           <p><span className="font-medium">Phone:</span> {customer.phone}</p>
           <p><span className="font-medium">Address:</span> {customer.address}</p>
@@ -563,8 +713,8 @@ export default function QuotationForm({
     <div>
       <h3 className="font-bold text-xl text-gray-800 border-b pb-2 mb-3">Quotation Details</h3>
       <div className="space-y-2 text-gray-700">
-        <p><span className="font-medium">Quotation Number:</span> {quotationNumber}</p>
-        <p><span className="font-medium">Revision:</span> {revisionNumber}</p>
+        <p><span className="font-medium">Quotation Number:</span> {quotationNumber || "Pending"}</p>
+        <p><span className="font-medium">Revision:</span> {revisionLabel}</p>
         <p><span className="font-medium">Base Quotation ID:</span> {baseId ?? requestId}</p>
         <p><span className="font-medium">Request ID:</span> {requestId}</p>
         <p><span className="font-medium">Project Name:</span> {projectName || "Not provided"}</p>
@@ -590,7 +740,7 @@ export default function QuotationForm({
 
       {/* Items */}
       {items.map((item, index) => {
-        const itemTotal = toNumber(item.quantity) * toNumber(item.price);
+        const itemTotal = toNumber(item.quantity) * toNumber(item.unitPrice);
         return (
           <div key={index} className="border rounded-xl p-6 space-y-4 bg-white shadow-sm relative">
             {/* Item Name */}
@@ -600,6 +750,7 @@ export default function QuotationForm({
                 type="text"
                 value={item.itemName}
                 onChange={(e) => updateItem(index, "itemName", e.target.value)}
+                disabled={isSent}
                 className={`w-full border rounded-lg px-4 py-2 ${item.error?.itemName ? "border-red-500" : ""}`}
               />
               {item.error?.itemName && <p className="text-red-600 text-sm mt-1">{item.error.itemName}</p>}
@@ -611,6 +762,7 @@ export default function QuotationForm({
               <textarea
                 value={item.scopeOfWork}
                 onChange={(e) => updateItem(index, "scopeOfWork", e.target.value)}
+                disabled={isSent}
                 className={`w-full border rounded-lg px-4 py-2 ${item.error?.scopeOfWork ? "border-red-500" : ""}`}
                 rows={3}
               />
@@ -627,6 +779,7 @@ export default function QuotationForm({
                     placeholder="Material Name"
                     value={mat.name}
                     onChange={(e) => updateMaterial(index, mi, "name", e.target.value)}
+                    disabled={isSent}
                     className={`border rounded px-2 py-1 ${mat.error?.name ? "border-red-500" : ""}`}
                   />
                   <input
@@ -634,6 +787,7 @@ export default function QuotationForm({
                     placeholder="Specification"
                     value={mat.specification}
                     onChange={(e) => updateMaterial(index, mi, "specification", e.target.value)}
+                    disabled={isSent}
                     className={`border rounded px-2 py-1 ${mat.error?.specification ? "border-red-500" : ""}`}
                   />
                   <input
@@ -641,6 +795,7 @@ export default function QuotationForm({
                     placeholder="Qty"
                     value={mat.quantity === 0 ? "" : mat.quantity}
                     onChange={(e) => updateMaterial(index, mi, "quantity", e.target.value)}
+                    disabled={isSent}
                     className={`border rounded px-2 py-1 ${mat.error?.quantity ? "border-red-500" : ""}`}
                   />
                   <button
@@ -668,6 +823,7 @@ export default function QuotationForm({
                   type="number"
                   value={item.quantity === 0 ? "" : item.quantity}
                   onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                  disabled={isSent}
                   className={`w-full border rounded-lg px-4 py-2 ${item.error?.quantity ? "border-red-500" : ""}`}
                 />
                 {item.error?.quantity && <p className="text-red-600 text-sm mt-1">{item.error.quantity}</p>}
@@ -676,11 +832,12 @@ export default function QuotationForm({
                 <label className="block text-gray-700 font-medium mb-1">Unit Price</label>
                 <input
                   type="number"
-                  value={item.price === 0 ? "" : item.price}
-                  onChange={(e) => updateItem(index, "price", e.target.value)}
-                  className={`w-full border rounded-lg px-4 py-2 ${item.error?.price ? "border-red-500" : ""}`}
+                  value={item.unitPrice === 0 ? "" : item.unitPrice}
+                  onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
+                  disabled={isSent}
+                  className={`w-full border rounded-lg px-4 py-2 ${item.error?.unitPrice ? "border-red-500" : ""}`}
                 />
-                {item.error?.price && <p className="text-red-600 text-sm mt-1">{item.error.price}</p>}
+                {item.error?.unitPrice && <p className="text-red-600 text-sm mt-1">{item.error.unitPrice}</p>}
               </div>
             </div>
 
@@ -707,6 +864,7 @@ export default function QuotationForm({
             type="date"
             value={validity}
             onChange={(e) => setValidity(e.target.value)}
+            disabled={isSent}
             className={`w-full border rounded px-3 py-2 ${fieldErrors.validity ? "border-red-500" : ""}`}
           />
           {fieldErrors.validity && <p className="text-red-600 text-sm">{fieldErrors.validity}</p>}
@@ -717,6 +875,7 @@ export default function QuotationForm({
           <select
             value={delivery}
             onChange={(e) => setDelivery(e.target.value)}
+            disabled={isSent}
             className={`w-full border rounded px-3 py-2 ${fieldErrors.delivery ? "border-red-500" : ""}`}
           >
             <option value="">Select Delivery</option>
@@ -734,6 +893,7 @@ export default function QuotationForm({
           <select
             value={warranty}
             onChange={(e) => setWarranty(e.target.value)}
+            disabled={isSent}
             className={`w-full border rounded px-3 py-2 ${fieldErrors.warranty ? "border-red-500" : ""}`}
           >
             <option value="">Select Warranty</option>
@@ -752,12 +912,13 @@ export default function QuotationForm({
       <div>
         <label className="block text-gray-700 font-medium mb-1">Quotation Notes</label>
         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          value={quotationNotes}
+          onChange={(e) => setQuotationNotes(e.target.value)}
+          disabled={isSent}
           rows={3}
-          className={`w-full border rounded px-3 py-2 ${fieldErrors.notes ? "border-red-500" : ""}`}
+          className={`w-full border rounded px-3 py-2 ${fieldErrors.quotationNotes ? "border-red-500" : ""}`}
         />
-        {fieldErrors.notes && <p className="text-red-600 text-sm">{fieldErrors.notes}</p>}
+        {fieldErrors.quotationNotes && <p className="text-red-600 text-sm">{fieldErrors.quotationNotes}</p>}
       </div>
 
       {/* VAT & Markup */}
@@ -768,6 +929,7 @@ export default function QuotationForm({
             type="number"
             value={vat}
             onChange={(e) => setVat(toNumber(e.target.value))}
+            disabled={isSent}
             className="w-full border rounded px-3 py-2"
           />
         </div>
@@ -777,6 +939,7 @@ export default function QuotationForm({
             type="number"
             value={markup}
             onChange={(e) => setMarkup(toNumber(e.target.value))}
+            disabled={isSent}
             className="w-full border rounded px-3 py-2"
           />
         </div>
@@ -815,12 +978,12 @@ export default function QuotationForm({
       if (validateAllFields()) {
         setShowPreview(true);
       } else {
-        alert("Complete the form before proceeding.");
+        toast.error("Complete the form before proceeding.");
       }
     }}
     className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
   >
-    Next
+    Done
   </button>
 
   <button
@@ -834,6 +997,14 @@ export default function QuotationForm({
     {isLoading ? "Saving..." : "Save as Draft"}
   </button>
 </div>
+{!isSent ? (
+  <>
+  <button onClick={() => handleSave("draft")}>Save as Draft</button>
+  <button onClick={() => setShowPreview(true)}>Done</button>
+  </>
+) : (
+  <p className="text-green600 font-semibold">Quotation has been sent.</p>
+)}
     </div>
   );
 };  

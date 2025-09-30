@@ -1,3 +1,5 @@
+// app/customer/cus_profile/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,17 +7,19 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation"; // ✅ import router
 import { CustomerHeader } from "@/components/header-customer";
 import { toast } from "sonner";
-import { Mail, User, Phone, MapPin, Loader2, Edit3, X, Check } from "lucide-react";
+import { Mail, User, Phone, MapPin, Loader2, Edit3, X, Check, Building2 } from "lucide-react";
 
 export default function CustomerProfile() {
   const { user } = useUser();
   const router = useRouter(); // ✅ initialize router
 
   const [profile, setProfile] = useState({
-    fullName: "",
+    companyName: "",
+    contactPerson: "",
     email: "",
     phone: "",
     address: "",
+    clientCode: "",
   });
 
   const [originalProfile, setOriginalProfile] = useState(profile);
@@ -28,10 +32,12 @@ export default function CustomerProfile() {
   useEffect(() => {
     if (user) {
       const newProfile = {
-        fullName: user.fullName || "",
+        companyName: "",
+        contactPerson: user.fullName || "",
         email: user.primaryEmailAddress?.emailAddress || "",
         phone: "",
         address: "",
+        clientCode: "",
       };
       setProfile(newProfile);
       setOriginalProfile(newProfile);
@@ -40,36 +46,38 @@ export default function CustomerProfile() {
 
   // Fetch existing profile from DB
   useEffect(() => {
-    async function fetchProfile() {
-      try {
-        const res = await fetch("/api/customer");
-        if (res.ok) {
-          const data = await res.json();
-          if (data && (data.phone || data.address)) {
-            setProfile((prev) => ({
-              ...prev,
-              phone: data.phone || "",
-              address: data.address || "",
-            }));
-            setOriginalProfile((prev) => ({
-              ...prev,
-              phone: data.phone || "",
-              address: data.address || "",
-            }));
-            setIsFirstTime(false); // user already has info
-          } else {
-            setIsFirstTime(true); // first-time setup
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
+  async function fetchProfile() {
+    try {
+      const res = await fetch("/api/customer");
+      if (!res.ok) return;
+
+      const result = await res.json();
+
+      if (result.status === "ok" && result.data) {
+        setProfile(result.data);          // fill entire profile
+        setOriginalProfile(result.data);  // keep original for cancel
+        setIsFirstTime(false);
+      } else {
+        setIsFirstTime(true);
       }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
     }
-    fetchProfile();
-  }, []);
+  }
+  fetchProfile();
+}, []);
+
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
+
+    if (!profile.companyName || profile.companyName.trim().length < 2) {
+      newErrors.companyName = "Company name is required.";
+    }
+
+    if (!profile.contactPerson || profile.contactPerson.trim().length < 2) {
+      newErrors.contactPerson = "Contact person is required.";
+    }
 
     if (!profile.phone) {
       newErrors.phone = "Phone number is required.";
@@ -80,6 +88,12 @@ export default function CustomerProfile() {
 
     if (!profile.address || profile.address.length < 5) {
       newErrors.address = "Address must be at least 5 characters.";
+    }
+
+    if (!profile.clientCode || profile.clientCode.length < 2) {
+      newErrors.clientCode = "Client code is required (Min. of 2 characters).";
+    } else if (!profile.clientCode || profile.clientCode.length > 5) {
+      newErrors.clientCode = "Client code is required (Max. of 5 characters).";
     }
 
     setErrors(newErrors);
@@ -139,20 +153,48 @@ export default function CustomerProfile() {
         <h1 className="text-3xl font-extrabold mb-8 text-[#173f63] text-center">
           Customer Profile
         </h1>
+        
 
         <div className="space-y-6">
+          {/* Company Name */}
+          <div className="relative">
+            <Building2 className="absolute left-3 top-3 text-gray-400" size={20} />
+            <input
+              type="text"
+              value={profile.companyName}
+              onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
+              placeholder="Enter company name"
+              className={`w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-2 focus:ring-[#173f63] focus:outline-none`}
+            />
+            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
+              Company Name
+            </label>
+            {errors.companyName && (
+              <p className="text-red-500 text-sm mt-1">{errors.companyName}</p>
+            )}
+          </div>
+
           {/* Full Name */}
           <div className="relative">
             <User className="absolute left-3 top-3 text-gray-400" size={20} />
             <input
               type="text"
-              value={profile.fullName}
-              readOnly
-              className="w-full pl-10 pr-3 py-3 border rounded-lg bg-gray-100 cursor-not-allowed"
+              value={profile.contactPerson}
+              readOnly={!!user?.fullName}
+              onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })}
+              placeholder="Enter your full name"
+              className={`w-full pl-10 pr-3 py-3 border rounded-lg ${
+                user?.fullName
+                  ? "bg-gray-100 cursor-not-allowed"
+                  : "focus:ring-2 focus:ring-[#173f63] focus:outline-none"
+              }`}
             />
             <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Full Name
+              Contact Person
             </label>
+            {errors.contactPerson && (
+              <p className="text-red-500 text-sm mt-1">{errors.contactPerson}</p>
+            )}
           </div>
 
           {/* Email */}
@@ -214,6 +256,27 @@ export default function CustomerProfile() {
             </label>
             {errors.address && (
               <p className="text-red-500 text-sm mt-1">{errors.address}</p>
+            )}
+          </div>
+          {/* Client Code (eg. SPX for shopee, LAZ for lazada)*/}
+          <div className="relative">
+            <input 
+              type="text"
+              value={profile.clientCode || ""}
+              readOnly={!isEditing && !isFirstTime}
+              onChange={(e) => setProfile({ ...profile, clientCode: e.target.value.toUpperCase() })}
+              placeholder="Enter your client code (e.g. LV for Luis Vuitton)"
+              className={`w-full pl-3 pr-3 py-3 border rounded-lg ${
+                isEditing || isFirstTime
+                  ? "focus:ring-2 focus:ring-[#173f63] focus:outline-none}"
+                  : "bg-gray-100 cursor-not-allowed"
+              } ${errors.clientCode ? "border-red-500" : ""}`}
+            />
+            <label className="text-xs text-gray-500 absolute left-3 -top-2 bg-white px-1">
+              Client Code
+            </label>
+            {errors.clientCode && (
+              <p className="text-red-500 text-sm mt-1">{errors.clientCode}</p>
             )}
           </div>
 

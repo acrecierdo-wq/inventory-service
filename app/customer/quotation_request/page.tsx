@@ -1,3 +1,5 @@
+// app/customer/quotation_request/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -96,7 +98,7 @@ const QuotationRequestPage = () => {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
-  const [profileComlete, setProfileComplete] = useState(false);
+  //const [profileComplete, setProfileComplete] = useState(false);
   
   const searchParams = useSearchParams();
 const initialStatus = searchParams.get("status") as
@@ -126,49 +128,90 @@ useEffect(() => {
     setToastType(type);
   };
 
-  useEffect(() => {
-    async function checkProfile() {
-      try {
-        const res = await fetch("/api/customer");
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.phone && data?.address) {
-            setProfileComplete(true);
-          }  else {
-            setProfileComplete(false);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-      }
-    }
-    checkProfile();
-  },[]);
+  // useEffect(() => {
+  //   async function checkProfile() {
+  //     try {
+  //       const res = await fetch("/api/customer");
+  //       if (res.ok) {
+  //         const data = await res.json();
+  //         if (data?.phone && data?.address && data?.clientCode) {
+  //           setProfileComplete(true);
+  //         }  else {
+  //           setProfileComplete(false);
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Error fetching profile:", err);
+  //     }
+  //   }
+  //   checkProfile();
+  // },[]);
 
   const router = useRouter();
- const handleNewRequest = () => {
-  if (!profileComlete) {
-    toast.warning("⚠️ Please complete your profile first (phone & address).");
-    router.push("/customer/cus_profile");
-    return;
-  }
+ const handleNewRequest = async () => {
+  try {
+    const res = await fetch("/api/customer");
+    const result = await res.json();
 
+    console.log("PROFILE DATA:", result); 
+
+    if (result.status !== "ok") {
+      toast.warning("⚠️ Please complete your profile first (name, phone, address, & client code).");
+      // router.push("/customer/cus_profile");
+      return;
+    }
+
+    // ✅ profile is complete → continue with request
+    // Example: navigate to new request form
     router.push("/customer/quotation_request/NewRequest");
-  
+  } catch (err) {
+    console.error("Error checking profile:", err);
+    toast.error("Something went wrong. Please try again.");
+  }
 };
-
 
   useEffect(() => {
     const fetchRequests = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/q_request");
-        const data = await res.json();
-        setRequests(data);
-        setFilteredRequests(data);
+        const res = await fetch("/api/customer/q_request");
+        const result = await res.json();
+
+        if (!res.ok) {
+          console.log("Failed to fetch requests:", result.error || res.statusText);
+          setRequests([]);
+          setFilteredRequests([]);
+          return;
+        }
+
+        if (result.status === "ok") {
+          setRequests(result.data || []);
+          setFilteredRequests(result.data || []);
+        } else if (result.status === "no-profile") {
+          console.warn("No profile found. Redirecting to profile setup...");
+          setRequests([]);
+          setFilteredRequests([]);
+
+          toast.error("Please complete your profile first before making any requests.");
+          //router.push("/customer/cus_profile");
+        } else if (result.status === "incomplete-profile") {
+          console.warn("Profile incomplete.");
+          setRequests([]);
+          setFilteredRequests([]);
+
+          toast.error("Profile incomplete. Please update your details.");
+          //.push("/customer/cus_profile");
+        } else {
+          console.error("Unexpected response:", result);
+          setRequests([]);
+          setFilteredRequests([]);
+        }
       } catch (err) {
         console.error("Failed to fetch requests:", err);
-        showToast("Failed to fetch requests", "error");
+
+        toast.error("Failed to fetch requests");
+        setRequests([]);
+        setFilteredRequests([]);
       } finally {
         setLoading(false);
       }
@@ -177,6 +220,11 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
+    if (!Array.isArray(requests)) {
+      setFilteredRequests([]);
+      return;
+    }
+
     let updated = [...requests];
 
     if (statusFilter) {
@@ -233,8 +281,8 @@ useEffect(() => {
 
   const handleCancelAcceptedRequest = async (id: number) => {
   try {
-    const res = await fetch("/api/q_request", {
-      method: "PATCH",
+    const res = await fetch("/api/customer/q_request", {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status: "CancelRequested" }),
     });
@@ -271,8 +319,8 @@ const confirmCancelRequest = async () => {
     // Determine new status
     const newStatus = req.status === "Pending" ? "Cancelled" : "CancelRequested";
 
-    const res = await fetch("/api/q_request", {
-      method: "PATCH",
+    const res = await fetch("/api/customer/q_request", {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: cancelRequestId, status: newStatus }),
     });
@@ -311,7 +359,7 @@ const confirmCancelRequest = async () => {
     if (deleteRequestId === null) return;
 
     try {
-      const res = await fetch("/api/q_request", {
+      const res = await fetch("/api/customer/q_request", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deleteRequestId }),

@@ -1,5 +1,6 @@
 import { SideBarSales } from "@/components/sidebar-sales";
-import SalesClientComponent from "../validate/sales_validate";
+import RoleGuard from "../validate/role_guard";
+import MustChangePasswordRedirect from "@/components/change-password/change-password-redirect"; 
 
 type Props = {
     children: React.ReactNode;
@@ -7,7 +8,8 @@ type Props = {
 
 const SalesLayout = ({children,}: Props) => {
     return (
-<SalesClientComponent>
+        <RoleGuard allowedRoles={["sales"]}>
+            <MustChangePasswordRedirect>
         <div className="min-h-screen flex flex-row bg-dash">
         <>
         <SideBarSales/>
@@ -18,7 +20,8 @@ const SalesLayout = ({children,}: Props) => {
           </main>
         </>
         </div>
-        </SalesClientComponent>
+        </MustChangePasswordRedirect>
+        </RoleGuard>
     );
 };
 

@@ -31,7 +31,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
   }
 }
 
-export async function DELETE(req: NextRequest, context: RouteContext) {
+export async function DELETE(_req: NextRequest, context: RouteContext) {
   const { id } = await context.params;
   const catNum = Number(id);
 

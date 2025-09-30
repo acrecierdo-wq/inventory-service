@@ -462,10 +462,13 @@ useEffect(() => {
   }, [draftData]);
 
   useEffect(() => {
-        if (user) {
-          setIssuedBy(user.username || ""); 
-        }
-      }, [user]);
+  if (user) {
+    setIssuedBy(
+      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
+    );
+  }
+}, [user]);
+
 
   const MAX_QUANTITY = 9999;
 

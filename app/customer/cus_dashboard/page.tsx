@@ -20,19 +20,22 @@ const CustomerPage = () => {
 
   useEffect(() => {
     const fetchRequests = async () => {
-      try {
-        const res = await fetch("/api/q_request");
-        if (!res.ok) return;
+      const res = await fetch("/api/customer/q_request");
+      const result = await res.json();
 
-        const data: QuotationRequest[] = await res.json();
-
-        setPendingCount(data.filter((r) => r.status === "Pending").length);
-        setAcceptedCount(data.filter((r) => r.status === "Accepted").length);
-        setCancelledCount(data.filter((r) => r.status === "Cancelled").length);
-        setApprovedCount(data.filter((r) => r.status === "Approved").length);
-      } catch (err) {
-        console.error(err);
+      if (!res.ok) {
+        console.log("Failed to fetch requests", res.status);
+        return;
       }
+
+      // Use the nested array
+      const requests: QuotationRequest[] = result.data ?? [];
+
+      setPendingCount(requests.filter((r) => r.status === "Pending").length);
+      setAcceptedCount(requests.filter((r) => r.status === "Accepted").length);
+      setCancelledCount(requests.filter((r) => r.status === "Cancelled").length);
+      setApprovedCount(requests.filter((r) => r.status === "Approved").length);
+
     };
 
     fetchRequests();
@@ -48,7 +51,7 @@ const CustomerPage = () => {
         <CustomerHeader />
 
         <div className="h-auto mt-2 flex flex-row border-slate-200 px-4 bg-[#fff6f5]">
-          <div className="mx-4 mt-2 flex flex-row gap-4">
+          <div className="mx-4 mt-2 mb-2 flex flex-row gap-4">
 
             {/* Pending */}
             <div
@@ -78,7 +81,7 @@ const CustomerPage = () => {
             {/* Accepted */}
             <div
               onClick={() => handleRedirect("Accepted")}
-              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#4350fe] rounded-lg p-2 flex flex-col justify-center"
+              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#7bb6f1] rounded-lg p-2 flex flex-col justify-center"
             >
               <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
                 Accepted
@@ -100,7 +103,7 @@ const CustomerPage = () => {
             {/* Cancelled */}
             <div
               onClick={() => handleRedirect("Cancelled")}
-              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#f55d49] rounded-lg p-2 flex flex-col justify-center"
+              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#f58071] rounded-lg p-2 flex flex-col justify-center"
             >
               <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
                 Cancelled
@@ -122,7 +125,7 @@ const CustomerPage = () => {
             {/* Approved */}
             <div
               onClick={() => handleRedirect("Approved")}
-              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#34d399] rounded-lg p-2 flex flex-col justify-center"
+              className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-[#83d5b7] rounded-lg p-2 flex flex-col justify-center"
             >
               <div className="text-[#5a4632] text-sm uppercase font-bold ml-2">
                 Approved
