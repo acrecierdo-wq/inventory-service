@@ -314,6 +314,8 @@ export async function POST(req: Request) {
       })
       .returning();
 
+      const issuanceRef = `ISS-CTIC-${new Date().getFullYear()}-${String(newIssuance.id).padStart(4, "0")}`
+
       // Insert issuance items and update stock
       for (const item of issuedItems) {
         const itemData = validatedItems.get(item.itemId);
@@ -357,7 +359,7 @@ export async function POST(req: Request) {
         }
       }
 
-      return NextResponse.json({ message: isDraft ? "Issuance saved as draft." : "Issuance saved successfully!", warning, issuanceId: newIssuance.id, }, { status: 200 });
+      return NextResponse.json({ message: isDraft ? "Issuance saved as draft." : "Issuance saved successfully!", warning, issuanceId: newIssuance.id, issuanceRef }, { status: 200 });
   } catch (error: unknown) {
     console.error("Issuance POST error:", error);
     return new Response(JSON.stringify({ error: "An unexpected error occurred..", details: error instanceof Error ? error.message : String(error),}), { status: 500, headers: { "Content-Type": "application/json"},});

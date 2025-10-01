@@ -469,6 +469,15 @@ const ItemPropertiesPage = () => {
   /** Add Item */
   const handleAdd = () => {
     if (!newItemName.trim()) return;
+
+    const exists = items.some(
+      (item) => item.name.toLowerCase() === newItemName.trim().toLowerCase()
+    );
+
+    if (exists) {
+      toast.error(`${activeTab} "${newItemName}" already exists.`);
+      return;
+    }
     setShowConfirmModal(true);
   };
 
@@ -517,6 +526,18 @@ const ItemPropertiesPage = () => {
 
   const handleUpdate = async (id: number) => {
     if (!editName.trim()) return;
+
+    const exists = items.some(
+      (item) =>
+        item.id !== id &&
+        item.name.toLowerCase() === editName.trim().toLowerCase()
+    );
+
+    if (exists) {
+      toast.error(`${activeTab} "${editName}" already exists.`);
+      return;
+    }
+
     const res = await fetch(`/api/${activeTab}/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

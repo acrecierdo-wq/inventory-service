@@ -178,6 +178,7 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
                                         ))}
                                     </tbody>
                                 </table>
+          <div>Issuance Reference: {item.issuanceRef}</div>
           </div>
 
           {/* Add more item details here */}

@@ -1,19 +1,31 @@
 // app/api/variants/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { db } from '@/db/drizzle';
 import { variants } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const body = await req.json();
+  const name = body.name.trim();
 
   try {
-    const newVariant = await db.insert(variants).values({
-      name: body.name,
-     }).returning(); // <-- good to have, returns the inserted row
+const existing = await db
+    .select()
+    .from(variants)
+    .where(eq(variants.name, name));
+
+    if (existing.length > 0) {
+      return NextResponse.json({ success: false, message: "Variant alread exists." }, { status: 400 });
+    }
+
+    const newVariant = await db
+      .insert(variants)
+      .values({ name })
+      .returning(); // <-- good to have, returns the inserted row
 
     return NextResponse.json({ success: true, data: newVariant });
   } catch (error) {
-    return NextResponse.json({ success: false, message: (error as Error).message });
+    return NextResponse.json({ success: false, message: "Failed to add variant." }, { status: 500 });
   }
 }
 

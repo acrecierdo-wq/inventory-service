@@ -13,7 +13,19 @@ import {
 import { NextResponse, NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/clerk-sdk-node";
 import bcrypt from "bcryptjs";
+
+type ClerkSignInResponse =
+  | {
+      id: string;
+      status: "complete" | string;
+      created_at: number;
+      // add other Clerk fields if you need them later
+    }
+  | {
+      errors: { message: string; code?: string }[];
+    };
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,8 +45,9 @@ export async function POST(req: NextRequest) {
       note,
       loggedBy,
       items: usageItems,
-      pin,
+      password,
     } = body;
+
     console.log("Parsed fields:", {
       personnelName,
       department,
@@ -43,40 +56,56 @@ export async function POST(req: NextRequest) {
       note,
       loggedBy,
       items: usageItems,
-      pin,
+      password,
     });
 
+    // ✅ Get the current signed-in user
     const user = await currentUser();
     if (!user) {
-      console.log("No Clerk user");
-      return NextResponse.json({ error: "Unauthoeized" }, { status: 401 });
-    }
-    
-    const [dbUser] = await db
-      .select()
-      .from(appUsers)
-      .where(eq(appUsers.clerkId, user.id))
-      .limit(1);
-      console.log("Found appUser:", dbUser);
-
-    if (!dbUser || !dbUser.pinHash) {
-      console.log("No PIN hash in dbUser");
-      return NextResponse.json({ error: "PIN not set for this user." }, { status: 400 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("About to compare PIN:", { pin, pinHash: dbUser.pinHash });
-    const isValid = await bcrypt.compare(pin, dbUser.pinHash);
-    console.log("bcrypt.comapre.result:", isValid);
-
-    if (!isValid) {
-      console.log("Invalid PIN");
-      return NextResponse.json({ error: "Invalid PIN"}, { status: 401 });
+    // ✅ Password required
+    if (!password) {
+      return NextResponse.json({ error: "Password required" }, { status: 400 });
     }
 
-    const loggedBySafe = 
-      user?.fullName?.trim() ||
-      user?.emailAddresses[0]?.emailAddress ||
+    // ✅ Check if account even supports passwords
+    if (!user.passwordEnabled) {
+      return NextResponse.json(
+        { error: "This account does not support password verification." },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Verify password with Clerk
+    try {
+      const verifyResult = await clerkClient.users.verifyPassword({
+        userId: user.id,
+        password,
+      });
+
+      if (!verifyResult.verified) {
+        return NextResponse.json({ error: "Invalid password." }, { status: 400 });
+      }
+    } catch (err: unknown) {
+      console.error("Password verification failed:", err);
+      return NextResponse.json(
+        {
+          error: "Password verification failed.",
+          details: err instanceof Error ? err.message : String(err),
+        },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Safe "loggedBy" field
+    const loggedBySafe =
+      user.fullName?.trim() ||
+      user.emailAddresses[0]?.emailAddress ||
       "System";
+
+    // 👇 continue with your insert logic here...
 
     console.log("Incoming POST /api/internal_usages payload:", {
       personnelName,

@@ -42,7 +42,7 @@ export const CustomerHeader = ({className}: Props) => {
       console.warn("Error fetching profile:", err);
     }
   };
-
+ 
   fetchProfile();
 }, [pathname]);
 

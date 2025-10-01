@@ -24,6 +24,7 @@ export type IssuanceItem = {
   issuedAt: string;  // ISO date string
   issuedBy: string;
   items: IssuanceItemDetail[];
+  issuanceRef: string;
 };
 
 export type DraftIssuance = {

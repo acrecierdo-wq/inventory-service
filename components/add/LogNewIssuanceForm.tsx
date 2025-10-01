@@ -33,6 +33,7 @@ interface Props {
 
 const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
+  const [issuanceRef, setIssuanceRef] = useState<string | null>(null);
   const [clientName, setClientName] = useState(draftData?.clientName || "");
   const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
   const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
@@ -403,6 +404,7 @@ useEffect(() => {
       if (!res.ok) {
         // Attempt to parse error JSON like you had
         let errorMessage = "Failed to process issuance.";
+
         try {
           const ct = res.headers.get("content-type") || "";
           if (ct.includes("application/json")) {
@@ -418,6 +420,10 @@ useEffect(() => {
       }
 
       const result = await res.json();
+
+      if (result.issuanceRef) {
+    setIssuanceRef(result.issuanceRef);
+  }
 
       if (result.warning && result.warning.length > 0) {
         result.warning.forEach((w: string, i: number) => {
@@ -479,12 +485,17 @@ useEffect(() => {
     return Number.isNaN(parsed) ? "" : parsed;
   };
 
+  
+
   return (
     <WarehousemanClientComponent>
       <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Issuance</h1>
+          <div className="flex flex-row justify-between">
+            <h1 className="text-3xl font-bold text-[#173f63] mb-2">Log Item Issuance</h1>
+            <p className="text-md font-bold text-[#173f63]">Issuance Ref: {issuanceRef ?? "Draft"}</p>
+          </div>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
             {/* Client Name */}

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ClerkLoaded, ClerkLoading, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
-import { Loader } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -54,7 +54,7 @@ export const Header = () => {
                 </div>
         </div>
             <ClerkLoading>
-                <Loader className="h-5 w-5 text-muted-foreground animate-spin"/>
+                <Loader2 className="h-5 w-5 text-muted-foreground animate-spin"/>
             </ClerkLoading>
             <ClerkLoaded>
             <SignedIn>

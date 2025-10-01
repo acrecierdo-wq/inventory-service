@@ -269,18 +269,18 @@ if (isDuplicate) {
 
         <section className="flex flex-row gap-9">
           <div className="w-[120px] text-black text-start text-sm">
-            Unit:
+            Size:
           </div>
           <div className="w-[320px] text-black">
-          <Select onValueChange={(value: string | number) => setFormData({ ...formData, unitId: Number(value) })}
-            value={formData.unitId ? formData.unitId.toString() : ""}
+          <Select onValueChange={(value) => setFormData({ ...formData, sizeId: value !== "" ? Number(value) : null})}
+            value={formData.sizeId ? formData.sizeId.toString() : ""}
             >
             <SelectTrigger className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100 cursor-pointer">
-              <SelectValue placeholder="Select Unit" />
+              <SelectValue placeholder="Select Size" />
             </SelectTrigger>
             <SelectContent>
-              {units.map((unit) => (
-                <SelectItem key={unit.id} value={unit.id.toString()} className="hover:bg-gray-100 cursor-pointer">{unit.name}</SelectItem>
+              {sizes.map((s) => (
+                <SelectItem key={s.id} value={s.id.toString()} className="hover:bg-gray-100 cursor-pointer">{s.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -309,18 +309,18 @@ if (isDuplicate) {
 
         <section className="flex flex-row gap-9">
           <div className="w-[120px] text-black text-start text-sm">
-            Size:
+            Unit:
           </div>
           <div className="w-[320px] text-black">
-          <Select onValueChange={(value) => setFormData({ ...formData, sizeId: value !== "" ? Number(value) : null})}
-            value={formData.sizeId ? formData.sizeId.toString() : ""}
+          <Select onValueChange={(value: string | number) => setFormData({ ...formData, unitId: Number(value) })}
+            value={formData.unitId ? formData.unitId.toString() : ""}
             >
             <SelectTrigger className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100 cursor-pointer">
-              <SelectValue placeholder="Select Size" />
+              <SelectValue placeholder="Select Unit" />
             </SelectTrigger>
             <SelectContent>
-              {sizes.map((s) => (
-                <SelectItem key={s.id} value={s.id.toString()} className="hover:bg-gray-100 cursor-pointer">{s.name}</SelectItem>
+              {units.map((unit) => (
+                <SelectItem key={unit.id} value={unit.id.toString()} className="hover:bg-gray-100 cursor-pointer">{unit.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
