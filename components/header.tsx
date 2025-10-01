@@ -100,7 +100,6 @@
 "use client"
 import { cn } from "@/lib/utils";
 import { ClerkLoaded, SignedIn, useUser, useClerk } from "@clerk/nextjs";
-import Image from "next/image";
 import Time from "./ui/time";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

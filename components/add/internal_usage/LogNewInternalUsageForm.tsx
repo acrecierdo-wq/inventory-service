@@ -798,7 +798,7 @@ type InternalUsageError = {
 type InternalUsageResponse = InternalUsageSuccess | InternalUsageError;
 
 const NewInternalUsagePage = () => {
-  const { isLoaded, signIn } = useSignIn();
+  const { isLoaded } = useSignIn();
   const { user } = useUser();
   const [personnelName, setPersonnelName] = useState("");
   const [department, setDepartment] = useState("");
@@ -811,7 +811,7 @@ const NewInternalUsagePage = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [passwordError, setPasswordError] = useState(false);
+  const [passwordError ] = useState(false);
 
   const [items, setItems] = useState<FormItem[]>([]);
   const [newItem, setNewItem] = useState<FormItem>({

@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { clerkClient } from "@clerk/clerk-sdk-node";
 
 export async function POST(req: NextRequest) {
     try {

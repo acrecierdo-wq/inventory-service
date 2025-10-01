@@ -25,6 +25,7 @@ const existing = await db
 
     return NextResponse.json({ success: true, data: newVariant });
   } catch (error) {
+    console.error("Variant POST error:", error);
     return NextResponse.json({ success: false, message: "Failed to add variant." }, { status: 500 });
   }
 }

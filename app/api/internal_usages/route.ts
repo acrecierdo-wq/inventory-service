@@ -8,24 +8,11 @@ import {
   sizes,
   variants,
   units,
-  appUsers,
 } from "@/db/schema";
 import { NextResponse, NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { clerkClient } from "@clerk/clerk-sdk-node";
-import bcrypt from "bcryptjs";
-
-type ClerkSignInResponse =
-  | {
-      id: string;
-      status: "complete" | string;
-      created_at: number;
-      // add other Clerk fields if you need them later
-    }
-  | {
-      errors: { message: string; code?: string }[];
-    };
 
 export async function POST(req: NextRequest) {
   try {

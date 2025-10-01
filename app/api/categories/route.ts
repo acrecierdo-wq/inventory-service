@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: newCategory });
   } catch (error) {
+    console.error("Category POST error:", error);
     return NextResponse.json({ success: false, message: "Category already exists" }, { status: 500});
   }
 }

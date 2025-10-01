@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: newSize });
   } catch (error) {
+    console.error("Size POST error:", error);
     return NextResponse.json({ success: false, message: "Size already exists." }, { status: 500 });
   }
 }
