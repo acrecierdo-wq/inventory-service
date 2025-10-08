@@ -14,6 +14,18 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
+function normalizeStart(dateInput: string | Date | null | undefined): Date | null {
+    if (!dateInput) return null;
+    const d = new Date(dateInput);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function normalizeEnd(dateInput: string | Date | null | undefined): Date | null {
+    if (!dateInput) return null;
+    const d = new Date(dateInput);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+}
+
 
 const ITEMS_PER_PAGE = 10;
 
@@ -182,40 +194,6 @@ const IssuanceLogPage = () => {
         }  
     };
 
-    // const handleExport = async (e: React.MouseEvent) => {
-    //     e.preventDefault();
-    //     setIsExporting(true);
-    //     try {
-    //         await exportToCSV();
-    //     } finally {
-    //         setIsExporting(false);
-    //     }
-    //     };
-
-
-    // const filteredIssuances = item_issuances
-    // .filter((issuance) => issuance.status === activeTab)
-    // .filter((issuance) => {
-    //     searchTerm 
-    //        ? issuance.clientName.toLowerCase().includes(searchTerm.toLowerCase())
-    //         || issuance.drNumber.toLowerCase().includes(searchTerm.toLowerCase())
-    //         : true
-    // })
-    // .filter((issuance) => {
-    //     // which date to filter by: issued or created
-    //     const date = new Date(issuance.issuedAt || issuance.createdAt);
-
-    //     if (startDate && endDate) {
-    //         return date >= new Date(startDate) && date <= new Date(endDate);
-    //     }
-    //     if (startDate && !endDate) {
-    //         return date >= new Date(startDate);
-    //     }
-    //     if (!startDate && endDate) {
-    //         return date <= new Date(endDate);
-    //     }
-    //     return true;
-    // });
     const filteredIssuances = item_issuances
     .filter((issuance) => issuance.status === activeTab)
     .filter((issuance) =>
@@ -225,20 +203,24 @@ const IssuanceLogPage = () => {
                 || issuance.dispatcherName.toLowerCase().includes(searchTerm.toLowerCase())
             : true
     ).filter((issuance) => {
-        // which date to filter by: issued or created
-        const date = new Date(issuance.issuedAt || issuance.createdAt);
+        const raw = issuance.issuedAt || issuance.createdAt;
+        if (!raw) return false;
 
-        if (startDate && endDate) {
-            return date >= new Date(startDate) && date <= new Date(endDate);
+        const date = new Date(raw);
+        const start = normalizeStart(startDate);
+        const end = normalizeEnd(endDate);
+
+        if (start && end) {
+            return date >= start && date <= end;
         }
-        if (startDate && !endDate) {
-            return date >= new Date(startDate);
+        if (start && !end) { 
+            return date >= start
         }
-        if (!startDate && endDate) {
-            return date <= new Date(endDate);
+        if (!start && end) {
+            return date <= end;
         }
         return true;
-    });
+    })
 
     const totalPages = Math.ceil(filteredIssuances.length / ITEMS_PER_PAGE);
     const paginatedIssuances = filteredIssuances.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);

@@ -26,17 +26,26 @@ export type QuotationItem = {
 };
 
 export type SavedQuotation = {
-  id: number;
+  id: string;
+  saved?: boolean;
   requestId?: number;
   status?: string;
   //notes: string;
   quotationNotes?: string;
+  projectName?: string;
+  mode?: string;
   vat?: number;
   markup?: number;
   items: QuotationItem[];
   delivery: string;
   warranty: string;
   validity: string;
+  //cadSketch?: string | null;
+  cadSketchFile?: PreviewFile[];
+  revisionLabel?: string;
+  baseQuotationId?: number;
+  quotationNumber?: string;
+  customer?: Customer;
 };
 
 export type PreviewFile = {

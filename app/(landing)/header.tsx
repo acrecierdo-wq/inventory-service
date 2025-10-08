@@ -1,77 +1,149 @@
-"use client"
+// "use client"
+
+// import { Button } from "@/components/ui/button";
+// import { ClerkLoaded, ClerkLoading, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
+// import { Loader2 } from "lucide-react";
+// import Image from "next/image";
+// import { useRouter } from "next/navigation";
+// import { useEffect } from "react";
+
+// export const Header = () => {
+//     const { user, isSignedIn, isLoaded } = useUser(); 
+//     const router = useRouter();
+    
+//     useEffect(() => {
+//         // Check if the user is signed in and user data is loaded
+//         if (isSignedIn && isLoaded) {
+//             console.log('Role:', user?.publicMetadata?.role);
+
+//             // Assuming you have 'role' stored in publicMetadata of the user
+//                 if (user?.publicMetadata?.role === 'admin') {
+//                     router.push("/admin/admin_dashboard");
+//                 } else if (user?.publicMetadata?.role === 'sales') {
+//                         router.push("/sales/sales_dashboard");    
+//                 }  else if (user?.publicMetadata?.role === 'warehouseman') {
+//                     router.push("/warehouse/w_dashboard");
+//                 }  else {
+//                     router.push("/customer/cus_dashboard");
+//                 }
+//         }
+//     }, [isSignedIn, isLoaded, user, router]);
+//     return (
+//         <header className=" sticky z-1000 top-0 h-15 w-full border-b-2 bg-white">
+//         <div className="lg:max-w-full-lg mx-auto flex items-center justify-between h-full">
+//             <div className="pt-8 pl-4 pb-7 flex items-center gap-x-3">
+//             <a href="/landing_page/home">
+//             <Image src="/cticlogo.webp" height={40} width={40} alt="CTIC" />
+//             </a>
+//             <h1 className="text-2xl font-extrabold text-yellow-600 tracking-wide">
+//             CTIC
+//             </h1>
+//             <div>
+//             <Button variant="link" size="sm" onClick={() => router.push("/landing_page/home")}> 
+//                 Home
+//                 </Button>
+//                 <Button variant="link" size="sm" onClick={() => router.push("/landing_page/product")}> 
+//                 Products
+//                 </Button>
+//                 <Button variant="link" size="sm" onClick={() => router.push("/landing_page/services")}>
+//                 Services
+//                 </Button>
+//                 <Button variant="link" size="sm" onClick={() => router.push("/landing_page/contact")}>
+//                 Contact
+//                 </Button>
+//                 </div>
+//         </div>
+//             <ClerkLoading>
+//                 <Loader2 className="h-5 w-5 text-muted-foreground animate-spin"/>
+//             </ClerkLoading>
+//             <ClerkLoaded>
+//             <SignedIn>
+//                 <UserButton 
+//                 showName afterSignOutUrl="/"
+//                 /> 
+//             </SignedIn>
+//             <SignedOut>
+//                 <SignInButton
+//                     mode="modal"
+//                 >
+//                     <div className="">
+//                     <Button variant="sidebar" size="sm">Sign In</Button></div>
+//                 </SignInButton>
+//             </SignedOut>
+//             </ClerkLoaded>
+//         </div>
+//         </header>
+//     );
+// };
+
+"use client";
 
 import { Button } from "@/components/ui/button";
-import { ClerkLoaded, ClerkLoading, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import { ClerkLoaded, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export const Header = () => {
-    const { user, isSignedIn, isLoaded } = useUser(); 
-    const router = useRouter();
-    
-    useEffect(() => {
-        // Check if the user is signed in and user data is loaded
-        if (isSignedIn && isLoaded) {
-            console.log('Role:', user?.publicMetadata?.role);
+  const { user, isSignedIn, isLoaded } = useUser(); 
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-            // Assuming you have 'role' stored in publicMetadata of the user
-                if (user?.publicMetadata?.role === 'admin') {
-                    router.push("/admin/admin_dashboard");
-                } else if (user?.publicMetadata?.role === 'sales') {
-                        router.push("/sales/sales_dashboard");    
-                }  else if (user?.publicMetadata?.role === 'warehouseman') {
-                    router.push("/warehouse/w_dashboard");
-                }  else {
-                    router.push("/customer/cus_dashboard");
-                }
-        }
-    }, [isSignedIn, isLoaded, user, router]);
-    return (
-        <header className=" sticky z-1000 top-0 h-15 w-full border-b-2 bg-white">
-        <div className="lg:max-w-full-lg mx-auto flex items-center justify-between h-full">
-            <div className="pt-8 pl-4 pb-7 flex items-center gap-x-3">
-            <a href="/landing_page/home">
+  useEffect(() => {
+    setMounted(true);
+
+    if (isSignedIn && isLoaded) {
+      const role = user?.publicMetadata?.role;
+      switch (role) {
+        case "admin":
+          router.push("/admin/admin_dashboard");
+          break;
+        case "sales":
+          router.push("/sales/sales_dashboard");
+          break;
+        case "warehouseman":
+          router.push("/warehouse/w_dashboard");
+          break;
+        default:
+          router.push("/customer/cus_dashboard");
+      }
+    }
+  }, [isSignedIn, isLoaded, user, router]);
+
+  return (
+    <header className="sticky z-1000 top-0 h-15 w-full border-b-2 bg-white">
+      <div className="lg:max-w-full-lg mx-auto flex items-center justify-between h-full">
+        {/* Logo and Navigation */}
+        <div className="pt-8 pl-4 pb-7 flex items-center gap-x-3">
+          <a href="/landing_page/home">
             <Image src="/cticlogo.webp" height={40} width={40} alt="CTIC" />
-            </a>
-            <h1 className="text-2xl font-extrabold text-yellow-600 tracking-wide">
-            CTIC
-            </h1>
-            <div>
-            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/home")}> 
-                Home
-                </Button>
-                <Button variant="link" size="sm" onClick={() => router.push("/landing_page/product")}> 
-                Products
-                </Button>
-                <Button variant="link" size="sm" onClick={() => router.push("/landing_page/services")}>
-                Services
-                </Button>
-                <Button variant="link" size="sm" onClick={() => router.push("/landing_page/contact")}>
-                Contact
-                </Button>
-                </div>
+          </a>
+          <h1 className="text-2xl font-extrabold text-yellow-600 tracking-wide">CTIC</h1>
+          <div>
+            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/home")}>Home</Button>
+            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/product")}>Products</Button>
+            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/services")}>Services</Button>
+            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/contact")}>Contact</Button>
+          </div>
         </div>
-            <ClerkLoading>
-                <Loader2 className="h-5 w-5 text-muted-foreground animate-spin"/>
-            </ClerkLoading>
-            <ClerkLoaded>
+
+        {/* Auth Buttons */}
+        {mounted ? (
+          <ClerkLoaded>
             <SignedIn>
-                <UserButton 
-                showName afterSignOutUrl="/"
-                /> 
+              <UserButton showName afterSignOutUrl="/" />
             </SignedIn>
             <SignedOut>
-                <SignInButton
-                    mode="modal"
-                >
-                    <div className="">
-                    <Button variant="sidebar" size="sm">Sign In</Button></div>
-                </SignInButton>
+              <SignInButton mode="modal">
+                <Button variant="sidebar" size="sm">Sign In</Button>
+              </SignInButton>
             </SignedOut>
-            </ClerkLoaded>
-        </div>
-        </header>
-    );
+          </ClerkLoaded>
+        ) : (
+          <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+        )}
+      </div>
+    </header>
+  );
 };

@@ -39,6 +39,10 @@ export default function CreateUserPage() {
   
   const [mustCopy, setMustCopy] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     fetchStaff();
   }, []);
@@ -302,15 +306,16 @@ export default function CreateUserPage() {
               </td>
               <td className="p-2 border-b text-center">
                 <div className="inline-flex gap-2 text-center">
-                  {loadingUserId === u.id ? (
-                    // Spinner
+                  {!mounted ? (
+                    <div className="h-5 w-5" />
+                  ) : loadingUserId === u.id ? (
                     <svg
                       className="animate-spin h-5 w-5 text-gray-500"
-                      xmlns="http://www.w3.org/2000/svg"
+                      xmlns="https://www.w.3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
                     >
-                      <circle
+                      <circle 
                         className="opacity-25"
                         cx="12"
                         cy="12"
@@ -318,7 +323,7 @@ export default function CreateUserPage() {
                         stroke="currentColor"
                         strokeWidth="4"
                       />
-                      <path
+                      <path 
                         className="opacity-75"
                         fill="currentColor"
                         d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
@@ -326,33 +331,29 @@ export default function CreateUserPage() {
                     </svg>
                   ) : (
                     <>
-                      {u.status === "active" ? (
-                        <button
-                          onClick={() => updateUser(u.id, "deactivate")}
-                          className="w-[100px] bg-red-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-red-800"
-                        >
-                          Deactivate
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => updateUser(u.id, "activate")}
-                          className="w-[100px] bg-green-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-green-800"
-                        >
-                          Activate
-                        </button>
-                      )}
+                    {u.status === "active" ? (
                       <button
-                        onClick={() =>
-                          updateUser(
-                            u.id,
-                            "changeRole",
-                            u.role === "warehouseman" ? "sales" : "warehouseman"
-                          )
-                        }
-                        className="w-[100px] bg-blue-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-blue-800"
+                        onClick={() => updateUser(u.id, "deactivate")}
+                        className="w-[100px] bg-red-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-red-800"
                       >
-                        Switch Role
+                        Deactivate
                       </button>
+                    ) : (
+                      <button
+                        onClick={() => updateUser(u.id, "activate")}
+                        className="w-[100px] bg-green-600 tetx-white text-sm font-semibold py-1 rounded-4xl hover:bg-green-800"
+                      >
+                        Activate
+                      </button>
+                    )}
+                    <button
+                      onClick={() =>
+                        updateUser(u.id, "changeRole", u.role === "warehouseman" ? "sales" : "warehouseman")
+                      }
+                      className="w-[100px] bg-blue-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-blue-800"
+                    >
+                      Change Role
+                    </button>
                     </>
                   )}
                 </div>

@@ -201,7 +201,7 @@ export const customer_profile = pgTable("customer_profile", {
 
 export const quotations = pgTable("quotations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  requestId: integer("request_id").notNull(),
+  requestId: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
 
   quotationSeq: serial("quotation_seq").notNull().unique(),
 
@@ -216,6 +216,7 @@ export const quotations = pgTable("quotations", {
     .notNull()
     .$type<
       | "draft"
+      | "restoring"
       | "sent"
       | "revision_requested"
       | "accepted"

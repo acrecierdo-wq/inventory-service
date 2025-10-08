@@ -1,4 +1,4 @@
-// // /app/api/quotations/route.ts
+// // /app/api/sales/quotations/route.ts
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { db } from "@/db/drizzle";
@@ -10,328 +10,349 @@
 //   quotation_requests,
 //   customer_profile,
 // } from "@/db/schema";
-// import { eq } from "drizzle-orm";
-// import { quotationSchema, QuotationInput } from "@/lib/quotationSchema";
+// import { eq, and } from "drizzle-orm";
+// import { validateQuotation, DraftInput, SentInput } from "@/lib/quotationSchema";
+// import { z } from "zod";
 
-// // Define the type for the data you expect from the front end.
-// type QuotationData = {
-//   requestId: number;
-//   projectName: string;
-//   mode: string;
-//   //quotationNumber: string;
-//   //revisionNumber: number;
-//   //baseQuotationId?: number;
-//   validity: string;
-//   delivery: string;
-//   warranty: string;
-//   quotationNotes: string;
-//   cadSketch: string | null;
-//   vat: number;
-//   markup: number;
-//   status: "draft" | "sent";
-//   attachedFiles: Array<{
-//     fileName: string;
-//     filePath: string;
-//   }>;
-//   items: Array<{
-//     itemName: string;
-//     scopeOfWork: string;
-//     quantity: number;
-//     unitPrice: number;
-//     materials: Array<{
-//       name: string;
-//       specification: string;
-//       quantity: number;
-//     }>;
-//   }>;
-// };
+// function isUuid(value: unknown): value is string {
+//   return (
+//     typeof value === "string" &&
+//     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value)
+//   );
+// }
 
 // export async function POST(req: NextRequest) {
-  
 //   try {
 //     const json = await req.json();
-//     const parsed = quotationSchema.safeParse(json);
 
-//     if (!parsed.success) {
-//       return NextResponse.json({ success: false, error: parsed.error.flatten().fieldErrors }, { status: 400 });
+//     let data: DraftInput | SentInput;
+//     try {
+//       data = validateQuotation(json);
+//     } catch (err) {
+//       if (err instanceof z.ZodError) {
+//         return NextResponse.json(
+//           { success: false, error: err.flatten().fieldErrors },
+//           { status: 400 }
+//         );
+//       }
+//       throw err;
 //     }
 
-//     const data: QuotationInput = parsed.data;
-
-//     // if (!data.items || data.items.length === 0) {
-//     //   return NextResponse.json(
-//     //     { success: false, error: "Quotation must contain at least one item." },
-//     //     { status: 400 }
-//     //   );
-//     // }
-
-//     // get customer clientCode via request -> customer_profile
+//     // ✅ Validate request and customer
 //     const [request] = await db
-//     .select()
-//     .from(quotation_requests)
-//     .where(eq(quotation_requests.id, data.requestId));
+//       .select()
+//       .from(quotation_requests)
+//       .where(eq(quotation_requests.id, data.requestId));
 
 //     if (!request) {
-//       return NextResponse.json({ success: false, error: "Invalid requestId" }, { status: 400 });
+//       return NextResponse.json(
+//         { success: false, error: "Invalid requestId" },
+//         { status: 400 }
+//       );
 //     }
 
 //     const [customer] = await db
-//     .select()
-//     .from(customer_profile)
-//     .where(eq(customer_profile.id, request.customer_id));
+//       .select()
+//       .from(customer_profile)
+//       .where(eq(customer_profile.id, request.customer_id));
 
-//     if (!customer || !customer.clientCode) {
-//       return NextResponse.json({ success: false, error: "Customer profile missing clientCode" }, { status: 400 });
+//     if (!customer?.clientCode) {
+//       return NextResponse.json(
+//         { success: false, error: "Missing client code in customer profile" },
+//         { status: 400 }
+//       );
 //     }
 
 //     const clientCode = customer.clientCode;
+//     const quotationStatus = data.status === "sent" ? "sent" : "draft";
+//     let quotationId: string;
 
-//     let newQuotationId: string | undefined;
-//     let updatedQuotation: typeof quotations.$inferSelect | null = null;
+//     // ✅ CASE 1: UPDATE EXISTING DRAFT
+//     if (isUuid(data.id)) {
+//       quotationId = data.id;
+//       console.log("🔄 Updating existing draft:", quotationId);
 
-//     try {
-//       // insert into the main quotations table (quotationSeq auto-incremented)
+//       await db
+//         .update(quotations)
+//         .set({
+//           projectName: data.projectName ?? "",
+//           mode: data.mode ?? "",
+//           status: quotationStatus,
+//           validity: data.validity ?? new Date().toISOString().split("T")[0],
+//           delivery: data.delivery ?? "",
+//           warranty: data.warranty ?? "",
+//           quotationNotes: data.quotationNotes ?? "",
+//           cadSketch: data.cadSketch ?? null,
+//           vat: String(data.vat ?? 12),
+//           markup: String(data.markup ?? 0),
+//         })
+//         .where(eq(quotations.id, quotationId));
+
+//       // clean old relations
+//       await db.delete(quotationMaterials)
+//         .where(eq(quotationMaterials.quotationItemId, quotationId));
+//       await db.delete(quotationItems)
+//         .where(eq(quotationItems.quotationId, quotationId));
+//       await db.delete(quotationFiles)
+//         .where(eq(quotationFiles.quotationId, quotationId));
+//     }
+
+//     // ✅ CASE 2: CREATE NEW DRAFT
+//     else {
+//       console.log("🆕 Creating new quotation record...");
 //       const [newQuotation] = await db
 //         .insert(quotations)
 //         .values({
 //           requestId: data.requestId,
-//           //quotationNumber: data.quotationNumber,
-//           //revisionNumber: data.revisionNumber,
-//           //baseQuotationId: data.baseQuotationId,
-//           projectName: data.projectName,
-//           mode: data.mode,
-//           status: data.status ?? "draft",
-//           validity: data.validity,
-//           delivery: data.delivery,
-//           warranty: data.warranty,
-//           quotationNotes: data.quotationNotes,
-//           cadSketch: data.cadSketch,
-//           vat: data.vat.toFixed(2),
-//           markup: data.markup.toFixed(2),
+//           projectName: data.projectName ?? "",
+//           mode: data.mode ?? "",
+//           status: quotationStatus,
+//           validity: data.validity ?? new Date().toISOString().split("T")[0],
+//           delivery: data.delivery ?? "",
+//           warranty: data.warranty ?? "",
+//           quotationNotes: data.quotationNotes ?? "",
+//           cadSketch: data.cadSketch ?? null,
+//           vat: String(data.vat ?? 12),
+//           markup: String(data.markup ?? 0),
 //         })
-//         .returning({ id: quotations.id, quotationSeq: quotations.quotationSeq, });
+//         .returning({ id: quotations.id, quotationSeq: quotations.quotationSeq });
 
-//       if (!newQuotation?.id) {
-//         throw new Error("Failed to create the quotation.");
-//       }
+//       if (!newQuotation?.id) throw new Error("Failed to create quotation.");
 
-//       newQuotationId = newQuotation.id;
+//       quotationId = newQuotation.id;
 
-//       // generate formatted quotation number
 //       const paddedSeq = String(newQuotation.quotationSeq).padStart(8, "0");
 //       const formattedNumber = `CTIC-${clientCode}-${paddedSeq}-1`;
 
-//       // update quottaion with formatted number + revision 0
+//       await db
+//         .update(quotations)
+//         .set({
+//           quotationNumber: formattedNumber,
+//           revisionNumber: 0,
+//         })
+//         .where(eq(quotations.id, quotationId));
+//     }
 
-//       const [afterUpdate] = await db
-//       .update(quotations)
-//       .set({
-//         quotationNumber: formattedNumber,
-//         revisionNumber: 0,
-//       })
-//       .where(eq(quotations.id, newQuotationId))
-//       .returning();
-
-//       updatedQuotation = afterUpdate;
-
-//       // insert items & materials
-//       const quotationMaterialsToInsert: typeof quotationMaterials.$inferInsert[] = [];
-//       const quotationFilesToInsert: typeof quotationFiles.$inferInsert[] = [];
-
-//       // iterate and insert into quotationItems.
+//     // ✅ Insert items & materials
+//     if (Array.isArray(data.items)) {
 //       for (const item of data.items) {
 //         const totalPrice = (item.quantity * item.unitPrice).toFixed(2);
 
 //         const [newItem] = await db
 //           .insert(quotationItems)
 //           .values({
-//             quotationId: newQuotationId,
+//             quotationId,
 //             itemName: item.itemName,
 //             scopeOfWork: item.scopeOfWork,
 //             quantity: item.quantity,
-//             unitPrice: item.unitPrice.toFixed(2),
+//             unitPrice: String(item.unitPrice),
 //             totalPrice,
 //           })
 //           .returning({ id: quotationItems.id });
 
-//         // if (!newItem?.id) {
-//         //   throw new Error("Failed to create a quotation item.");
-//         // }
-        
-//         if (item.materials) {
-//           // Prepare the materials for this item for a later batch insert.
-//         for (const material of item.materials) {
-//           quotationMaterialsToInsert.push({
-//             quotationItemId: newItem.id,
-//             name: material.name,
-//             specification: material.specification ?? "",
-//             quantity: typeof material.quantity === "string" ? parseInt(material.quantity, 10) || 0 : material.quantity || 0,
-//           });
+//         if (item.materials?.length) {
+//           for (const mat of item.materials) {
+//             await db.insert(quotationMaterials).values({
+//               quotationItemId: newItem.id,
+//               name: mat.name,
+//               specification: mat.specification ?? "",
+//               quantity: mat.quantity,
+//             });
+//           }
 //         }
 //       }
 //     }
 
-//     if (data.attachedFiles) {
-//       // insert attached files
+//     // ✅ Insert attached files
+//     if (Array.isArray(data.attachedFiles)) {
 //       for (const file of data.attachedFiles) {
-//         quotationFilesToInsert.push({
-//           quotationId: newQuotationId,
+//         await db.insert(quotationFiles).values({
+//           quotationId,
 //           fileName: file.fileName,
 //           filePath: file.filePath,
 //         });
 //       }
 //     }
 
-//       // perform efficient batch inserts for materials and files.
-//       if (quotationMaterialsToInsert.length > 0) {
-//         await db.insert(quotationMaterials).values(quotationMaterialsToInsert);
-//       }
-//       if (quotationFilesToInsert.length > 0) {
-//         await db.insert(quotationFiles).values(quotationFilesToInsert);
-//       }
-//     } catch (innerError) {
-//       console.error("Inner transaction failed, initiating rollback...", innerError);
-//       if (newQuotationId) {
-//         // Attempt to delete the quotation and all cascade-related items
-//         await db.delete(quotations).where(eq(quotations.id, newQuotationId));
-//       }
-//       throw innerError; // Rethrow the error to be caught by the outer try-catch
-//     }
+//     // ✅ Fetch normalized result
+//     const [result] = await db
+//       .select({
+//         id: quotations.id,
+//         projectName: quotations.projectName,
+//         mode: quotations.mode,
+//         status: quotations.status,
+//         validity: quotations.validity,
+//         delivery: quotations.delivery,
+//         warranty: quotations.warranty,
+//         quotationNotes: quotations.quotationNotes,
+//         cadSketch: quotations.cadSketch,
+//         revisionNumber: quotations.revisionNumber,
+//         createdAt: quotations.createdAt,
+//         quotationNumber: quotations.quotationNumber,
+//         customerId: customer_profile.id,
+//         companyName: customer_profile.companyName,
+//         contactPerson: customer_profile.contactPerson,
+//         clientCode: customer_profile.clientCode,
+//       })
+//       .from(quotations)
+//       .leftJoin(
+//         quotation_requests,
+//         eq(quotation_requests.id, quotations.requestId)
+//       )
+//       .leftJoin(
+//         customer_profile,
+//         eq(customer_profile.id, quotation_requests.customer_id)
+//       )
+//       .where(eq(quotations.id, quotationId));
 
-//     const createdQuotation = await db.query.quotations.findFirst({
-//       where: eq(quotations.id, newQuotationId),
-//       with: { items: true },
-//     });
+//     if (!result) throw new Error("Failed to fetch saved quotation.");
 
-//     if (!createdQuotation) {
-//       return NextResponse.json({
-//          success: false,
-//          error: "Failed to create quotation"
-//       }, { status: 500 });
-//     }
+//     const normalized = {
+//       ...result,
+//       customer: {
+//         id: result.customerId,
+//         companyName: result.companyName,
+//         contactPerson: result.contactPerson,
+//         clientCode: result.clientCode,
+//       },
+//       revisionLabel: `REVISION-${String(result.revisionNumber ?? 0).padStart(2, "0")}`,
+//       cadSketchFile: result.cadSketch
+//         ? [{ name: result.cadSketch, filePath: `/sales/uploads/${result.cadSketch}` }]
+//         : [],
+//     };
 
 //     return NextResponse.json({
 //       success: true,
-//       message: "Quotation created successfully.",
-//       data: {
-//         ...createdQuotation,
-//         revisionLabel: `REVISION-${String(createdQuotation.revisionNumber ?? 0).padStart(2, "0")}`,
-//         cadSketchFile : createdQuotation.cadSketch
-//           ? [{ name: createdQuotation.cadSketch, filePath: `/uploads/${createdQuotation.cadSketch}` }]
-//           : [],
-//       },
+//       message: isUuid(data.id)
+//         ? "Quotation draft updated successfully."
+//         : "Quotation created successfully!",
+//       data: normalized,
 //     });
 //   } catch (error) {
-//     console.error("Error saving quotation:", error);
+//     console.error("❌ Error saving quotation:", error);
 //     return NextResponse.json(
-//       {
-//         success: false,
-//         error: 
-//           error instanceof Error
-//             ? error.message
-//             : "Failed to save quotation."
-//       },
+//       { success: false, error: (error as Error).message },
 //       { status: 500 }
 //     );
 //   }
 // }
 
-// export async function GET() {
+
+// export async function GET(req: NextRequest) {
+
+//   const { searchParams } = new URL(req.url);
+//   const status = searchParams.get("status");
+//   const requestId = searchParams.get("requestId");
+
+//   type QuotationStatus =
+//   | "draft"
+//   | "sent"
+//   | "revision_requested"
+//   | "accepted"
+//   | "rejected"
+//   | "expired";
+
 //   try {
+//     const conditions = [];
+
+//     if (
+//       status && 
+//       ["draft", "sent", "revision_requested", "accepted", "rejected", "expired"].includes(status)
+//     ) {
+//       conditions.push(eq(quotations.status, status as QuotationStatus));
+//     }
+
+//     if (requestId) {
+//       conditions.push(eq(quotations.requestId, Number(requestId)));
+//     }
+
+//     // include items + materials when fetching drafts
 //     const allQuotations = await db.query.quotations.findMany({
-//       with: { items: true },
-//       orderBy: (q, { desc }) => [desc(q.createdAt)],
+//       where: conditions.length > 1 ? and(...conditions) : conditions[0],
+//       with: {
+//         items: {
+//           with: {
+//             materials: true,
+//           },
+//         },
+//       },
 //     });
 
 //     const normalized = allQuotations.map((q) => ({
-//       ...q,
+//       id: q.id,
+//       requestId: q.requestId,
+//       projectName: q.projectName,
+//       mode: q.mode,
+//       status: q.status,
+//       validity: q.validity,
+//       delivery: q.delivery,
+//       warranty: q.warranty,
+//       quotationNotes: q.quotationNotes,
+//       cadSketch: q.cadSketch,
+//       vat: Number(q.vat) || 12,
+//       markup: Number(q.markup) || 0,
+//       items: q.items.map((i) => ({
+//         id: i.id,
+//         itemName: i.itemName,
+//         scopeOfWork: i.scopeOfWork,
+//         quantity: i.quantity,
+//         unitPrice: i.unitPrice,
+//         totalPrice: i.totalPrice,
+//         materials: i.materials?.map((m) => ({
+//           id: m.id,
+//           name: m.name,
+//           specification: m.specification,
+//           quantity: m.quantity,
+//         })) ?? [],
+//       })),
 //       revisionLabel: `REVISION-${String(q.revisionNumber ?? 0).padStart(2, "0")}`,
 //       cadSketchFile: q.cadSketch
-//         ? [{ name: q.cadSketch, filePath: `/sales/uploads/${q.cadSketch}`}]
+//         ? [{ name: q.cadSketch, filePath: `/sales/uplaods/${q.cadSketch}` }]
 //         : [],
 //     }));
 
-//     return NextResponse.json({ success: true, data: normalized });
+//     console.log("Returing quotations:",JSON.stringify(normalized, null, 2));
+
+//     return NextResponse.json({ success: true, quotations: normalized });
 //   } catch (err) {
-//     console.error("Error fethcing quotations:", err);
-//     return NextResponse.json({ success: false, error: "Failed to fetch quotations" }, { status: 500 });
+//     console.error("Error fetching quotations:", err);
+//     return NextResponse.json({ success: false, error: "Failed to fetch quotations." }, { status: 500 });
 //   }
 // }
 
+// // DELETE
 
-// // // app/api/quotations/route.ts
+// export async function DELETE(req: NextRequest) {
+//   try {
+//     const { searchParams } = new URL(req.url);
+//     const id = searchParams.get("id");
 
-// // import { db } from "@/db/drizzle";
-// // import { quotations, quotation_items } from "@/db/schema";
-// // import { NextResponse } from "next/server";
+//     if (!id) {
+//       return NextResponse.json({ success: false, error: "Missing quotation ID." }, { status: 400 });
+//     }
 
-// // interface Item {
-// //   quotationId?: number; // assigned later when saving
-// //   itemName: string;
-// //   scopeOfWork: string;
-// //   materials: string;
-// //   quantity: number;
-// //   unitPrice: number;
-// //   totalPrice: number;
-// // }
+//     // delete related materials
+//       const items = await db
+//         .select({ id: quotationItems.id })
+//         .from(quotationItems)
+//         .where(eq(quotationItems.quotationId, id));
 
-// // interface QuotationRequest {
-// //   requestId: number;
-// //   status: string;
-// //   delivery?: string;
-// //   warranty?: string;
-// //   validity?: string;
-// //   notes?: string;
-// //   items?: Item[];
-// //   overallTotal: number;
-// // }
+//         for (const item of items) {
+//           await db.delete(quotationMaterials).where(eq(quotationMaterials.quotationItemId, item.id));
+//         }
 
-// // export async function POST(req: Request) {
-// //   try {
-// //     const body: QuotationRequest = await req.json();
+//         // delete quotation items
+//         await db.delete(quotationItems).where(eq(quotationItems.quotationId, id));
 
-// //     const { requestId, status, delivery, warranty, validity, notes, items, overallTotal } = body;
-
-// //     if (!requestId || !status) {
-// //       return NextResponse.json({ error: "ID and status are required." }, { status: 400 });
-// //     }
-
-// //     // Insert quotation
-// //     const [quotation] = await db
-// //       .insert(quotations)
-// //       .values({
-// //         requestId,
-// //         status,
-// //         delivery,
-// //         warranty,
-// //         validity: validity ? new Date(validity) : null,
-// //         notes,
-// //         overallTotal,
-// //       })
-// //       .returning();
-
-// //     if (items && items.length > 0) {
-// //       await db.insert(quotation_items).values(
-// //         items.map((item) => ({
-// //           quotationId: quotation.id,
-// //           itemName: item.itemName,
-// //           scopeOfWork: item.scopeOfWork,
-// //           materials: item.materials,
-// //           quantity: item.quantity,
-// //           unitPrice: item.unitPrice,
-// //           totalPrice: item.totalPrice,
-// //         }))
-// //       );
-// //     }
-
-// //     return NextResponse.json({ success: true, data: quotation });
-// //   } catch (error) {
-// //     console.error("POST error:", error);
-// //     return NextResponse.json({ error: String(error) }, { status: 500 });
-// //   }
-// // }
-
-// /app/api/sales/quotations/route.ts
+//         // delete quotation itself
+//         await db.delete(quotations).where(eq(quotations.id, id));
+        
+//         return NextResponse.json({ success: true });
+//   } catch (err) {
+//     console.error("Error deleting quotation:", err);
+//     return NextResponse.json({ success: false, error: "Failed to delete quotation." }, { status: 500 });
+//   }
+// }
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/drizzle";
@@ -343,278 +364,275 @@ import {
   quotation_requests,
   customer_profile,
 } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { quotationSchema, QuotationInput } from "@/lib/quotationSchema";
+import { eq, and } from "drizzle-orm";
+import { validateQuotation, DraftInput, SentInput } from "@/lib/quotationSchema";
+import { z } from "zod";
 
-// Define the type for the data you expect from the front end.
-// type QuotationData = {
-//   requestId: number;
-//   projectName: string;
-//   mode: string;
-//   validity: string;
-//   delivery: string;
-//   warranty: string;
-//   quotationNotes: string;
-//   cadSketch: string | null;
-//   vat: number;
-//   markup: number;
-//   status: "draft" | "sent";
-//   attachedFiles: Array<{
-//     fileName: string;
-//     filePath: string;
-//   }>;
-//   items: Array<{
-//     itemName: string;
-//     scopeOfWork: string;
-//     quantity: number;
-//     unitPrice: number;
-//     materials: Array<{
-//       name: string;
-//       specification: string;
-//       quantity: number;
-//     }>;
-//   }>;
-// };
+function isUuid(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value)
+  );
+}
 
+/**
+ * ✅ POST — create or update quotation (draft or sent)
+ */
 export async function POST(req: NextRequest) {
   try {
     const json = await req.json();
-    const parsed = quotationSchema.safeParse(json);
+    let data: DraftInput | SentInput;
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
+    try {
+      data = validateQuotation(json);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return NextResponse.json(
+          { success: false, error: err.flatten().fieldErrors },
+          { status: 400 }
+        );
+      }
+      throw err;
     }
 
-    const data: QuotationInput = parsed.data;
-
-    // get customer clientCode via request -> customer_profile
+    // Validate linked request and customer
     const [request] = await db
       .select()
       .from(quotation_requests)
       .where(eq(quotation_requests.id, data.requestId));
-
-    if (!request) {
-      return NextResponse.json(
-        { success: false, error: "Invalid requestId" },
-        { status: 400 }
-      );
-    }
+    if (!request)
+      return NextResponse.json({ success: false, error: "Invalid requestId" }, { status: 400 });
 
     const [customer] = await db
       .select()
       .from(customer_profile)
       .where(eq(customer_profile.id, request.customer_id));
-
-    if (!customer || !customer.clientCode) {
+    if (!customer?.clientCode)
       return NextResponse.json(
-        { success: false, error: "Customer profile missing clientCode" },
+        { success: false, error: "Missing client code in customer profile" },
         { status: 400 }
       );
+    
+      console.log("✅ POST — create or update quotation (draft or sent)", data);
+
+    const clientCode = customer.clientCode;
+    const quotationStatus = data.status === "sent" ? "sent" : "draft";
+    let quotationId: string;
+
+    // ✅ CASE 1: UPDATE EXISTING DRAFT
+    if (isUuid(data.id)) {
+      quotationId = data.id;
+      await db
+        .update(quotations)
+        .set({
+          projectName: data.projectName ?? "",
+          mode: data.mode ?? "",
+          status: quotationStatus,
+          validity: data.validity ?? new Date().toISOString().split("T")[0],
+          delivery: data.delivery ?? "",
+          warranty: data.warranty ?? "",
+          quotationNotes: data.quotationNotes ?? "",
+          cadSketch: data.cadSketch ?? null,
+          vat: String(data.vat ?? 12),
+          markup: String(data.markup ?? 0),
+        })
+        .where(eq(quotations.id, quotationId));
+
+      await db.delete(quotationMaterials).where(eq(quotationMaterials.quotationItemId, quotationId));
+      await db.delete(quotationItems).where(eq(quotationItems.quotationId, quotationId));
+      await db.delete(quotationFiles).where(eq(quotationFiles.quotationId, quotationId));
     }
 
-    //const clientCode = customer.clientCode;
-
-    let newQuotationId: string | undefined;
-    // let updatedQuotation: typeof quotations.$inferSelect | null = null;
-
-    try {
-      // insert into the main quotations table (quotationSeq auto-incremented)
+    // ✅ CASE 2: CREATE NEW DRAFT
+    else {
       const [newQuotation] = await db
         .insert(quotations)
         .values({
           requestId: data.requestId,
-          projectName: data.projectName,
-          mode: data.mode,
-          status: data.status ?? "draft",
-          validity: data.validity,
-          delivery: data.delivery,
-          warranty: data.warranty,
-          quotationNotes: data.quotationNotes,
-          cadSketch: data.cadSketch,
-          vat: data.vat.toFixed(2),
-          markup: data.markup.toFixed(2),
+          projectName: data.projectName ?? "",
+          mode: data.mode ?? "",
+          status: quotationStatus,
+          validity: data.validity ?? new Date().toISOString().split("T")[0],
+          delivery: data.delivery ?? "",
+          warranty: data.warranty ?? "",
+          quotationNotes: data.quotationNotes ?? "",
+          cadSketch: data.cadSketch ?? null,
+          vat: String(data.vat ?? 12),
+          markup: String(data.markup ?? 0),
         })
         .returning({ id: quotations.id, quotationSeq: quotations.quotationSeq });
 
-      if (!newQuotation?.id) {
-        throw new Error("Failed to create the quotation.");
-      }
+      console.log("✅ CASE 2: CREATE NEW DRAFT", newQuotation);
 
-      newQuotationId = newQuotation.id;
+      quotationId = newQuotation.id;
+      const paddedSeq = String(newQuotation.quotationSeq).padStart(8, "0");
+      const formattedNumber = `CTIC-${clientCode}-${paddedSeq}-1`;
 
-      // generate formatted quotation number
-      //const paddedSeq = String(newQuotation.quotationSeq).padStart(8, "0");
-      //const formattedNumber = `CTIC-${clientCode}-${paddedSeq}-1`;
+      await db
+        .update(quotations)
+        .set({ quotationNumber: formattedNumber, revisionNumber: 0 })
+        .where(eq(quotations.id, quotationId));
+    }
 
-      // update quotation with formatted number + revision 0
-      // const [afterUpdate] = await db
-      //   .update(quotations)
-      //   .set({
-      //     quotationNumber: formattedNumber,
-      //     revisionNumber: 0,
-      //   })
-      //   .where(eq(quotations.id, newQuotationId))
-      //   .returning();
-
-      //updatedQuotation = afterUpdate;
-
-      // insert items & materials
-      const quotationMaterialsToInsert: typeof quotationMaterials.$inferInsert[] = [];
-      const quotationFilesToInsert: typeof quotationFiles.$inferInsert[] = [];
-
-      // iterate and insert into quotationItems.
+    // ✅ Insert items, materials, and files
+    if (Array.isArray(data.items)) {
       for (const item of data.items) {
         const totalPrice = (item.quantity * item.unitPrice).toFixed(2);
-
         const [newItem] = await db
           .insert(quotationItems)
           .values({
-            quotationId: newQuotationId,
+            quotationId,
             itemName: item.itemName,
             scopeOfWork: item.scopeOfWork,
             quantity: item.quantity,
-            unitPrice: item.unitPrice.toFixed(2),
+            unitPrice: String(item.unitPrice),
             totalPrice,
           })
           .returning({ id: quotationItems.id });
 
-        if (item.materials) {
-          for (const material of item.materials) {
-            quotationMaterialsToInsert.push({
+        if (item.materials?.length) {
+          for (const mat of item.materials) {
+            await db.insert(quotationMaterials).values({
               quotationItemId: newItem.id,
-              name: material.name,
-              specification: material.specification ?? "",
-              quantity:
-                typeof material.quantity === "string"
-                  ? parseInt(material.quantity, 10) || 0
-                  : material.quantity || 0,
+              name: mat.name,
+              specification: mat.specification ?? "",
+              quantity: mat.quantity,
             });
           }
         }
       }
-
-      if (data.attachedFiles) {
-        for (const file of data.attachedFiles) {
-          quotationFilesToInsert.push({
-            quotationId: newQuotationId,
-            fileName: file.fileName,
-            filePath: file.filePath,
-          });
-        }
-      }
-
-      if (quotationMaterialsToInsert.length > 0) {
-        await db.insert(quotationMaterials).values(quotationMaterialsToInsert);
-      }
-      if (quotationFilesToInsert.length > 0) {
-        await db.insert(quotationFiles).values(quotationFilesToInsert);
-      }
-    } catch (innerError) {
-      console.error("Inner transaction failed, initiating rollback...", innerError);
-      if (newQuotationId) {
-        await db.delete(quotations).where(eq(quotations.id, newQuotationId));
-      }
-      throw innerError;
     }
+    console.log("✅ Insert items, materials, and files", data);
 
-    const createdQuotation = await db.query.quotations.findFirst({
-      where: eq(quotations.id, newQuotationId),
-      with: { items: true },
-    });
-
-    if (!createdQuotation) {
-      return NextResponse.json(
-        { success: false, error: "Failed to create quotation" },
-        { status: 500 }
-      );
+    if (Array.isArray(data.attachedFiles)) {
+      for (const file of data.attachedFiles) {
+        await db.insert(quotationFiles).values({
+          quotationId,
+          fileName: file.fileName,
+          filePath: file.filePath,
+        });
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Quotation created successfully.",
-      data: {
-        ...createdQuotation,
-        customer: {
-          id: customer.id,
-          companyName: customer.companyName,
-          contactPerson: customer.contactPerson,
-          clientCode: customer.clientCode,
-        },
-        revisionLabel: `REVISION-${String(
-          createdQuotation.revisionNumber ?? 0
-        ).padStart(2, "0")}`,
-        cadSketchFile: createdQuotation.cadSketch
-          ? [
-              {
-                name: createdQuotation.cadSketch,
-                filePath: `/uploads/${createdQuotation.cadSketch}`,
-              },
-            ]
-          : [],
-      },
+      message: isUuid(data.id)
+        ? "Quotation draft updated successfully."
+        : "Quotation created successfully!",
     });
   } catch (error) {
-    console.error("Error saving quotation:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to save quotation.",
+    console.error("❌ Error saving quotation:", error);
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
+  }
+}
+
+/**
+ * ✅ GET — fetch quotations (filter by status/requestId)
+ * excludes drafts with status='restoring'
+ */
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get("status");
+  const requestId = searchParams.get("requestId");
+
+  type QuotationStatus =
+    | "draft"
+    | "restoring"
+    | "sent"
+    | "revision_requested"
+    | "accepted"
+    | "rejected"
+    | "expired";
+
+  try {
+    const conditions = [];
+
+    if (status) conditions.push(eq(quotations.status, status as QuotationStatus));
+    if (requestId) conditions.push(eq(quotations.requestId, Number(requestId)));
+
+    const whereClause =
+      conditions.length > 1 ? and(...conditions) : conditions.length === 1 ? conditions[0] : undefined;
+
+    const allQuotations = await db.query.quotations.findMany({
+      where: whereClause,
+      with: {
+        items: { with: { materials: true } },
       },
+    });
+
+    const normalized = allQuotations
+      .filter((q) => q.status !== "restoring") // ✅ exclude restoring
+      .map((q) => ({
+        id: q.id,
+        requestId: q.requestId,
+        projectName: q.projectName,
+        mode: q.mode,
+        status: q.status,
+        validity: q.validity,
+        delivery: q.delivery,
+        warranty: q.warranty,
+        quotationNotes: q.quotationNotes,
+        cadSketch: q.cadSketch,
+        vat: Number(q.vat) || 12,
+        markup: Number(q.markup) || 0,
+        items: q.items.map((i) => ({
+          id: i.id,
+          itemName: i.itemName,
+          scopeOfWork: i.scopeOfWork,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          totalPrice: i.totalPrice,
+          materials:
+            i.materials?.map((m) => ({
+              id: m.id,
+              name: m.name,
+              specification: m.specification,
+              quantity: m.quantity,
+            })) ?? [],
+        })),
+      }));
+      console.log("✅ GET QUOTATIONS", normalized);
+
+    return NextResponse.json({ success: true, quotations: normalized });
+  } catch (err) {
+    console.error("Error fetching quotations:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch quotations." },
       { status: 500 }
     );
   }
 }
 
-export async function GET() {
+/**
+ * ✅ DELETE — remove quotation and its dependencies
+ */
+export async function DELETE(req: NextRequest) {
   try {
-    // join quotations -> request -> customer
-    const allQuotations = await db
-      .select({
-        id: quotations.id,
-        projectName: quotations.projectName,
-        status: quotations.status,
-        validity: quotations.validity,
-        delivery: quotations.delivery,
-        warranty: quotations.warranty,
-        quotationNotes: quotations.quotationNotes,
-        cadSketch: quotations.cadSketch,
-        revisionNumber: quotations.revisionNumber,
-        createdAt: quotations.createdAt,
-        quotationNumber: quotations.quotationNumber,
-        customerId: customer_profile.id,
-        companyName: customer_profile.companyName,
-        contactPerson: customer_profile.contactPerson,
-        clientCode: customer_profile.clientCode,
-      })
-      .from(quotations)
-      .leftJoin(
-        quotation_requests,
-        eq(quotation_requests.id, quotations.requestId)
-      )
-      .leftJoin(customer_profile, eq(customer_profile.id, quotation_requests.customer_id));
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
 
-    const normalized = allQuotations.map((q) => ({
-      ...q,
-      customer: {
-        id: q.customerId,
-        companyName: q.companyName,
-        contactPerson: q.contactPerson,
-        clientCode: q.clientCode,
-      },
-      revisionLabel: `REVISION-${String(q.revisionNumber ?? 0).padStart(2, "0")}`,
-      cadSketchFile: q.cadSketch
-        ? [{ name: q.cadSketch, filePath: `/sales/uploads/${q.cadSketch}` }]
-        : [],
-    }));
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Missing quotation ID." }, { status: 400 });
+    }
 
-    return NextResponse.json({ success: true, data: normalized });
+    const items = await db
+      .select({ id: quotationItems.id })
+      .from(quotationItems)
+      .where(eq(quotationItems.quotationId, id));
+
+    for (const item of items) {
+      await db.delete(quotationMaterials).where(eq(quotationMaterials.quotationItemId, item.id));
+    }
+
+    await db.delete(quotationItems).where(eq(quotationItems.quotationId, id));
+    await db.delete(quotationFiles).where(eq(quotationFiles.quotationId, id));
+    await db.delete(quotations).where(eq(quotations.id, id));
+
+    return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Error fetching quotations:", err);
+    console.error("Error deleting quotation:", err);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch quotations" },
+      { success: false, error: "Failed to delete quotation." },
       { status: 500 }
     );
   }
