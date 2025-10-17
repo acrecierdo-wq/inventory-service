@@ -1,4 +1,4 @@
-// /app/api/sales/upload/route.ts
+// /app/api/sales/uploads/route.ts
 
 import { NextResponse, NextRequest } from "next/server";
 import path from "path";
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         const uploadDir = path.join(process.cwd(), "public", "uploads");
         await fs.mkdir(uploadDir, { recursive: true });
 
-        const filePath = path.join(uploadDir, file.name);
+        const filePath = path.join(uploadDir, fileName);
         await fs.writeFile(filePath, buffer);
 
         return NextResponse.json({ 

@@ -1,7 +1,8 @@
+/// app/customer/cus_myrequest/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
-import CustomerClientComponent from "@/app/validate/customer_validate";
 import { CustomerHeader } from "@/components/header-customer";
 import Link from "next/link";
 import Image from "next/image";
@@ -33,7 +34,7 @@ const MyOrdersPage = () => {
   useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const res = await fetch("/api/sales/my_request");
+        const res = await fetch("/api/customer/my_requests");
 
         if (!res.ok) {
           console.error("Failed to fetch requests:", res.statusText);
@@ -124,8 +125,8 @@ if (searchQuery.trim()) {
   const totalPages = Math.ceil(filteredRequests.length / requestsPerPage);
 
   return (
-    <CustomerClientComponent>
-      <div className="bg-[#fed795] min-h-screen w-full">
+    
+      <div className="bg-[#ffedce] min-h-screen w-full">
         <CustomerHeader />
 
         {/* Controls */}
@@ -257,7 +258,7 @@ if (searchQuery.trim()) {
                   <div>
                     <h3 className="text-xl font-bold text-[#482b0e]">Request #{req.id}</h3>
                     <p className="text-[#482b0e]/80">
-                      <span className="font-semibold">Project:</span> {req.project_name}
+                      <span className="font-semibold">Project:</span> <span className="uppercase">{req.project_name}</span>
                     </p>
                     <p className="text-[#482b0e]/80">
                       <span className="font-semibold">Mode:</span> {req.mode || "N/A"}
@@ -334,7 +335,6 @@ if (searchQuery.trim()) {
           </div>
         )}
       </div>
-    </CustomerClientComponent>
   );
 };
 

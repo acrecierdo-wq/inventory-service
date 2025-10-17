@@ -59,6 +59,12 @@ export const SideBarCustomer = ({ className }: Props) => {
           iconSrc="/document-add-svgrepo-com.svg"
           onClick={closeAllDropdowns}
         />
+        <SidebarItem
+          label="Services"
+          href="/customer/p&s/non-consumables"
+          iconSrc="/document-add-svgrepo-com.svg"
+          onClick={closeAllDropdowns}
+        />
       </div>
     </div>
   );

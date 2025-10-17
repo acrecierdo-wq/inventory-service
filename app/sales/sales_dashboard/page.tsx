@@ -19,7 +19,7 @@ const SalesPage = () => {
 
 const fetchRequests = async () => {
   try {
-    const res = await fetch("/api/sales/my_request");
+    const res = await fetch("/api/sales/customer_request");
     const json = await res.json();
     console.log("🔎 API response:", json);
 
@@ -42,40 +42,44 @@ const fetchRequests = async () => {
 
   return (
     <SalesClientComponent>
-      <div className="bg-[#ffedce] h-full w-full">
+      <main className="bg-[#ffedce] h-full w-full">
         <Header />
 
         {/* Dashboard Top Section */}
-        <div className="h-40 flex flex-row border-slate-200 px-4 bg-[#fff6f5] items-center">
+        <div className="h-auto mt-2 flex flex-row border-slate-200 px-4 bg-[#fff6f5]">
+          <div className="mx-4 mt-2 mb-2 flex flex-row gap-4">
+
           {/* Pending Card */}
           <div
-            className="w-[230px] h-[80px] bg-[#0c2a42] rounded-lg p-4 cursor-pointer shadow-md hover:shadow-2xl transition-shadow duration-300 flex items-center justify-between"
+            className="w-[230px] h-[80px] bg-white border border-[#ffb7b7] rounded-lg p-4 cursor-pointer shadow-md hover:shadow-2xl transition-shadow duration-300 flex items-center justify-between"
             onClick={() => router.push("/sales/s_pending_customer_request")}
           >
             {/* Left Section: Label & Number */}
             <div>
-              <div className="text-[#ffffff] text-sm uppercase font-bold">
+              <div className="text-[#cf3a3a] text-sm uppercase font-bold">
                 Pending
               </div>
               <div
-                className="text-[#ffffff] text-3xl font-bold mt-1"
-                style={{ textShadow: "1px 1px 4px rgba(0,0,0,0.5)" }}
+                className="font-bold text-[#cf3a3a] text-3xl mt-1"
+                //style={{ textShadow: "1px 1px 4px rgba(0,0,0,0.5)" }}
               >
                 {pendingCount}
               </div>
             </div>
 
-            {/* Right Section: Icon */}
             <Image
               src="/square-list-svgrepo-com.svg"
               alt="icon"
               width={40}
               height={40}
-              className="invert"
+              className=""
             />
+
           </div>
         </div>
-      </div>
+
+        </div>
+      </main>
     </SalesClientComponent>
   );
 };

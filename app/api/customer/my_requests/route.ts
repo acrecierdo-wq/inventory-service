@@ -1,22 +1,4 @@
-// // /app/api/sales/my_request/route.ts
-// import { NextResponse } from "next/server";
-// import { db } from "@/db/drizzle";
-// import { quotation_requests } from "@/db/schema";
-
-// export async function GET() {
-//   try {
-//     const results = await db
-//       .select()
-//       .from(quotation_requests)
-//       .orderBy(quotation_requests.created_at);
-
-//     // return plain array
-//     return NextResponse.json(results);
-//   } catch (error) {
-//     console.error("Error fetching quotation requests:", error);
-//     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-//   }
-// }
+// app/api/customer/my_requests/route.ts
 
 import { NextResponse } from "next/server";
 import { db } from "@/db/drizzle";
@@ -26,9 +8,25 @@ import {
   quotation_request_files,
 } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
 
-export async function GET() {
+export async function GET() { 
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const [customer] = await db
+      .select()
+      .from(customer_profile)
+      .where(eq(customer_profile.clerkId, userId));
+
+      if (!customer) {
+        return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+      }
+
     // Fetch all requests + customer info
     const requests = await db
       .select({
@@ -47,6 +45,7 @@ export async function GET() {
       })
       .from(quotation_requests)
       .leftJoin(customer_profile, eq(customer_profile.id, quotation_requests.customer_id))
+      .where(eq(quotation_requests.customer_id, customer.id))
       .orderBy(quotation_requests.created_at);
 
     // Fetch all files once
@@ -88,3 +87,4 @@ export async function GET() {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+

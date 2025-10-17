@@ -193,8 +193,8 @@ export const customer_profile = pgTable("customer_profile", {
   phone: varchar("phone", { length: 255 }).notNull(),
   clientCode: varchar("client_code", { length: 10 }).notNull(),
 
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 {/* Quotations */}
@@ -224,17 +224,18 @@ export const quotations = pgTable("quotations", {
       | "expired"
     >()
     .default("draft"),
-  validity: date("validity").notNull(),
+  payment: varchar("payment", { length: 50 }).notNull(),
+  validity: varchar("validity").notNull(),
   delivery: varchar("delivery", { length: 100 }).notNull(),
   warranty: varchar("warranty", { length: 50 }).notNull(),
   quotationNotes: text("quotation_notes"),
   cadSketch: varchar("cad_sketch", { length: 255 }),
 
   vat: numeric("vat", { precision: 5, scale: 2 }).default("12.00"),
-  markup: numeric("markup", { precision: 5, scale: 2 }).default("0.00"),
+  markup: numeric("markup", { precision: 5, scale: 2 }).default("5.00"),
 
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 {/* Quotation Items */}
@@ -262,7 +263,7 @@ export const quotationMaterials = pgTable("quotation_materials", {
   specification: varchar("specification", { length: 255 }).notNull(),
   quantity: integer("quantity").notNull(),
 
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 {/* Quotation Files */}
@@ -276,7 +277,7 @@ export const quotationFiles = pgTable("quotation_files", {
   fileName: varchar("file_name", { length: 255 }).notNull(),
   filePath: varchar("file_path", { length: 500 }).notNull(),
 
-  uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
 

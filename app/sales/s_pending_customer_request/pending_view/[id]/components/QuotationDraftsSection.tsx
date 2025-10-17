@@ -171,25 +171,36 @@
 
 // export default QuotationDraftsSection;
 
+// app/sales/s_pending_customer_request/pending_view/[id]/components/QuotationDraftsSection.tsx
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { QuotationItem, PreviewFile } from "@/app/sales/types/quotation";
 
 export type Draft = {
   id: string;
+  requestId: number;
   quotationNumber?: string;
   projectName?: string;
   quotationNotes?: string;
   mode?: string;
-  items?: [];
+  items?: QuotationItem[];
+  payment?: string;
   delivery?: string;
   warranty?: string;
   validity?: string;
   vat?: number;
   markup?: number;
-  status: "draft";
-  requestId: number;
+  status?: "draft" | "restoring" | "sent" | string;
+  cadSketch?: string | null;
+  cadSketchFile?: PreviewFile[];
+  files?: {
+    id?: string;
+    fileName: string;
+    filePath: string;
+  }[],
 };
 
 type Props = {
@@ -197,11 +208,11 @@ type Props = {
   locked?: boolean;
   onRestore?: (draft: Draft) => void;
   restoringDraftId?: number | string | null;
+  hasSentQuotation?: boolean;
 };
 
-export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId, locked }: Props) {
+export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId, locked, hasSentQuotation }: Props) {
   const [drafts, setDrafts] = useState<Draft[]>([]);
-
 
   const fetchDrafts = useCallback(async () => {
     try {
@@ -216,31 +227,6 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
 
   useEffect(() => {
     if (requestId) fetchDrafts();
-
-    // const handleUpdated = (event: CustomEvent) => {
-    //   if (event.detail?.removedDraftId) {
-    //     setDrafts((prev) => prev.filter((d) => d.id !== event.detail.removedDraftId));
-    //   } else {
-    //     fetchDrafts();
-    //   }
-    // };
-
-    // const handleLocked = () => setLocked(true);
-    // const handleUnlocked = () => {
-    //   setLocked(false);
-    //   setRestoringDraftId(null);
-    //   fetchDrafts();
-    // };
-
-    // window.addEventListener("drafts-updated", handleUpdated as EventListener);
-    // window.addEventListener("drafts-locked", handleLocked);
-    // window.addEventListener("drafts-unlocked", handleUnlocked);
-
-    // return () => {
-    //   window.removeEventListener("drafts-updated", handleUpdated as EventListener);
-    //   window.removeEventListener("drafts-locked", handleLocked);
-    //   window.removeEventListener("drafts-unlocked", handleUnlocked);
-    // };
   }, [fetchDrafts, requestId]);
 
   const handleDelete = async (id: string) => {
@@ -258,30 +244,50 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
   };
 
   const handleRestore = async (draft: Draft) => {
+    console.log("Restoring draft:", draft);
     if (locked || restoringDraftId) {
       toast.warning("Another draft is already being restored.");
       return;
     }
-
-    // setRestoringDraftId(draft.id);
-    // setLocked(true);
 
     try {
       // mark draft as restoring in backend so it doesn't show up in fetch drafts
       await fetch(`/api/sales/quotations/${draft.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "restoring"}),
+        body: JSON.stringify({
+          requestId: draft.requestId,
+          status: "restoring",
+        }),
       });
 
-      onRestore?.(draft);
+      const res = await fetch(`/api/sales/quotations/${draft.id}`);
+      const data = await res.json();
 
-      setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+      // const result = await response.json();
+
+      // if (!response.ok) {
+      //   console.error("Restore failed:", result);
+      //   toast.error(`Failed to restore draft: ${result.error?.requestId || result.error || "Unknown error"}`);
+      //   return;
+      // }
+
+      // setLocked(true);
+      // setRestoringDraftId(draft.id);
+      if (data.success) {
+        onRestore?.({
+          ...draft,
+          ...data.data,
+        });
+        setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
 
       //window.dispatchEvent(new CustomEvent("drafts-locked"));
       window.dispatchEvent(new CustomEvent("drafts-updated", { detail: { removedDraftId: draft.id }, }));
 
       toast.success("Draft restored successfully!");
+      } else {
+        toast.error("Failed to load draft data.");
+      }
     } catch (err) {
       console.error("Failed to restore draft:", err);
       toast.error("Failed to restore draft. Please try again.");
@@ -291,11 +297,15 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
   };
 
   return (
-    <div className="mt-4">
-      <h3 className="font-bold text-2xl text-[#5a2347] mb-6">Quotation Drafts</h3>
+    <div className="mb-5 space-y-4">
+      <h3 className="font-bold text-lg text-[#880c0c]">Quotation Drafts</h3>
+
+      {hasSentQuotation && (
+        <p className="text-[#880c0c9b] italic">A quotation has already been sent to the customer.You cannot restore drafts, but you can delete them if needed.</p>
+      )}
 
       {drafts.length === 0 ? (
-        <p className="text-gray-500 italic">No drafts saved yet.</p>
+        <p className="text-[#880c0c9b] italic">No drafts saved yet.</p>
       ) : (
         <div className="space-y-4">
           {drafts.map((draft) => (
@@ -303,14 +313,14 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
             key={draft.id} 
             className="border p-4 rounded-xl bg-gray-50 shadow-sm">
 
-              <p><strong>Quotation #:</strong> {draft.quotationNumber || `Draft-${draft.id}`}</p>
-              <p><strong>Project:</strong> {draft.projectName}</p>
-              <p><strong>Notes:</strong> {draft.quotationNotes || "-"}</p>
+              <p><strong className="font-semibold text-[#880c0c]">Quotation #:</strong> {draft.quotationNumber || `Draft-${draft.id}`}</p>
+              <p><strong className="font-semibold text-[#880c0c]">Project:</strong> <span className="uppercase">{draft.projectName}</span></p>
+              <p><strong className="font-semibold text-[#880c0c]">Notes:</strong> {draft.quotationNotes || "-"}</p>
 
               <div className="flex gap-3 mt-3">
                 <button
                   onClick={() => handleRestore(draft)}
-                  disabled={!!locked || !!restoringDraftId}
+                  disabled={!!locked || !!restoringDraftId || hasSentQuotation}
                   className={`px-4 py-2 rounded text-white ${
                     !!locked || !!restoringDraftId 
                       ? "bg-gray-400" 

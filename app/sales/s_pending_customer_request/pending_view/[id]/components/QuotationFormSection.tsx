@@ -217,11 +217,12 @@
 
 // export default QuotationFormSection;
 
+// app/sales/s_pending_customer_request/pending_view/[id]/components/QuotationFormSection.tsx
 "use client";
 
 import QuotationForm from "../quotationform";
 import { PreviewDocument } from "../components/quotationcomponents/PreviewDocument";
-import { SavedQuotation } from "@/app/sales/types/quotation";
+import { SavedQuotation, PreviewFile } from "@/app/sales/types/quotation";
 import { Draft } from "./QuotationDraftsSection";
 import { useState, useEffect, useCallback } from "react";
 
@@ -247,10 +248,13 @@ export function QuotationFormSection({
   setQuotationForms,
 }: Props) {
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [, setCadSketchFile] = useState<PreviewFile[]>([]);
 
   const isDraftActive = quotationForms.some(
     (f) => f.status === "draft" || f.status === "restoring"
   );
+
+  const hasSentQuotation = quotationForms.some(q => q.status === "sent");
 
   const handleAddNewQuotation = () => {
     if (isDraftActive) return;
@@ -260,8 +264,9 @@ export function QuotationFormSection({
       requestId,
       quotationNotes: "",
       vat: 12,
-      markup: 0,
+      markup: 5,
       items: [],
+      payment: "",
       delivery: "",
       warranty: "",
       validity: "",
@@ -273,37 +278,125 @@ export function QuotationFormSection({
   };
 
   // ✅ Memoized to make ESLint happy and prevent stale closure
-  const handleRestoreDraft = useCallback(
-    (draft: Draft) => {
-      if (isDraftActive) return;
+//  const handleRestoreDraft = useCallback(
+//   (draft: Draft) => {
+//     console.log("Restored draft:", draft);
+//     console.log("Restored draft cadSketchFile:", draft.cadSketchFile);
 
-      const restoredForm: SavedQuotation = {
-        id: draft.id,
-        requestId: draft.requestId,
-        projectName: draft.projectName || projectName,
-        mode: draft.mode || mode,
-        quotationNotes: draft.quotationNotes || "",
-        vat: draft.vat ?? 12,
-        markup: draft.markup ?? 0,
-        items: draft.items || [],
-        delivery: draft.delivery || "",
-        warranty: draft.warranty || "",
-        validity: draft.validity || "",
-        status: "restoring",
-      };
+//     if (isDraftActive) return;
 
-      setQuotationForms([restoredForm]);
-      setActiveDraftId(draft.id);
+//     const restoredForm: SavedQuotation = {
+//       id: draft.id,
+//       requestId: draft.requestId,
+//       projectName: draft.projectName || projectName,
+//       mode: draft.mode || mode,
+//       quotationNotes: draft.quotationNotes || "",
+//       vat: draft.vat ?? 12,
+//       markup: draft.markup ?? 5,
+//       items: draft.items || [],
+//       payment: draft.payment || "",
+//       delivery: draft.delivery || "",
+//       warranty: draft.warranty || "",
+//       validity: draft.validity || "",
+//       status: "restoring",
+//       //cadSketch: draft.cadSketch || null,
+//       cadSketchFile: draft.cadSketchFile || [],
+//     };
 
-      window.dispatchEvent(new CustomEvent("drafts-locked"));
-      window.dispatchEvent(
-        new CustomEvent("drafts-updated", {
-          detail: { removedDraftId: draft.id },
-        })
-      );
-    },
-    [isDraftActive, projectName, mode, setQuotationForms]
-  );
+//     setQuotationForms([restoredForm]);
+//     setActiveDraftId(draft.id);
+
+//     // Optionally restore CAD sketch file if you store it in state
+//     if (draft.cadSketchFile?.length) {
+//       const file = draft.cadSketchFile[0];
+//       // create File object if needed
+//       const restoredFile = new File([""], file.name, { type: "image/png" });
+//       // setCadSketchFile([restoredFile]); ← only if your component defines this state
+//     }
+
+//     window.dispatchEvent(new CustomEvent("drafts-locked"));
+//     window.dispatchEvent(
+//       new CustomEvent("drafts-updated", {
+//         detail: { removedDraftId: draft.id },
+//       })
+//     );
+//   },
+//   [isDraftActive, projectName, mode, setQuotationForms]
+// );
+
+const handleRestoreDraft = useCallback(
+  (draft: Draft) => {
+    console.log("Restored draft:", draft);
+    console.log("Restored draft cadSketchFile:", draft.cadSketchFile);
+    console.log("Restored draft files:", draft.files);
+
+    if (isDraftActive) return;
+
+    // 🔧 Normalize CAD files — prefer cadSketchFile, fallback to files, fallback to cadSketch
+    const restoredCadFiles =
+      draft.cadSketchFile?.length
+        ? draft.cadSketchFile
+        : draft.files?.map((f) => ({
+            id: f.id,
+            name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
+            filePath: f.filePath,
+          })) ||
+          (draft.cadSketch
+            ? [
+                {
+                  id: Date.now(),
+                  name: draft.cadSketch.split("/").pop() || "uploaded_file",
+                  filePath: draft.cadSketch,
+                },
+              ]
+            : []);
+
+    const restoredForm: SavedQuotation = {
+      id: draft.id,
+      requestId: draft.requestId,
+      projectName: draft.projectName || projectName,
+      mode: draft.mode || mode,
+      quotationNotes: draft.quotationNotes || "",
+      vat: draft.vat ?? 12,
+      markup: draft.markup ?? 5,
+      items: (draft.items || []).map((it) => ({
+        ...it,
+        materials: Array.isArray(it.materials) && it.materials.length > 0
+          ? it.materials
+          : [{
+            id: crypto.randomUUID(),
+            name: "",
+            specification: "",
+            quantity: 0,
+            error: {},
+          }],
+      })),
+      payment: draft.payment || "",
+      delivery: draft.delivery || "",
+      warranty: draft.warranty || "",
+      validity: draft.validity || "",
+      status: "restoring",
+      cadSketchFile: restoredCadFiles as PreviewFile[],
+    };
+
+    console.log("✅ Restored Form cadSketchFile:", restoredForm.cadSketchFile);
+    console.log("Restored draft itemc(with materials):", restoredForm.items);
+
+    setCadSketchFile(restoredCadFiles as PreviewFile[]);
+
+    setQuotationForms([restoredForm]);
+    setActiveDraftId(draft.id);
+
+    window.dispatchEvent(new CustomEvent("drafts-locked"));
+    window.dispatchEvent(
+      new CustomEvent("drafts-updated", {
+        detail: { removedDraftId: draft.id },
+      })
+    );
+  },
+  [isDraftActive, projectName, mode, setQuotationForms]
+);
+
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDraftSaved = (formId: string, draft: SavedQuotation) => {
@@ -347,8 +440,13 @@ export function QuotationFormSection({
 
         {status === "Accepted" && !isDraftActive && (
           <button
-            className="px-6 py-2 rounded-full font-medium shadow bg-white text-[#880c0c] hover:bg-[#cf3a3a] hover:text-white"
             onClick={handleAddNewQuotation}
+            disabled={hasSentQuotation || status !== "Accepted"}
+            className={`px-6 py-2 rounded-full font-medium shadow  ${
+              hasSentQuotation || status !== "Accepted"
+                ? "bg-gray-400 cursor-not-allowed text-white"
+                : "text-[#880c0c] hover:bg-[#cf3a3a] hover:text-white bg-white cursor-pointer"
+            }`}
           >
             + Add Quotation
           </button>
@@ -364,7 +462,7 @@ export function QuotationFormSection({
             return (
               <div
                 key={form.id}
-                className="relative border rounded-xl p-4 shadow"
+                className="relative bg-[#ffb7b75f] rounded-xl p-4 shadow-lg"
               >
                 {isEditable && (
                   <button
@@ -383,6 +481,7 @@ export function QuotationFormSection({
 
                 {isEditable ? (
                   <QuotationForm
+                    key={form.id}
                     requestId={requestId}
                     projectName={form.projectName || projectName}
                     mode={form.mode || mode}
@@ -390,10 +489,12 @@ export function QuotationFormSection({
                     initialNotes={form.quotationNotes}
                     initialItems={form.items}
                     initialVat={form.vat || 12}
-                    initialMarkup={form.markup || 0}
+                    initialMarkup={form.markup || 5}
+                    initialPayment={form.payment}
                     initialDelivery={form.delivery}
                     initialWarranty={form.warranty}
                     initialValidity={form.validity}
+                    initialCadSketch={form.cadSketchFile}
                     setActiveDraftId={setActiveDraftId}
                     onSavedDraft={(draft) => 
                       handleDraftSaved(form.id, 
@@ -404,8 +505,9 @@ export function QuotationFormSection({
                   <PreviewDocument
                     {...form}
                     vat={form.vat ?? 12}
-                    markup={form.markup ?? 0}
+                    markup={form.markup ?? 5}
                     items={form.items ?? []}
+                    payment={form.payment ?? ""}
                     delivery={form.delivery ?? ""}
                     warranty={form.warranty ?? ""}
                     validity={form.validity ?? ""}
@@ -419,6 +521,7 @@ export function QuotationFormSection({
                     isSent={true}
                     onBack={() => {}}
                     onSend={() => {}}
+                    quotation={{ createdAt: form.createdAt ?? ""}}
                   />
                 )}
               </div>
@@ -427,9 +530,12 @@ export function QuotationFormSection({
         </div>
       ) : (
         <p className="text-[#880c0c9b] italic">
-          {status === "Accepted"
-            ? "Click '+ Add Quotation' to start adding quotations."
-            : "Quotation can only be added once the request is accepted."}
+          {status !== "Accepted"
+            ? "Quotation can only be added once the request is accepted."
+            : hasSentQuotation
+            ? "A quotation has already been sent. You cannot add or restore drafts unless the customer requests a revision."
+            : "Click '+ Add Quotation' to start adding quotations."
+          }
         </p>
       )}
     </>

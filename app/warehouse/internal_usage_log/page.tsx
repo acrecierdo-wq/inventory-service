@@ -368,7 +368,7 @@ const InternalUsagePage = () => {
                     <span>{usages.purpose}</span>
                     <span className={`text-center px-5 text-sm py-1 rounded-4xl
                         ${usages.status === 'Utilized' ? 'bg-green-200 text-green-800' :
-                        usages.status === 'Archived' ? 'bg-red-200 text-red-800' :
+                         usages.status === 'Archived' ? 'bg-red-200 text-red-800' :
                             ''}`}>
                         {usages.status}
                     </span>

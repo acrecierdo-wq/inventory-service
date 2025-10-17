@@ -68,12 +68,12 @@ export const CustomerHeader = ({className}: Props) => {
 
     return (
         <div className={cn
-        ("z-50 sticky top-0 h-20 pl-[250px] flex flex-row items-center justify-between border-slate-200 px-4 bg-[#173f63]",
+        ("z-50 sticky top-0 h-20 pl-[250px] flex flex-row items-center justify-between border-slate-200 px-4 bg-[#ffc922] ",
             className,
 
         )}>
             <div className="flex flex-col">
-                <div className="text-[#ffffff] font-bold text-lg sm:text-xl">
+                <div className="text-[#642248] font-bold text-lg sm:text-xl">
                 Canlubang Techno-Industrial Corporation 
                 {isSignedIn ? (
                     <div className="text-sm font-bold">- Welcome, {user.firstName || user.emailAddresses[0].emailAddress}!</div>
@@ -81,7 +81,7 @@ export const CustomerHeader = ({className}: Props) => {
                     <div className="text-sm font-semibold">- Welcome, Guest!</div>
                 )}
                 </div>
-                <div className="text-[#ffffff] font-bold text-[10px] sm:text-xs">
+                <div className="text-[#642248] font-bold text-[10px] sm:text-xs">
                 {currentDate} | <Time />
                 </div>
             </div>
@@ -111,7 +111,7 @@ export const CustomerHeader = ({className}: Props) => {
 
                             {/* Name below avatar */}
                             {user && (
-                            <p className="text-sm font-medium text-white">
+                            <p className="text-sm font-medium text-[#880c0c]">
                                 {user.fullName || user.emailAddresses[0].emailAddress}
                             </p>
                             )}

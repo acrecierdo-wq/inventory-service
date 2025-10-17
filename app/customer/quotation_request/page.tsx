@@ -2,10 +2,10 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { CustomerHeader } from "@/components/header-customer";
 import Image from "next/image";
-import { Plus, MoreHorizontal, X, ChevronDown } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
@@ -43,44 +43,45 @@ const cancellationReasons = [
 ];
 
 // Toast Component
-type ToastProps = {
-  message: string;
-  type?: "success" | "error" | "info";
-  onClose: () => void;
-};
+// type ToastProps = {
+//   message: string;
+//   type?: "success" | "error" | "info";
+//   onClose: () => void;
+// };
 
-const Toast = ({ message, type = "success", onClose }: ToastProps) => {
-  const colors = {
-    success: "bg-green-600 text-white",
-    error: "bg-red-600 text-white",
-    info: "bg-blue-600 text-white",
-  };
+// const Toast = ({ message, type = "success", onClose }: ToastProps) => {
+//   const colors = {
+//     success: "bg-green-600 text-white",
+//     error: "bg-red-600 text-white",
+//     info: "bg-blue-600 text-white",
+//   };
 
-  useEffect(() => {
-    const timer = setTimeout(onClose, 4000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
+//   useEffect(() => {
+//     const timer = setTimeout(onClose, 4000);
+//     return () => clearTimeout(timer);
+//   }, [onClose]);
 
-  return (
-    <div
-      className={`fixed top-10 left-1/2 transform -translate-x-1/2 px-8 py-6 rounded-2xl shadow-2xl flex items-center gap-5 animate-slide-in ${colors[type]} z-50 max-w-2xl text-xl`}
-    >
-      <span>{message}</span>
-      <button onClick={onClose} className="text-white text-2xl hover:opacity-70">
-        ✕
-      </button>
-    </div>
-  );
-};
+//   return (
+//     <div
+//       className={`fixed top-10 left-1/2 transform -translate-x-1/2 px-8 py-6 rounded-2xl shadow-2xl flex items-center gap-5 animate-slide-in ${colors[type]} z-50 max-w-2xl text-xl`}
+//     >
+//       <span>{message}</span>
+//       <button onClick={onClose} className="text-white text-2xl hover:opacity-70">
+//         ✕
+//       </button>
+//     </div>
+//   );
+// };
 
 const QuotationRequestPage = () => {
   const [requests, setRequests] = useState<QuotationRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<QuotationRequest[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [ ,setDropdownPosition] = useState({ top: 0, left: 0 });
   const [selectedRequest, setSelectedRequest] = useState<QuotationRequest | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -88,8 +89,8 @@ const QuotationRequestPage = () => {
 
   const [deleteRequestId, setDeleteRequestId] = useState<number | null>(null);
 
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error" | "info">("success");
+  //const [toastMessage, setToastMessage] = useState("");
+  //const [toastType, setToastType] = useState<"success" | "error" | "info">("success");
 
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -97,6 +98,7 @@ const QuotationRequestPage = () => {
 
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
 
   //const [profileComplete, setProfileComplete] = useState(false);
   
@@ -110,6 +112,31 @@ const initialStatus = searchParams.get("status") as
 
 const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus || "");
 
+const statusRef = useRef<HTMLDivElement | null>(null);
+const sortRef = useRef<HTMLDivElement | null>(null);
+
+
+useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+          const target = event.target as Node;
+
+          if (
+            statusRef.current &&
+            !statusRef.current.contains(target)
+          ) { 
+            setShowFilterDropdown(false);
+          }
+          if (
+            sortRef.current &&
+            !sortRef.current.contains(target)
+          ) {
+            setShowSortDropdown(false);
+          }
+        }
+
+        window.addEventListener("mousedown", handleClickOutside);
+        return () => window.removeEventListener("mousedown", handleClickOutside);
+      }, []);
 
 useEffect(() => {
   if (!Array.isArray(requests)) return;
@@ -123,29 +150,10 @@ useEffect(() => {
 }, [requests, statusFilter]);
   
 
-  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
-    setToastMessage(message);
-    setToastType(type);
-  };
-
-  // useEffect(() => {
-  //   async function checkProfile() {
-  //     try {
-  //       const res = await fetch("/api/customer");
-  //       if (res.ok) {
-  //         const data = await res.json();
-  //         if (data?.phone && data?.address && data?.clientCode) {
-  //           setProfileComplete(true);
-  //         }  else {
-  //           setProfileComplete(false);
-  //         }
-  //       }
-  //     } catch (err) {
-  //       console.error("Error fetching profile:", err);
-  //     }
-  //   }
-  //   checkProfile();
-  // },[]);
+  // const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+  //   setToastMessage(message);
+  //   setToastType(type);
+  // };
 
   const router = useRouter();
  const handleNewRequest = async () => {
@@ -173,6 +181,7 @@ useEffect(() => {
   useEffect(() => {
     const fetchRequests = async () => {
       setLoading(true);
+      setError(null);
       try {
         const res = await fetch("/api/customer/q_request");
         const result = await res.json();
@@ -249,13 +258,34 @@ useEffect(() => {
     setFilteredRequests(updated);
   }, [requests, statusFilter, searchQuery, sortNewestFirst]);
 
-  const toggleDropdown = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDropdownPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+  // const toggleDropdown = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
+  //   const rect = e.currentTarget.getBoundingClientRect();
+  //   setDropdownPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+  //   setOpenDropdownId(openDropdownId === id ? null : id);
+  //   // setShowFilterDropdown(false);
+  //   // setShowSortDropdown(false);
+  // };
+  const toggleDropdown = (event: React.MouseEvent, id: number) => {
+    if (openDropdownId === id) {
+      setOpenDropdownId(null);
+      //setDropdownPosition(null);
+      return;
+    }
+
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    setDropdownPosition({ top: rect.top, left: rect.left });
     setOpenDropdownId(openDropdownId === id ? null : id);
-    setShowFilterDropdown(false);
-    setShowSortDropdown(false);
   };
+
+  useEffect(() => {
+      const handleClickOutside = () => {
+        setOpenDropdownId(null);
+        setDropdownPos(null);
+      };
+      window.addEventListener("click", handleClickOutside);
+      return () => window.removeEventListener("click", handleClickOutside);
+    }, []);
+
 
   const toggleFilterDropdown = () => {
     setShowFilterDropdown((prev) => !prev);
@@ -281,7 +311,7 @@ useEffect(() => {
 
   const handleCancelAcceptedRequest = async (id: number) => {
   try {
-    const res = await fetch("/api/customer/q_request", {
+    const res = await fetch(`/api/customer/q_request/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status: "CancelRequested" }),
@@ -298,13 +328,13 @@ useEffect(() => {
       if (selectedRequest?.id === id) {
         setSelectedRequest({ ...selectedRequest, status: "CancelRequested" });
       }
-      showToast("Cancellation request sent successfully!", "success");
+      toast.success("Cancellation request sent successfully!");
     } else {
-      showToast(data.error || "Failed to send cancellation request.", "error");
+      toast.error(data.error || "Failed to send cancellation request.");
     }
   } catch (err) {
     console.error(err);
-    showToast("Failed to send cancellation request due to network/server error.", "error");
+    toast.error("Failed to send cancellation request due to network/server error.");
   }
 };
 
@@ -336,18 +366,17 @@ const confirmCancelRequest = async () => {
       if (selectedRequest?.id === cancelRequestId) {
         setSelectedRequest({ ...selectedRequest, status: newStatus });
       }
-      showToast(
+      toast.success(
         req.status === "Pending"
           ? "Request has been successfully cancelled!"
-          : "Cancellation request sent successfully!",
-        "success"
+          : "Cancellation request sent successfully!"
       );
     } else {
-      showToast(data.error || "Failed to cancel request. Please try again.", "error");
+      toast.error(data.error || "Failed to cancel request. Please try again.");
     }
   } catch (err) {
     console.error(err);
-    showToast("Failed to cancel request due to a network or server error.", "error");
+    toast.error("Failed to cancel request due to a network or server error.");
   }
 
   setShowCancelModal(false);
@@ -369,13 +398,13 @@ const confirmCancelRequest = async () => {
       if (res.ok) {
         setRequests((prev) => prev.filter((req) => req.id !== deleteRequestId));
         if (selectedRequest?.id === deleteRequestId) setSelectedRequest(null);
-        showToast("Request has been deleted successfully.", "success");
+        toast.success("Request has been deleted successfully.");
       } else {
-        showToast(data.error || "Failed to delete request.", "error");
+        toast.error(data.error || "Failed to delete request.");
       }
     } catch (err) {
       console.error(err);
-      showToast("Network or server error while deleting.", "error");
+      toast.error("Network or server error while deleting.");
     }
 
     setDeleteRequestId(null);
@@ -385,215 +414,221 @@ const confirmCancelRequest = async () => {
   const closeModal = () => setModalImage(null);
 
   return (
-      <div className="bg-[#fed795] min-h-screen w-full relative">
+      <main className="h-screen w-full bg-[#ffedce] flex flex-col relative">
         <CustomerHeader />
 
         {/* Header & Controls */}
-        <div className="px-10 py-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold text-[#173f63]">QUOTATION REQUESTS</h1>
-            {/* <Link
-              href="/customer/quotation_request/NewRequest"
-              className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 shadow"
-            >
-              <Plus size={24} className="text-[#482b0e]" />
-              <span className="ml-3 text-[#482b0e] font-medium text-lg">New Request</span>
-            </Link> */}
+        <div className="">
+          <div className="flex justify-between items-center ml-10 mt-5">
+          
             <button
               onClick={handleNewRequest}
-              className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4 shadow"
+              className="h-10 w-35 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
             >
-              <Plus size={24} className="text-[#482b0e]" />
-              <span className="ml-3 text-[#482b0e] font-medium text-lg">New Request</span>
+              {/* <Plus size={24} className="text-[#482b0e]" /> */}
+              <Image src="/circle-plus-svgrepo-com.svg" width={20} height={20} alt="Add" />
+              <span className="ml-2 text-sm text-[#482b0e] font-bold">New Request</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-3 justify-end mt-4 relative z-10">
-            {/* Filter Dropdown */}
-            <div className="relative">
-              <button
-                className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
-                onClick={toggleFilterDropdown}
-              >
-                <span className="text-[#482b0e] font-medium text-lg">
-                  {statusFilter ? statusFilter : "Filter"}
-                </span>
-                <ChevronDown className="ml-2 text-[#482b0e]" size={20} />
-              </button>
-              {showFilterDropdown && (
-                <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
-                  {(["", "Pending", "Accepted", "Cancelled", "Approved"] as const).map((status) => (
-               <button
-    key={status}
+<section className="flex items-center gap-3 justify-end mt-4 relative z-10 mr-10">
+  {/* Search Input */}
+  <div className="relative">
+    <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1">
+    <Image src="/search-alt-2-svgrepo-com.svg" width={15} height={15} alt="Search" className="ml-5" />
+    <input
+      type="text"
+      placeholder="Search..."
+      className="ml-2 w-full bg-transparent outline-none"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+    />
+  </div>
+  </div>
+
+  {/* Filter Dropdown */}
+  <div className="relative" ref={statusRef}>
+    <div
+      className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+      onClick={toggleFilterDropdown}
+    >
+      <Image src="/filter-svgrepo-com.svg" width={20} height={20} alt="Filter" className="" />
+      <span className="text-sm text-[#482b0e] ml-2">
+        {statusFilter ? statusFilter : "Filter"}
+      </span>
+    {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
+  </div>
+  
+{showFilterDropdown && (
+  <div className="absolute z-20 bg-white border-gray-200 mt-1 w-35 rounded shadow">
+    <div
+    className="py-1 hover:bg-gray-100 cursor-pointer text-sm font-medium text-center"
     onClick={() => {
-      setStatusFilter(status); // ✅ no more error
+      setStatusFilter(""); // Clear filter
       setShowFilterDropdown(false);
-            }}
-  >
-    {status || "All Statuses"}
-  </button>
-))}
+    }}
+    >
+      All Status
+      </div>
+    {["Pending", "Accepted", "Cancelled", "Approved"].map((status) => (
+      <div
+    key={status}
+    className="py-1 hover:bg-gray-100 cursor-pointer text-sm text-center"
+    onClick={() => {
+      setStatusFilter("");
+      setShowFilterDropdown(false);
+    }}
+    >
+      {status}
+    </div>
+  ))}
+</div>
+)}
+</div>
 
+{/* Sort Dropdown */}
+<div className="relative" ref={sortRef}>
+<div
+  className="h-10 w-25 rounded-md border-[#d2bda7] border-b-2 bg-white flex items-center px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+  onClick={toggleSortDropdown}
+>
+  <Image src="/sort-ascending-fill-svgrepo-com.svg" width={20} height={20} alt="Sort" className="" />
+  <span className="ml-2 text-sm text-[#482b0e]">
+    {sortNewestFirst ? "Sort" : "Sort"}
+  </span>
+  {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
+</div>
+{showSortDropdown && (
+  <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
+    <button
+      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+        sortNewestFirst ? "font-bold text-blue-600" : ""
+      }`}
+      onClick={() => {
+        setSortNewestFirst(true);
+        setShowSortDropdown(false);
+      }}
+    >
+      Newest → Oldest
+    </button>
+  <button
+    className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
+      !sortNewestFirst ? "font-bold text-blue-600" : ""
+        }`}
+    onClick={() => {
+      setSortNewestFirst(false);
+      setShowSortDropdown(false);
+    }}
+    >
+    Oldest → Newest
+    </button>
+    </div>
+  )}
+</div>
 
-                </div>
-              )}
-            </div>
+</section>
 
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <button
-                className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
-                onClick={toggleSortDropdown}
-              >
-                <span className="text-[#482b0e] font-medium text-lg">
-                  {sortNewestFirst ? "Sort" : "Sort"}
-                </span>
-                <ChevronDown className="ml-2 text-[#482b0e]" size={20} />
-              </button>
-              {showSortDropdown && (
-                <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
-                  <button
-                    className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                      sortNewestFirst ? "font-bold text-blue-600" : ""
-                    }`}
-                    onClick={() => {
-                      setSortNewestFirst(true);
-                      setShowSortDropdown(false);
-                    }}
-                  >
-                    Newest → Oldest
-                  </button>
-                  <button
-                    className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                      !sortNewestFirst ? "font-bold text-blue-600" : ""
-                    }`}
-                    onClick={() => {
-                      setSortNewestFirst(false);
-                      setShowSortDropdown(false);
-                    }}
-                  >
-                    Oldest → Newest
-                  </button>
-                </div>
-              )}
-            </div>
+{/* Table */}
+<section className="flex-1 overflow-y-auto px-10 mt-2">
+  <div className="bg-white rounded shadow-md mb-2">
+    {!loading && !error && (
+      <>
+        {/* Header */}
+        <div className="bg-[#f59e0b] grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-3 text-white font-semibold border-b border-[#d2bda7] text-center">
+          <span>REQUEST ID</span>
+          <span>PROJECT NAME</span>
+          <span>MODE</span>
+          <span>STATUS</span>
+          <span>DATE & TIME REQUESTED</span>
+          <span>ACTION</span>
+        </div>
 
-            {/* Search Input */}
-            <div className="h-12 w-96 rounded-3xl border-b-2 border-[#d2bda7] bg-white flex items-center px-3 text-[#8a6f56] text-lg">
-              <Image src="/search-alt-2-svgrepo-com.svg" width={20} height={20} alt="Search" />
-              <input
-                type="text"
-                className="ml-2 w-full bg-transparent outline-none"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-         {/* Table */}
-<div className="mt-4 overflow-x-auto bg-white rounded-xl shadow relative z-0 scrollbar-hidden">
-  <table className="min-w-full text-base text-left text-gray-700">
-    <thead className="bg-[#173f63] text-white uppercase">
-      <tr>
-        <th className="px-6 py-4">Request ID</th>
-        <th className="px-6 py-4">Project Name</th>
-        <th className="px-6 py-4">Mode</th>
-        <th className="px-6 py-4">Status</th>
-        <th className="px-6 py-4">Date & Time Requested</th>
-        <th className="px-6 py-4 text-center">Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {loading ? (
-        <tr>
-          <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-            Loading requests...
-          </td>
-        </tr>
-      ) : filteredRequests.length > 0 ? (
-        filteredRequests.map((req, index) => (
-          <tr key={req.id ?? index} className="border-b">
-            <td className="px-6 py-4 font-semibold">{req.id ?? "-"}</td>
-            <td className="px-6 py-4">{req.project_name ?? "-"}</td>
-            <td className="px-6 py-4">{req.mode ?? "-"}</td>
-            <td className="px-6 py-4">
+        {/* Rows */}
+        {filteredRequests.length > 0 ? (
+          filteredRequests.map((req, index) => (
+            <div
+              key={req.id ?? index}
+              className="grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+            >
+              <span className="font-semibold">{req.id ?? "-"}</span>
+              <span className="uppercase text-sm">{req.project_name ?? "-"}</span>
+              <span>{req.mode ?? "-"}</span>
               <span
-                className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                className={`px-4 py-1 rounded-full text-sm font-semibold ${
                   statusColors[req.status] || ""
                 }`}
               >
                 {req.status ?? "-"}
               </span>
-            </td>
-            <td className="px-6 py-4">
-              {req.created_at ? new Date(req.created_at).toLocaleString() : "-"}
-            </td>
-            <td className="px-6 py-4 text-center relative">
-              <button
-                className="p-2 rounded-full hover:bg-gray-200"
-                onClick={(e) => toggleDropdown(req.id ?? index, e)}
-              >
-                <MoreHorizontal size={22} className="text-gray-600" />
-              </button>
+              <span>
+                {req.created_at
+                  ? new Date(req.created_at).toLocaleString()
+                  : "-"}
+              </span>
 
-              {openDropdownId === (req.id ?? index) && (
-                <div
-                  className="fixed bg-white border rounded-md shadow-lg z-50"
-                  style={{
-                    top: `${dropdownPosition.top}px`,
-                    left: `${dropdownPosition.left}px`,
+              {/* Action Dropdown */}
+              <span className="relative flex items-center justify-center">
+                <button
+                  className="hover:bg-gray-100 px-1 py-1 rounded-full flex items-center justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleDropdown(e, req.id);
                   }}
                 >
-                  <button
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                    onClick={() => handleShowDetails(req)}
-                  >
-                    Show Details
-                  </button>
+                  <MoreHorizontal size={22} className="text-gray-600" />
+                </button>
 
-                  {/* Action Buttons */}
-                  {["Pending", "Accepted"].includes(req.status?.trim()) ? (
-                    <>
-                      {req.status.trim() === "Pending" ? (
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                          onClick={() => handleCancelClick(req.id)}
-                        >
-                          Cancel Request
-                        </button>
-                      ) : (
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-orange-600"
-                          onClick={() => handleCancelAcceptedRequest(req.id)}
-                        >
-                          Request Cancellation
-                        </button>
-                      )}
-                    </>
-                  ) : req.status?.trim() === "Cancelled" ? (
-                    <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-700 font-bold"
-                      onClick={() => setDeleteRequestId(req.id)}
+                {openDropdownId === (req.id ?? index) && (
+                  <div className="fixed right-0 z-50 mt-15 mr-5 bg-white shadow border rounded text-sm w-35">
+                    <div
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleShowDetails(req)}
                     >
-                      Delete Request
-                    </button>
-                  ) : null}
-                </div>
-              )}
-            </td>
-          </tr>
-        ))
-      ) : (
-        <tr>
-          <td colSpan={6} className="px-6 py-10 text-center text-gray-400">
+                      Show Details
+                    </div>
+
+                    {["Pending", "Accepted"].includes(req.status?.trim()) ? (
+                      <>
+                        {req.status.trim() === "Pending" ? (
+                          <div
+                            className="px-4 py-2 hover:bg-gray-100 text-red-600 text-xs cursor-pointer"
+                            onClick={() => handleCancelClick(req.id)}
+                          >
+                            Cancel Request
+                          </div>
+                        ) : (
+                          <div
+                            className="px-4 py-2 hover:bg-gray-100 text-orange-600 cursor-pointer"
+                            onClick={() =>
+                              handleCancelAcceptedRequest(req.id)
+                            }
+                          >
+                            Request Cancellation
+                          </div>
+                        )}
+                      </>
+                    ) : req.status?.trim() === "Cancelled" ? (
+                      <div
+                        className="px-4 py-2 hover:bg-gray-100 text-red-700 font-bold cursor-pointer"
+                        onClick={() => setDeleteRequestId(req.id)}
+                      >
+                        Delete Request
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-gray-500 py-5 italic">
             No quotation requests found.
-          </td>
-        </tr>
-      )}
-    </tbody>
-  </table>
-</div>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+</section>
 
 </div>
 
@@ -640,7 +675,7 @@ const confirmCancelRequest = async () => {
 
         <p>
           <span className="font-semibold">Project Name: </span>
-          {selectedRequest.project_name}
+          <span className="uppercase">{selectedRequest.project_name}</span>
         </p>
         <p>
           <span className="font-semibold">Mode: </span>
@@ -822,14 +857,14 @@ const confirmCancelRequest = async () => {
         )}
 
         {/* Toast Notification */}
-        {toastMessage && (
+        {/* {toastMessage && (
           <Toast
             message={toastMessage}
             type={toastType}
             onClose={() => setToastMessage("")}
           />
-        )}
-      </div>
+        )} */}
+      </main>
   );
 };
 

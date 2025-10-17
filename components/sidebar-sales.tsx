@@ -42,7 +42,7 @@ export const SideBarSales = ({className}: Props) => {
                     />
                     <SidebarItem
                     label="Customer Profile" 
-                    href="/sales/s_CustomerProfile" 
+                    href="/sales/s_customer_profile/s_customers" 
                     iconSrc="/board-chart-svgrepo-com.svg"
                     onClick={closeAllDropdowns}
                     />
@@ -71,12 +71,6 @@ export const SideBarSales = ({className}: Props) => {
                         />
                         </div>
                     )}
-                    <SidebarItem
-                    label="Customer Profile" 
-                    href="/sales/s_customer_profile" 
-                    iconSrc="/user-pen-svgrepo-com.svg"
-                    onClick={closeAllDropdowns}
-                    />
                 </div>
         </div>
     );

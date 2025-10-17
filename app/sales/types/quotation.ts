@@ -37,19 +37,28 @@ export type SavedQuotation = {
   vat?: number;
   markup?: number;
   items: QuotationItem[];
+  payment: string;
   delivery: string;
   warranty: string;
   validity: string;
   //cadSketch?: string | null;
+  files?: { id: number; path: string }[],
   cadSketchFile?: PreviewFile[];
   revisionLabel?: string;
   baseQuotationId?: number;
   quotationNumber?: string;
   customer?: Customer;
+  createdAt?: string;
+};
+
+export type FileData = {
+  id: string;
+  name: string;
+  filePath: string;
 };
 
 export type PreviewFile = {
-  id: number;
+  id: string | number;
   name: string;
   //fileName: string;
   filePath: string;

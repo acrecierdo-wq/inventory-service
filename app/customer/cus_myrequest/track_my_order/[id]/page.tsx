@@ -1,10 +1,204 @@
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import { useParams } from "next/navigation";
+// import { Header } from "@/components/header";
+// import { Package, Truck, FileCheck, CheckCircle2 } from "lucide-react"; // added icons
+
+// type QuotationRequest = {
+//   id: number;
+//   project_name: string;
+//   mode: string | null;
+//   status: string;
+//   created_at: string;
+// };
+
+// const steps = ["Quotation", "Purchase Order", "Processing", "Out for Delivery", "Completed"]; // added placeholders
+
+// const TrackMyOrderPage = () => {
+//   const { id } = useParams();
+//   const [request, setRequest] = useState<QuotationRequest | null>(null);
+//   const [activeStep, setActiveStep] = useState("Quotation");
+
+//   useEffect(() => {
+//     const fetchRequest = async () => {
+//       try {
+//         const res = await fetch(`/api/sales/my_request/${id}`);
+//         if (!res.ok) throw new Error("Failed to fetch request");
+//         const data = await res.json();
+//         setRequest(data);
+//         if (data.status) setActiveStep(data.status);
+//       } catch (err) {
+//         console.error(err);
+//       }
+//     };
+
+//     if (id) fetchRequest();
+//   }, [id]);
+
+//   if (!request) {
+//     return (
+//         <div className="min-h-screen bg-[#fed795]">
+//           <div className="border-2 shadow-md">
+//             <Header />
+//           </div>
+//           <div className="flex justify-center items-center h-[80vh]">
+//             <p className="text-lg text-gray-600">Loading request...</p>
+//           </div>
+//         </div>
+//     );
+//   }
+
+//   return (
+//       <div className="bg-[#fed795] min-h-screen w-full">
+//         {/* Header */}
+//         <div className="border-2 shadow-md">
+//           <Header />
+//         </div>
+
+//         {/* White Container */}
+//         <div className="flex justify-center px-4 sm:px-6 py-8 sm:py-12">
+//           <div className="bg-white rounded-2xl shadow-lg 
+//                           p-4 sm:p-6 md:p-8 lg:p-10 
+//                           w-full max-w-4xl 
+//                           max-h-[90vh] overflow-y-auto">
+            
+//             {/* Order Info */}
+//             <h2 className="text-2xl sm:text-3xl font-bold text-[#482b0e] mb-6">
+//               Tracking Request #{request.id}
+//             </h2>
+//             <div className="space-y-2 mb-10">
+//               <p className="text-[#482b0e]/90">
+//                 <span className="font-semibold">Project:</span>{" "}
+//                 {request.project_name}
+//               </p>
+//               <p className="text-[#482b0e]/90">
+//                 <span className="font-semibold">Mode:</span>{" "}
+//                 {request.mode || "N/A"}
+//               </p>
+//               <p className="text-[#482b0e]/90">
+//                 <span className="font-semibold">Status:</span> {request.status}
+//               </p>
+//               <p className="text-sm text-gray-700 mt-2">
+//                 Requested at:{" "}
+//                 {new Date(request.created_at).toLocaleDateString("en-US", {
+//                   year: "numeric",
+//                   month: "short",
+//                   day: "numeric",
+//                 })}{" "}
+//                 {new Date(request.created_at).toLocaleTimeString("en-US", {
+//                   hour: "2-digit",
+//                   minute: "2-digit",
+//                   hour12: true,
+//                 })}
+//               </p>
+//             </div>
+
+//             {/* Progress Circles */}
+//             <div className="px-2 sm:px-6 py-6">
+//               <div className="flex justify-between items-center relative">
+//                 {steps.map((step, idx) => {
+//                   const isActive = activeStep === step;
+
+//                   return (
+//                     <div
+//                       key={step}
+//                       className="flex flex-col items-center text-center flex-1 relative"
+//                     >
+//                       {/* Circle */}
+//                       <div
+//                         className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition cursor-pointer z-10
+//                           ${
+//                             isActive
+//                               ? "bg-[#f59e0b] text-white"
+//                               : "bg-gray-300 text-gray-500"
+//                           }`}
+//                         onClick={() => setActiveStep(step)}
+//                       >
+//                         {step === "Quotation" ? (
+//                           <Package className="w-6 h-6" />
+//                         ) : step === "Purchase Order" ? (
+//                           <Truck className="w-6 h-6" />
+//                         ) : step === "Processing" ? (
+//                           <Truck className="w-6 h-6" />
+//                         ) : (
+//                           <CheckCircle2 className="w-6 h-6" />
+//                         )}
+//                       </div>
+
+//                       {/* Label */}
+//                       <button
+//                         onClick={() => setActiveStep(step)}
+//                         className={`mt-3 pb-1 font-semibold text-lg transition border-b-2 ${
+//                           isActive
+//                             ? "text-[#5a2347] border-[#5a2347]"
+//                             : "text-gray-500 border-transparent hover:text-[#5a2347]"
+//                         }`}
+//                       >
+//                         {step}
+//                       </button>
+
+//                       {/* Connector */}
+//                       {idx < steps.length - 1 && (
+//                         <div
+//                           className={`absolute top-6 left-1/2 w-full h-1 
+//                             ${
+//                               activeStep === steps[idx + 1] || activeStep === step
+//                                 ? "bg-[#f59e0b]"
+//                                 : "bg-gray-300"
+//                             }`}
+//                         ></div>
+//                       )}
+//                     </div>
+//                   );
+//                 })}
+//               </div>
+//             </div>
+
+//             {/* Step Content */}
+//             <div className="bg-gray-50 rounded-xl shadow-inner p-6 mt-6 space-y-4">
+//               {activeStep === "Quotation" && (
+//                 <p className="text-gray-700 text-lg">
+//                   Your quotation details are being processed.
+//                 </p>
+//               )}
+//               {activeStep === "Purchase Order" && (
+//                 <p className="text-gray-700 text-lg">
+//                   No purchase order uploaded.
+//                 </p>
+//               )}
+//               {activeStep === "Step 3" && (
+//                 <p className="text-gray-700 text-lg">
+//                   No purchase order uploaded.
+//                 </p>
+//               )}
+//               {activeStep === "Step 4" && (
+//                 <p className="text-gray-700 text-lg">
+//                   No purchase order uploaded.
+//                 </p>
+//               )}
+//               {activeStep === "Step 5" && (
+//                 <p className="text-gray-700 text-lg">
+//                   No purchase order uploaded.
+//                 </p>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//   );
+// };
+
+// export default TrackMyOrderPage;
+
+// app/customer/cus_myrequest/track_my_order/[id]/page.tsx
+
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { CustomerHeader } from "@/components/header-customer";
-import CustomerClientComponent from "@/app/validate/customer_validate";
-import { Package, Truck, FileCheck, CheckCircle2 } from "lucide-react"; // added icons
+import { Package, Truck, FileCheck, CheckCircle2, LucidePersonStanding, FileText } from "lucide-react"; // added icons
 
 type QuotationRequest = {
   id: number;
@@ -12,19 +206,35 @@ type QuotationRequest = {
   mode: string | null;
   status: string;
   created_at: string;
+  quotation?: QuotationDetail | null;
 };
 
-const steps = ["Quotation", "Purchase Order", "Step 3", "Step 4"]; // added placeholders
+type QuotationDetail = {
+  id: number;
+  created_at: string;
+  file_url?: string;
+};
+
+const statusColors: Record<string, string> = {
+  Pending: "bg-gray-200 text-gray-700",
+  Accepted: "bg-green-100 text-green-700",
+  Rejected: "bg-red-100 text-red-700",
+  "Revision Requested": "bg-yellow-100 text-yellow-700",
+};
+
+const steps = ["Quotation", "Purchase Order", "Processing", "Out for Delivery", "Completed"]; // added placeholders
 
 const TrackMyOrderPage = () => {
   const { id } = useParams();
+  const router = useRouter();
   const [request, setRequest] = useState<QuotationRequest | null>(null);
   const [activeStep, setActiveStep] = useState("Quotation");
+  const [showQuotationTable, setShowQuotationTable] = useState(false);
 
-  useEffect(() => {
-    const fetchRequest = async () => {
+  const fetchRequest = useCallback(async () => async () => {
       try {
-        const res = await fetch(`/api/sales/my_request/${id}`);
+        console.log("Fetching request for ID:", id);
+        const res = await fetch(`/api/customer/q_request/${id}`);
         if (!res.ok) throw new Error("Failed to fetch request");
         const data = await res.json();
         setRequest(data);
@@ -32,58 +242,74 @@ const TrackMyOrderPage = () => {
       } catch (err) {
         console.error(err);
       }
+    },[id]);
+
+  useEffect(() => {
+    const handleStatusUpdate = (
+      //e: CustomEvent<{ status: string }>
+    ) => {
+      fetchRequest();
     };
 
-    if (id) fetchRequest();
-  }, [id]);
+    window.addEventListener("quotation-status-updated", handleStatusUpdate as EventListener);
+    return () => {
+      window.removeEventListener("quotation-status-updated", handleStatusUpdate as EventListener);
+    };
+  }, [fetchRequest]);
+
+  useEffect(() => { 
+    if (!id || isNaN(Number(id))) return;
+      fetchRequest();
+  }, [id, fetchRequest]);
 
   if (!request) {
     return (
-      <CustomerClientComponent>
-        <div className="min-h-screen bg-[#fed795]">
-          <div className="border-2 shadow-md">
+        <div className="min-h-screen bg-[#ffedce]">
+          <div className="">
             <CustomerHeader />
           </div>
           <div className="flex justify-center items-center h-[80vh]">
-            <p className="text-lg text-gray-600">Loading request...</p>
+            <p className="text-lg text-gray-600 italic">Loading request...</p>
           </div>
         </div>
-      </CustomerClientComponent>
     );
   }
 
+  const quotation = request.quotation;
+
   return (
-    <CustomerClientComponent>
-      <div className="bg-[#fed795] min-h-screen w-full">
+      <div className="bg-[#ffedce] min-h-screen w-full">
         {/* Header */}
-        <div className="border-2 shadow-md">
+        <div className="">
           <CustomerHeader />
         </div>
 
         {/* White Container */}
-        <div className="flex justify-center px-4 sm:px-6 py-8 sm:py-12">
+        <div className="flex justify-center px-4 sm:px-6 py-4">
           <div className="bg-white rounded-2xl shadow-lg 
                           p-4 sm:p-6 md:p-8 lg:p-10 
-                          w-full max-w-4xl 
+                          w-full 
                           max-h-[90vh] overflow-y-auto">
             
             {/* Order Info */}
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#482b0e] mb-6">
+            <h2 className="text-lg sm:text-3xl font-bold text-gray-700 mb-4">
               Tracking Request #{request.id}
             </h2>
             <div className="space-y-2 mb-10">
-              <p className="text-[#482b0e]/90">
+              <p className="text-gray-700">
                 <span className="font-semibold">Project:</span>{" "}
-                {request.project_name}
+                <span className="uppercase">{request.project_name}</span>
               </p>
-              <p className="text-[#482b0e]/90">
+              <p className="text-gray-700">
                 <span className="font-semibold">Mode:</span>{" "}
                 {request.mode || "N/A"}
               </p>
-              <p className="text-[#482b0e]/90">
-                <span className="font-semibold">Status:</span> {request.status}
+              <p className="font-semibold">Status: 
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[request.status] || ""}`}>
+                         {request.status}
+                      </span>
               </p>
-              <p className="text-sm text-gray-700 mt-2">
+              <p className="text-sm text-gray-700 mt-2 italic">
                 Requested at:{" "}
                 {new Date(request.created_at).toLocaleDateString("en-US", {
                   year: "numeric",
@@ -101,19 +327,23 @@ const TrackMyOrderPage = () => {
             {/* Progress Circles */}
             <div className="px-2 sm:px-6 py-6">
               <div className="flex justify-between items-center relative">
+                
                 {steps.map((step, idx) => {
                   const isActive = activeStep === step;
+                  const isQuotationReady = quotation && step === "Quotation";
 
                   return (
                     <div
                       key={step}
                       className="flex flex-col items-center text-center flex-1 relative"
                     >
-                      {/* Circle */}
+                      {/* Main Circle */}
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition cursor-pointer z-10
                           ${
-                            isActive
+                            isQuotationReady
+                              ? "bg-green-500 text-white"
+                              : isActive
                               ? "bg-[#f59e0b] text-white"
                               : "bg-gray-300 text-gray-500"
                           }`}
@@ -122,9 +352,11 @@ const TrackMyOrderPage = () => {
                         {step === "Quotation" ? (
                           <Package className="w-6 h-6" />
                         ) : step === "Purchase Order" ? (
-                          <Truck className="w-6 h-6" />
-                        ) : step === "Step 3" ? (
                           <FileCheck className="w-6 h-6" />
+                        ) : step === "Processing" ? (
+                          <LucidePersonStanding className="w-6 h-6" />
+                        ) : step === "Out for Delivery" ? (
+                          <Truck className="w-6 h-6" />
                         ) : (
                           <CheckCircle2 className="w-6 h-6" />
                         )}
@@ -135,12 +367,33 @@ const TrackMyOrderPage = () => {
                         onClick={() => setActiveStep(step)}
                         className={`mt-3 pb-1 font-semibold text-lg transition border-b-2 ${
                           isActive
-                            ? "text-[#5a2347] border-[#5a2347]"
-                            : "text-gray-500 border-transparent hover:text-[#5a2347]"
+                            ? "text-gray-700 border-gray-700"
+                            : "text-gray-300 border-transparent hover:text-gray-700"
                         }`}
                       >
                         {step}
                       </button>
+
+                      {/* Sub Circle */}
+                      {step === "Quotation" && request?.status && ["accepted", "rejected", "revision_requested"].includes(request.status) && (
+                        <div className="absolute top-1/2 right-0 translate-x-6 -translate-y-1/2 flex flex-col items-center">
+                          <div
+                            title={`Quotation ${request.status.replace("_", " ")}`}
+                            className={`w-4 h-4 rounded-full border-2 shadow-sm ${
+                              request.status === "accepted"
+                                ? "bg-green-500 border-green-600"
+                                : request.status === "rejected"
+                                ? "bg-red-500 border-red-600"
+                                : request.status === "revison_requested"
+                                ? "bg-yellow-400 border-yellow-500"
+                                : "bg-gray-300 border-gray-400"
+                            }`}
+                          />
+                          <span className="text-[10px] text-gray-600 mt-1 capitalize">
+                            {request.status.replace("_", " ")}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Connector */}
                       {idx < steps.length - 1 && (
@@ -160,28 +413,95 @@ const TrackMyOrderPage = () => {
             </div>
 
             {/* Step Content */}
-            <div className="bg-gray-50 rounded-xl shadow-inner p-6 mt-6 space-y-4">
+            <div className="bg-[#f59f0b1b] rounded-xl shadow-inner p-6 mt-6 space-y-4">
               {activeStep === "Quotation" && (
-                <p className="text-gray-700 text-lg">
-                  Your quotation details are being processed.
-                </p>
+                <>
+                {!quotation ? (
+                  <p className="text-gray-700 text-lg">
+                    Your quotation details are being processed, please wait.
+                  </p>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p className="text-gray-700 text-lg">
+                      Your quotation is now ready. Please click <b>Open</b>
+                    </p>
+                    <button
+                      onClick={() => setShowQuotationTable(!showQuotationTable)}
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
+                    >
+                      {showQuotationTable ? "Hide" : "Open"}
+                    </button>
+                  </div>
+                )}
+
+                {/* Quotation table */}
+                {quotation && showQuotationTable && (
+                  <div className="mt-4 border border-[#f59e0b] rounded-lg overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-[#f59f0bb7] text-white">
+                        <tr>
+                          <th className="p-3">Date | Time Created</th>
+                          <th className="p-3">Quotation File</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-t bg-white">
+                          <td className="p-3">
+                            {new Date(quotation.created_at).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}{" "}
+                            {new Date(quotation.created_at).toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}
+                          </td>
+                          <td className="p-3">
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  `/customer/cus_myrequest/track_my_order/quotation_request/${request.id}`
+                                )
+                              }
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <FileText className="inline w-6 h-6"/>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
               )}
+
               {activeStep === "Purchase Order" && (
                 <p className="text-gray-700 text-lg">
-                  Your purchase order is now active.
+                  No purchase order uploaded.
                 </p>
               )}
-              {activeStep === "Step 3" && (
-                <p className="text-gray-700 text-lg">This is Step 3 (empty).</p>
+              {activeStep === "Processing" && (
+                <p className="text-gray-700 text-lg">
+                  No purchase order uploaded.
+                </p>
               )}
-              {activeStep === "Step 4" && (
-                <p className="text-gray-700 text-lg">This is Step 4 (empty).</p>
+              {activeStep === "Out for Delivery" && (
+                <p className="text-gray-700 text-lg">
+                  No purchase order uploaded.
+                </p>
+              )}
+              {activeStep === "Completed" && (
+                <p className="text-gray-700 text-lg">
+                  No purchase order uploaded.
+                </p>
               )}
             </div>
           </div>
         </div>
       </div>
-    </CustomerClientComponent>
   );
 };
 

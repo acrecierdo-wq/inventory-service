@@ -414,7 +414,7 @@
 // app/sales/s_pending_customer_request/pending_view/[id]/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Header } from "@/components/header";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -422,6 +422,7 @@ import { QuotationFormSection } from "./components/QuotationFormSection";
 import { QuotationItem } from "@/app/sales/types/quotation";
 import QuotationDraftsSection, { Draft } from "./components/QuotationDraftsSection";
 import { SavedQuotation } from "@/app/sales/types/quotation";
+import Image from "next/image";
 
 type QuotationFile = {
   id: number;
@@ -449,6 +450,7 @@ type QuotationRequest = {
   items: QuotationItem[];
   customer?: CustomerProfile;
   quotation_notes?: string;
+  payment?: string;
   delivery?: string;
   warranty?: string;
   validity?: string;
@@ -482,15 +484,15 @@ const PendingViewPage = () => {
   const [restoringDraftId, setRestoringDraftId] = useState<number | string | null>(null);
   const [restoredDraft, setRestoredDraft] = useState<Draft | null>(null);
 
-  // Fetch request with customer
-  useEffect(() => {
-    const fetchRequest = async () => {
+  const hasSentQuotation = quotationForms.some(q => q.status === "sent");
+
+  const fetchRequest = useCallback(async () => {
       if (!requestId) {
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch(`/api/sales/my_request/${requestId}`);
+        const res = await fetch(`/api/sales/customer_request/${requestId}`);
         const data = await res.json();
 
         console.log("REQUEST DATA:", data);
@@ -502,9 +504,14 @@ const PendingViewPage = () => {
       } finally {
         setLoading(false);
       }
-    };
+    }, [requestId]);
+
+  // Fetch request with customer
+  useEffect(() => {
     fetchRequest();
-  }, [requestId]);
+  }, [fetchRequest]);
+
+  
 
   const initiateAction = (type: "Accepted" | "Rejected" | "Cancelled") => {
     setActionType(type);
@@ -515,7 +522,7 @@ const PendingViewPage = () => {
     if (!request || !actionType) return;
     setUpdating(true);
     try {
-      const res = await fetch(`/api/sales/my_request/${request.id}`, {
+      const res = await fetch(`/api/sales/customer_request/${request.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: actionType }),
@@ -524,6 +531,8 @@ const PendingViewPage = () => {
       if (data) {
         setRequest(data);
         toast.success(`Request ${actionType.toLowerCase()} successfully!`);
+
+        await fetchRequest();
       }
     } catch (err) {
       console.error(err);
@@ -543,7 +552,7 @@ const PendingViewPage = () => {
       toast.error("Please complete and save the current quotation before adding a new one.");
       return;
     }
-    setQuotationForms((prev) => [...prev, { id: String(Date.now()), saved: false, quotationNotes: "", items: [], delivery: "", warranty: "", validity: "" }]);
+    setQuotationForms((prev) => [...prev, { id: String(Date.now()), saved: false, quotationNotes: "", items: [], payment: "", delivery: "", warranty: "", validity: "" }]);
     setActiveTab("quotation");
   };
 
@@ -551,7 +560,7 @@ const PendingViewPage = () => {
     return (
       <div className="bg-[#ffedce] min-h-screen w-full">
         <Header />
-        <div className="px-10 py-6 text-center text-gray-500">Loading...</div>
+        <div className="px-10 py-6 text-center text-gray-500 italic">Loading...</div>
       </div>
     );
   }
@@ -568,10 +577,11 @@ const PendingViewPage = () => {
   }
 
   return (
-    <div className="bg-gray-100 min-h-screen w-full">
+    <main className="bg-[#ffedce] min-h-screen w-full">
       <Header />
 
-      <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <section className="p-6">
+        <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"> 
         {/* Header */}
         <div className="bg-gradient-to-r from-[#cf3a3a] to-[#ffb7b7] p-4 text-white flex justify-between items-center">
           <div>
@@ -624,7 +634,7 @@ const PendingViewPage = () => {
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* Left: Request info */}
                   <div className="flex-1 space-y-2">
-                    <p><span className="font-semibold text-[#880c0c]">Project Name: </span>{request.project_name}</p>
+                    <p><span className="font-semibold text-[#880c0c]">Project Name: </span> <span className="uppercase text-sm">{request.project_name}</span></p>
                     <p><span className="font-semibold text-[#880c0c]">Mode: </span>{request.mode}</p>
                     <p>
                       <span className="font-semibold text-[#880c0c]">Status: </span>
@@ -696,26 +706,34 @@ const PendingViewPage = () => {
                             className="relative border border-gray-300 rounded-xl p-3 bg-white shadow hover:shadow-lg hover:scale-105 transition cursor-pointer"
                             onClick={() => window.open(file.path, "_blank")}
                           >
-                            {/* Preview */}
-                            <div className="flex items-center justify-center h-32 overflow-hidden bg-gray-50 rounded-lg">
-                              {isImage ? (
+                            {isImage ? (
+                              file.path.startsWith("blob:") ? (
+                                // Local preview → raw img (no optimization)
+                                // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={file.path}
                                   alt={fileName}
                                   className="object-contain h-full w-full"
                                 />
-                              ) : isPDF ? (
-                                <iframe
-                                  src={file.path}
-                                  className="w-full h-full rounded"
-                                />
                               ) : (
-                                <div className="text-gray-600 text-sm text-center flex flex-col items-center justify-center h-full">
-                                  📄
-                                  <span className="mt-2">{fileExt?.toUpperCase()} File</span>
-                                </div>
-                              )}
-                            </div>
+                                // Remote image → use Next.js Image optimization
+                                <Image
+                                  src={file.path ?? ""}
+                                  alt={fileName ?? "preview image"}
+                                  width={500}
+                                  height={500}
+                                  className="object-contain h-full w-full"
+                                  style={{ objectFit: "contain" }}
+                                />
+                              )
+                            ) : isPDF ? (
+                              <iframe src={file.path} className="w-full h-full rounded" />
+                            ) : (
+                              <div className="text-gray-600 text-sm text-center flex flex-col items-center justify-center h-full">
+                                📄
+                                <span className="mt-2">{fileExt?.toUpperCase()} File</span>
+                              </div>
+                            )}
 
                             {/* File Name */}
                             <div className="mt-2 text-center text-sm text-gray-700 truncate">
@@ -750,6 +768,7 @@ const PendingViewPage = () => {
               requestId={request.id}
               restoringDraftId={restoringDraftId}
               locked={!!restoringDraftId}
+              hasSentQuotation={hasSentQuotation}
               onRestore={(draft) => {
                 if (restoringDraftId) return;
 
@@ -758,20 +777,53 @@ const PendingViewPage = () => {
                 setActiveTab("quotation");
 
                 // Add restored draft to quotationForms immediately
-                setQuotationForms([{
-                  id: draft.id,
-                  requestId: draft.requestId,
-                  projectName: draft.projectName || request.project_name,
-                  mode: draft.mode || request.mode,
-                  quotationNotes: draft.quotationNotes || "",
-                  vat: draft.vat ?? 12,
-                  markup: draft.markup ?? 0,
-                  items: draft.items || [],
-                  delivery: draft.delivery || "",
-                  warranty: draft.warranty || "",
-                  validity: draft.validity || "",
-                  status: "restoring"
-                }]);
+               setQuotationForms([{
+  id: draft.id,
+  requestId: draft.requestId,
+  projectName: draft.projectName || request.project_name,
+  mode: draft.mode || request.mode,
+  quotationNotes: draft.quotationNotes || "",
+  vat: draft.vat ?? 12,
+  markup: draft.markup ?? 5,
+  items: (draft.items || []).map((it) => ({
+  ...it,
+  materials: Array.isArray(it.materials) && it.materials.length > 0 
+    ? it.materials 
+    : [
+        {
+          id: crypto.randomUUID(),
+          name: "",
+          specification: "",
+          quantity: 0,
+          error: {},
+        },
+      ],
+})),
+
+  payment: draft.payment || "",
+  delivery: draft.delivery || "",
+  warranty: draft.warranty || "",
+  validity: draft.validity || "",
+  status: "restoring",
+  cadSketchFile:
+    draft.cadSketchFile?.length
+      ? draft.cadSketchFile
+      : draft.files?.map((f) => ({
+          id: f.id ?? Date.now(),
+          name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
+          filePath: f.filePath,
+        })) ||
+        (draft.cadSketch
+          ? [
+              {
+                id: Date.now(),
+                name: draft.cadSketch.split("/").pop() || "uploaded_file",
+                filePath: draft.cadSketch,
+              },
+            ]
+          : []),
+}]);
+
 
                 //window.dispatchEvent(new CustomEvent("restore-draft", { detail: { draft } }));
                 window.dispatchEvent(new CustomEvent("drafts-updated", { detail: { removedDraftId: draft.id } }));
@@ -814,14 +866,14 @@ const PendingViewPage = () => {
             {request.status === "CancelRequested" && (
               <>
                 <button
-                  className="px-8 py-3 rounded-full bg-green-600 text-white hover:bg-green-700 font-medium text-lg shadow"
+                  className="px-8 py-3 rounded-full bg-green-600 text-white hover:bg-green-700 font-medium shadow"
                   onClick={() => initiateAction("Cancelled")}
                   disabled={updating}
                 >
                   Approve Cancellation
                 </button>
                 <button
-                  className="px-8 py-3 rounded-full bg-red-600 text-white hover:bg-red-700 font-medium text-lg shadow"
+                  className="px-8 py-3 rounded-full bg-red-600 text-white hover:bg-red-700 font-medium shadow"
                   onClick={() => initiateAction("Rejected")}
                   disabled={updating}
                 >
@@ -832,9 +884,10 @@ const PendingViewPage = () => {
           </div>
         )}
       </div>
+      </section>
 
       {showFloatingValidation && actionType && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50"> 
           <div className="bg-white p-6 rounded-xl shadow-xl w-96">
             <p className="mb-4 text-gray-700 text-center">
               Are you sure you want to {actionType.toLowerCase()} this request?
@@ -860,7 +913,7 @@ const PendingViewPage = () => {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 };
 
