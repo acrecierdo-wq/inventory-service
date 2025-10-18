@@ -40,8 +40,8 @@ const SPendingCustomerRequestPage = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, ] = useState(false);
+  const [error, ] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
