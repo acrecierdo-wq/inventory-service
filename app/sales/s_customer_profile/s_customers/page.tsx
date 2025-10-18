@@ -80,7 +80,7 @@ const SalesCustomersPage = () => {
                                 </span>
                                 <div className="">
           <button className="px-4 py-1 border border-[#d2bda7] bg-white rounded-3xl shadow hover:bg-[#ffe9b6] transition-all">
-            <Link href="/sales/s_customer_profile/s_customers/s_view_details_c">
+            <Link href="/sales/s_customer_profile/s_customers/s_view_details">
               <div className="text-sm font-semibold">View Details</div>
             </Link>
           </button>

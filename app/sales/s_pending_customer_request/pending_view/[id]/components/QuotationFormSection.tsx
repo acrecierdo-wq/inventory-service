@@ -466,7 +466,7 @@ const handleRestoreDraft = useCallback(
               >
                 {isEditable && (
                   <button
-                    className="absolute top-2 right-2 text-sm px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                    className="absolute top-2 right-2 text-sm px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"
                     onClick={() => {
                       setQuotationForms((prev) =>
                         prev.filter((f) => f.id !== form.id)
@@ -475,7 +475,7 @@ const handleRestoreDraft = useCallback(
                       window.dispatchEvent(new Event("drafts-unlocked"));
                     }}
                   >
-                    Remove
+                    Cancel
                   </button>
                 )}
 

@@ -746,7 +746,8 @@ export default function QuotationForm({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 mt-6">
+      {/* <div>Cancel</div> */}
       <div className="p-6 bg-white rounded-xl shadow-sm border border-[#ffb7b7]">
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
     {/* Customer Info */}
@@ -790,7 +791,7 @@ export default function QuotationForm({
           type="button"
           title="Click to add another item"
           onClick={addItem}
-          className="px-4 py-2 bg-white text-[#880c0c] rounded-lg hover:bg-[#cf3a3a] hover:text-white transition"
+          className="px-4 py-2 bg-white text-[#880c0c] rounded-lg hover:bg-[#cf3a3a] hover:text-white transition cursor-pointer"
         >
           + Add Item
         </button>
@@ -803,7 +804,8 @@ export default function QuotationForm({
           <div key={index} className="border border-[#ffb7b7] rounded-xl p-6 space-y-4 bg-white shadow-sm relative">
             {/* Item Name */}
             <div>
-              <label className="block text-[#880c0c] font-bold text-md mb-1">Item Name</label>
+              <label className="block text-[#880c0c] font-bold text-md mb-1">Item Name <span className="text-red-400"> *</span></label>
+              
               <input
                 type="text"
                 value={item.itemName}
@@ -817,9 +819,7 @@ export default function QuotationForm({
 
             {/* Scope of Work */}
             <div>
-              <label className="block text-[#880c0c] font-bold text-md mb-1">
-                Scope of Work
-              </label>
+              <label className="block text-[#880c0c] font-bold text-md mb-1">Scope of Work <span className="text-red-400"> *</span></label>
 
               <textarea
                 value={item.scopeOfWork}
@@ -846,12 +846,16 @@ export default function QuotationForm({
             {/* Materials */}
             <div className="border-t pt-2 w-full border-b pb-2 border-[#ffb7b7]">
               <label className="font-bold text-[#880c0c] text-md">Materials</label>
-              {(item.materials || []).map((mat, mi) => (
-                <div key={mat.id} className="grid grid-cols-3 gap-3 items-center mt-2">
 
-                   {/* Material Name */}
+              {(item.materials || []).map((mat, mi) => (
+              <div key={mat.id} className="mt-4 pb-2">
+                {/* The top row for inputs */}
+                <div className="grid grid-cols-3 gap-3 items-start">
+                  {/* Material Name */}
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-[#880c0c] mb-1">Material Name</label>
+                    <label className="text-sm font-medium text-[#880c0c] mb-1">
+                      Material Name <span className="text-red-400">*</span>
+                    </label>
                     <input
                       type="text"
                       value={mat.name}
@@ -867,13 +871,15 @@ export default function QuotationForm({
 
                   {/* Specification */}
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-[#880c0c] mb-1">Specification</label>
+                    <label className="text-sm font-medium text-[#880c0c] mb-1">
+                      Specification <span className="text-red-400">*</span>
+                    </label>
                     <input
                       type="text"
                       value={mat.specification}
                       onChange={(e) => updateMaterial(index, mi, "specification", e.target.value)}
                       disabled={isSent}
-                      className={`w-full border rounded-lg px-4 py-2 hover:bg-gray-100 
+                      className={`w-full border rounded-lg px-4 py-2 hover:bg-gray-100
                         ${mat.error?.specification ? "border-red-500" : mat.specification ? "border-green-500" : "border-[#d2bda7]"}`}
                     />
                     {mat.error?.specification && (
@@ -881,31 +887,39 @@ export default function QuotationForm({
                     )}
                   </div>
 
-                  <NumericInput 
-                  label="Quantity"
-                  value={mat.quantity === 0 ? "" : mat.quantity}
-                  setValue={(val) => updateMaterial(index, mi, "quantity", val)}
-                  max={9999}
-                  required
-                  disabled={isSent}
-                  showError={hasSubmitted}
-                  />
+                  {/* Quantity */}
+                  <div className="flex flex-col">
+                    <NumericInput 
+                      label="Quantity"
+                      value={mat.quantity === 0 ? "" : mat.quantity}
+                      setValue={(val) => updateMaterial(index, mi, "quantity", val)}
+                      max={9999}
+                      required
+                      disabled={isSent}
+                      showError={hasSubmitted}
+                    />
+                  </div>
+                </div>
 
+                {/* Remove button below, aligned to far right */}
+                <div className="flex justify-end mt-3">
                   <button
                     type="button"
                     title="Click to remove material"
                     onClick={() => removeMaterial(index, mi)}
-                    className="text-red-600 hover:text-red-800 col-span-3 text-right"
+                    className="text-red-600 hover:text-red-800 cursor-pointer font-sans"
                   >
                     Remove
                   </button>
                 </div>
-              ))}
+              </div>
+            ))}
+
               <button 
                 type="button" 
                 title="Click to add another material"
                 onClick={() => addMaterial(index)} 
-                className="mt-2 text-blue-600 hover:text-blue-800">
+                className="mt-2 text-blue-600 hover:text-blue-800 cursor-pointer">
                 + Add Material
               </button>
             </div>
@@ -945,7 +959,7 @@ export default function QuotationForm({
               type="button"
               title="Click to remove Item"
               onClick={() => removeItem(index)}
-              className="absolute top-4 right-4 text-red-600 hover:text-red-800 flex items-center gap-1"
+              className="absolute top-4 right-4 text-red-600 hover:text-red-800 flex items-center gap-1 cursor-pointer font-sans"
             >
               <Trash2 size={16} /> Remove
             </button>
@@ -1115,6 +1129,7 @@ export default function QuotationForm({
     {isLoading ? "Saving..." : "Save as Draft"}
   </button>
 </div>
+
     </div>
   );
 };  

@@ -173,7 +173,7 @@ export function NumericInput({
 
   return (
     <div className="flex flex-col">
-      <label className="text-sm font-medium mb-1 text-[#880c0c]">{label}</label>
+      <label className="text-sm font-medium mb-1 text-[#880c0c]">{label}<span className="text-red-400"> *</span></label>
       <input
         type="text"
         inputMode={allowDecimal ? "decimal" : "numeric"}
