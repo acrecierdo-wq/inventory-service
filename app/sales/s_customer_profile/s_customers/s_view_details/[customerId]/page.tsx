@@ -1,13 +1,22 @@
-
-// app/sales/s_pending_customer_request/page.tsx
+// app/sales/s_customer_profile/s_customers/s_view_details/[customerId]/page.tsx
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Header } from "@/components/header";
 import { MoreHorizontal } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
+
+type Customer = {
+    id: number;
+    companyName: string;
+    contactPerson: string;
+    email: string;
+    phone: string;
+    address: string;
+    clientCode?: string;
+};
 
 type QuotationRequest = {
   id: number;
@@ -23,10 +32,14 @@ const statusColors: Record<string, string> = {
   Accepted: "text-green-700 bg-green-100",
   Rejected: "text-red-600 bg-red-100",
   Cancelled: "text-gray-600 bg-gray-100",
-  CancelRequested: "text-orange-600 bg-orange-100",
+  "Cancel Requested": "text-orange-600 bg-orange-100", 
 };
 
 const SPendingCustomerRequestPage = () => {
+const { customerId } = useParams();
+const router = useRouter();
+
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [requests, setRequests] = useState<QuotationRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -40,40 +53,65 @@ const SPendingCustomerRequestPage = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  const [loading, ] = useState(false);
-  const [error, ] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
-  const router = useRouter();
-
   // Fetch all requests including CancelRequested
-  const fetchRequests = async () => {
-    //setLoading(true);
-    //setError(null);
+  const fetchCustomerData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/sales/customer_request");
-      const data: QuotationRequest[] = await res.json();
-      setRequests(data);
+        const res = await fetch(`/api/sales/customer_request?customerId=${customerId}`);
+        if (!res.ok) throw new Error("Failed to fetch customer data");
+        const data = await res.json();
+
+        setCustomer(data.customer || null);
+        setRequests(data.requests || []);
     } catch (err) {
-      console.error(err);
+        console.error(err);
+        setError("Failed to load customer data");
+    } finally {
+        setLoading(false);
     }
-  };
+  }, [customerId]);
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    if (customerId) fetchCustomerData();
+  }, [customerId, fetchCustomerData]);
+//   const fetchRequests = async () => {
+//     //setLoading(true);
+//     //setError(null);
+//     try {
+//       const res = await fetch("/api/sales/customer_request");
+//       const data: QuotationRequest[] = await res.json();
+//       setRequests(data);
+//     } catch (err) {
+//       console.error(err);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchRequests();
+//   }, []);
 
   // Filter requests to show in table
   const filteredRequests = Array.isArray(requests)
-  ? requests.filter(
-      (req) =>
-        ["Pending", "Accepted", "Rejected", "Cancelled", "CancelRequested"].includes(req.status) &&
-        (req.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          req.mode.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? requests.filter(
+        (req) =>
+            req.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            req.status.toLowerCase().includes(searchQuery.toLowerCase())
     )
-  : [];
+    : [];
+//   const filteredRequests = Array.isArray(requests)
+//   ? requests.filter(
+//       (req) =>
+//         ["Pending", "Accepted", "Rejected", "Cancelled", "CancelRequested"].includes(req.status) &&
+//         (req.project_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+//           req.mode.toLowerCase().includes(searchQuery.toLowerCase()))
+//     )
+//   : [];
 
   const toggleDropdown = (event: React.MouseEvent, id: number) => {
     if (openDropdownId === id) {
@@ -96,22 +134,9 @@ const SPendingCustomerRequestPage = () => {
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  const handleViewDetails = (id: number) => {
-    router.push(`/sales/s_pending_customer_request/pending_view/${id}`);
+  const handleViewDetails = (requestId: number) => {
+    router.push(`/sales/s_customer_profile/s_customers/s_view_details/${customerId}/request_details/${requestId}`);
   };
-
-  // Show confirmation before updating
-  // const handleAccept = (id: number, type: "Accepted" | "Cancelled") => {
-  //   setActionRequestId(id);
-  //   setActionType(type);
-  //   setShowActionConfirm(true);
-  // };
-
-  // const handleReject = (id: number) => {
-  //   setActionRequestId(id);
-  //   setActionType("Rejected");
-  //   setShowActionConfirm(true);
-  // };
 
   const confirmAction = async () => {
     if (!actionRequestId || !actionType) return;
@@ -171,7 +196,7 @@ const SPendingCustomerRequestPage = () => {
           <div className="flex flex-row gap-4">
 
             {/* Search */}
-            <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1">
+            <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1 hover:bg-gray-100">
             <Image src="/search-alt-2-svgrepo-com.svg" width={15} height={15} alt="Search" className="ml-5" />
             <input
               type="text"
@@ -186,7 +211,7 @@ const SPendingCustomerRequestPage = () => {
           {/* Filter */}
           <div className="flex flex-row gap-4">
             <div className="relative">
-            <button className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
+            <button className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#fcd0d0] active:border-b-4">
               <Image src="/filter-svgrepo-com.svg" width={20} height={20} alt="Filter" className="" />
               <span className="text-sm text-[#482b0e] ml-2">Filter</span>
               {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
@@ -197,7 +222,7 @@ const SPendingCustomerRequestPage = () => {
           {/* Sort */}
           <div className="flex flex-row gap-4 mr-10">
             <div className="relative">
-            <button className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
+            <button className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#fcd0d0] active:border-b-4">
               <Image src="/sort-ascending-fill-svgrepo-com.svg" width={20} height={20} alt="Sort" className="" />
               <span className="text-sm text-[#482b0e] ml-2">Sort</span>
               {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
@@ -206,72 +231,111 @@ const SPendingCustomerRequestPage = () => {
           </div>
 
         </div>
-
-        {/* Table */}
-        <section className="flex-1 overflow-y-auto px-10 mt-2">
-        <div className="bg-white rounded shadow-md mb-2">
-          {!loading && !error && (
+      
+<div className="flex flex-row justify-between px-4 mt-2 gap-4">
+  {/* Left: Customer Profile Card */}
+  <div className="flex-[0.4] bg-[#fcd0d0] rounded p-6 mb-10 shadow-md">
+    {customer ? (
         <>
-        {/* Header */}
-        <div className=" bg-[#fcd0d0] grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
-          <span>REQUEST #</span>
-          <span>PROJECT NAME</span>
-          <span>MODE</span>
-          <span>STATUS</span>
-          <span>DATE & TIME REQUESTED</span>
-          <span>ACTION</span>
-        </div>
+        <div className="flex flex-col items-center mb-2">
+      <Image
+        src="/profile-circle-svgrepo-com.svg"
+        width={50}
+        height={50}
+        alt="Profile"
+        className="mb-4"
+      />
+    </div>
 
-        {/* Rows */}
-        {paginatedRequests.length > 0 ? (
-          paginatedRequests.map((req) => (
-            <div
-              key={req.id}
-              className="grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
-            >
-              <span>{req.id}</span>
-              <span className="uppercase text-sm">{req.project_name}</span>
-              <span>{req.mode}</span>
-              <span
-                className={`px-4 py-1 rounded-full text-sm font-semibold ${
-                  statusColors[req.status]
-                }`}
-              >
-                {req.status}
-              </span>
-              <span>{new Date(req.created_at).toLocaleString()}</span>
-              <span className="relative flex items-center justify-center">
-                {/* Action Dropdown */}
-                <button
-                  className="hover:bg-[#fcd0d0] px-1 py-1 rounded-full flex items-center justify-center"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleDropdown(e, req.id);
-                  }}
-                >
-                  <MoreHorizontal size={22} className="text-gray-600" />
-                </button>
-
-                {openDropdownId === req.id && (
-                  <div className="fixed right-0 z-50 mt-15 mr-5 bg-white shadow border rounded text-sm w-30">
-                    <div
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => handleViewDetails(req.id)}
-                    >
-                      View Details
-                    </div>
-                  </div>
-                )}
-              </span>
-            </div>
-          ))
-        ) : (
-          <div className="text-center text-gray-500 py-5 italic">No requests found.</div>
-        )}
-      </>
+    <div className="flex flex-col justify-center text-[#482b0e] text-base font-medium space-y-4">
+      <p><span className="font-semibold">Company:</span> <br /><span className="text-sm italic">{customer.companyName}</span></p>
+      <p><span className="font-semibold">Contact Person:</span> <br /><span className="text-sm italic">{customer.contactPerson}</span></p>
+      <p><span className="font-semibold">Email:</span> <br /><span className="text-sm italic">{customer.email}</span></p>
+      <p><span className="font-semibold">Phone:</span> <br /><span className="text-sm italic">{customer.phone}</span></p>
+      <p><span className="font-semibold">Address:</span> <br /><span className="text-sm italic">{customer.address}</span></p>
+    </div>
+        </>
+    ): (
+        <p className="text-center text-gray-600 italic">Loading customer details...</p>
     )}
   </div>
-</section>
+
+  {/* Right: Table Section */}
+  <section className="flex-[1.2] overflow-y-auto">
+    <div className="bg-white rounded-xl shadow-md w-full">
+      {!loading && !error && (
+        <>
+          {/* Header */}
+          <div className="bg-[#fcd0d0] grid grid-cols-[0.5fr_2fr_1fr_2fr_0.5fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center rounded">
+            <span>REQUEST#</span>
+            <span>PROJECT NAME</span>
+            <span>STATUS</span>
+            <span>DATE & TIME REQUESTED</span>
+            <span>ACTION</span>
+          </div>
+
+          {/* Rows */}
+          {paginatedRequests.length > 0 ? (
+            paginatedRequests.map((req) => (
+              <div
+                key={req.id}
+                className="grid grid-cols-[0.5fr_2fr_1fr_2fr_0.5fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+              >
+                <span>{req.id}</span>
+                <span className="uppercase text-sm">{req.project_name}</span>
+                <span
+                  className={`px-4 py-1 rounded-full text-sm font-semibold ${
+                    statusColors[req.status]
+                  }`}
+                >
+                  {req.status}
+                </span>
+                <span>{new Date(req.created_at).toLocaleString()}</span>
+                <span className="relative flex items-center justify-center">
+                  <button
+                    className="hover:bg-[#fcd0d0] px-1 py-1 rounded-full flex items-center justify-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDropdown(e, req.id);
+                    }}
+                  >
+                    <MoreHorizontal size={22} className="text-gray-600" />
+                  </button>
+
+                  {openDropdownId === req.id && (
+                    <div className="absolute right-0 mt-8 bg-white shadow border rounded text-sm w-30 z-50">
+                      <div
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleViewDetails(req.id)}
+                      >
+                        View Details
+                      </div>
+                    </div>
+                  )}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-500 py-5 italic">
+              No requests found.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  </section>
+  
+</div>
+{/* Back Button */}
+        <div className="px-5">
+          <button
+            onClick={() => router.push("/sales/s_customer_profile/s_customers")}
+            className="text-sm px-4 py-2 bg-white border border-[#d2bda7] text-[#5a4632] rounded-3xl shadow hover:bg-[#fcd0d0] transition-all cursor-pointer"
+          >
+            Back to Customers
+          </button>
+        </div>
+
 
         {/* Floating confirmation box */}
         {showActionConfirm && (

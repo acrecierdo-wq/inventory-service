@@ -1,4 +1,4 @@
-// // app/customer/cus_myrequest/track_my_order/quotation_request/[id]/page.tsx
+// app/customer/cus_myrequest/track_my_order/quotation_request/[id]/page.tsx
 
 // "use client";
 
@@ -222,8 +222,10 @@
 
 import Image from "next/image";
 import { format } from "date-fns";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { PreviewFile, QuotationItem, Customer } from "@/app/sales/types/quotation";
+import { useRouter } from "next/navigation";
 
 type PreviewDocumentCustomerProps = {
   items?: QuotationItem[];
@@ -240,9 +242,12 @@ type PreviewDocumentCustomerProps = {
   revisionLabel: string;
   baseQuotationId?: number;
   customer?: Customer | null;
+  createdAt: string;
   quotationNumber: string;
+  status: string;
+  customerActionAt?: string;
   onBack: () => void;
-  onCustomerAction: (status: "accepted" | "rejected" | "revision_requested") => void;
+  onCustomerAction: (status: "approved" | "rejected" | "revision_requested") => Promise<{ success: boolean; message?: string, timestamp: string }>;
 };
 
 /** Helper: get file name/path **/
@@ -356,10 +361,13 @@ export default function PreviewDocumentCustomer({
   quotationNumber,
   revisionLabel,
   customer,
+  createdAt,
   onBack,
   vat,
   markup,
   projectName,
+  status,
+  customerActionAt,
   cadSketchFile = [],
   onCustomerAction,
 }: PreviewDocumentCustomerProps) {
@@ -370,6 +378,62 @@ export default function PreviewDocumentCustomer({
     [items, vat, markup]
   );
 
+ const [actionStatus, setActionStatus] = useState<
+  "none" | "approved" | "rejected" | "revision_requested"
+>(
+  status === "approved" || 
+  status === "rejected" || 
+  status === "revision_requested" 
+    ? status 
+    : "none"
+);
+
+const [actionTimestamp, setActionTimestamp] = useState<string | null>(
+  customerActionAt 
+    ? format(new Date(customerActionAt), "MMM d, yyyy, h:mm a") 
+    : null
+);
+
+  const router = useRouter();
+
+  // const handleCustomerAction = (status: "approved" | "rejected" | "revision_requested") => {
+  //   onCustomerAction(status);
+  //   setActionStatus(status);
+  //   setActionTimeStamp(format(new Date(), "MMM d, yyyy, h:mm a"));
+
+  //   if (status === "approved") {
+  //     toast.success("Quotation approved succssfully!");
+  //   } else if (status === "rejected") {
+  //     toast.error("Quotation rejected.");
+  //   } else if (status === "revision_requested") {
+  //     toast("Revision request sent.");
+  //   }
+  // };
+
+  const handleCustomerActionInternal = async (selectedStatus: "approved" | "rejected" | "revision_requested") => {
+    try {
+      const result = await onCustomerAction(selectedStatus);
+
+      if (!result.success) {
+        toast.error(result.message || "Failed to update quotation.");
+        return;
+      }
+
+      setActionStatus(selectedStatus);
+      setActionTimestamp(result.timestamp 
+        ? format(new Date(result.timestamp), "MMM d, yyyy, h:mm a")
+        : format(new Date(), "MMM d, yyyy, h:mm a"));
+
+      router.refresh();
+
+      if (selectedStatus === "approved") toast.success("Quotation approved successfully!");
+      else if (selectedStatus === "rejected") toast.error("Quotation rejected.");
+      else toast("Revision request sent.");
+    } catch (err) {
+      console.error("Error updating status",  err);
+      toast.error("Something went wrong. Please try again.");
+    }
+  };
 
   if (!items.length) {
     return (
@@ -407,9 +471,7 @@ export default function PreviewDocumentCustomer({
           {/* <p><span className="font-semibold">Request ID:</span> {requestId}</p> */}
         </div>
 
-        <div className="text-gray-700 font-medium">
-                    <p>{format(new Date(), "MMMM d, yyyy")}</p>
-                  </div>
+        {createdAt && <p className="text-sm">{format(new Date(createdAt), "MMMM d, yyyy")}</p>}
 
         {/* Customer Info */}
         {customer && (
@@ -419,7 +481,7 @@ export default function PreviewDocumentCustomer({
 
             <div className="mt-4 text-sm text-gray-700 space-y-2"> 
                 <p className="font-bold"><span className="font-bold underline">Attention:</span> {customer.contactPerson}</p>
-                <p className="font-bold"><span className="font-bold underline">Project:</span> {projectName || "N/A"}</p>
+                <p className="font-bold"><span className="font-bold underline">Project:</span> <span className="uppercase">{projectName || "N/A"}</span></p>
               </div>
           </div>
         )}
@@ -503,7 +565,7 @@ export default function PreviewDocumentCustomer({
       <section className="flex flex-row justify-between">
 
       {/* Quotation Details */}
-        <div className="space-y-1 text-sm text-gray-700 mb-4 bg-[#fef4e4] w-[400px] p-2 rounded">
+        <div className="space-y-4 text-sm text-gray-700 mb-4 bg-[#fef4e4] w-[400px] p-2 rounded">
           <div></div>
           <p className="flex justify-between"><span className="font-bold">Payment:</span> {formatField("Payment", payment)}</p>
           <p className="flex justify-between"><span className="font-bold">Delivery:</span> {formatField("Delivery", delivery)}</p>
@@ -626,26 +688,54 @@ export default function PreviewDocumentCustomer({
           >
             Back
           </button>
-          <div className="flex gap-2">
+
+          {actionStatus !== "none" ? (
+            <div className="text-sm text-gray-700 italic">
+              {actionStatus === "approved" && (
+                <p>
+                  This quotation has been <span className="font-semibold text-green-600">approved</span>
+                  {customer && ` by ${customer.contactPerson}`}.<br/>
+                  <span className="text-gray-500">{actionTimestamp}</span>
+                </p>
+              )}
+              {actionStatus === "rejected" && (
+                <p>
+                  This quotation has been <span className="font-semibold text-red-600">rejected</span>.
+                  {customer && ` by ${customer.contactPerson}`}<br />
+                  <span className="text-gray-500">{actionTimestamp}</span>
+                </p>
+              )}
+              {actionStatus === "revision_requested" && (
+                <p>
+                  Revision has been <span className="font-semibold text-yellow-600">requested</span>.
+                  <br />
+                  <span className="text-gray-500">{actionTimestamp}</span>
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-2">
             <button
-              onClick={() => onCustomerAction("accepted")}
+              onClick={() => handleCustomerActionInternal("approved")}
+              
               className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 cursor-pointer"
             >
-              Accept
+              Approve
             </button>
             <button
-              onClick={() => onCustomerAction("revision_requested")}
+              onClick={() => handleCustomerActionInternal("revision_requested")}
               className="px-6 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 cursor-pointer"
             >
               Request Revision
             </button>
             <button
-              onClick={() => onCustomerAction("rejected")}
+              onClick={() => handleCustomerActionInternal("rejected")}
               className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer"
             >
               Reject
             </button>
           </div>
+          )}
         </footer>
       </div>
     </div>

@@ -64,7 +64,8 @@ type SavedQuotation = {
   id: string;
   requestId: number;
   quotationNumber: string;
-  revisionLabel: number;
+  revisionLabel: string;
+  revisionNumber?: number;
   baseQuotationId: number;
   status?: string;
   items: (QuotationItem & { totalPrice: number })[];
@@ -76,6 +77,7 @@ type SavedQuotation = {
   cadSketch?: [];
   vat?: number;
   markup?: number;
+  customer?: Customer;
 };
 
 type Customer = {
@@ -143,6 +145,7 @@ export default function QuotationForm({
   const [quotationNumber, setQuotationNumber] = useState<string>("");
   const [baseId] = useState<number | null>(baseQuotationId ?? null);
   const [isSent, setIsSent] = useState<boolean>(false);
+  const [savedQuotation, setSavedQuotation] = useState<SavedQuotation | null>(null);
 
   const [items, setItems] = useState<QuotationItem[]>(initialItems && initialItems.length > 0
     ? initialItems
@@ -202,14 +205,42 @@ export default function QuotationForm({
     }
   }, [initialCadSketch]);
 
-   useEffect(() => {
+  //  useEffect(() => {
+  //   async function fetchRequest() {
+  //     try {
+  //       const res = await fetch(`/api/sales/customer_request/${requestId}`);
+  //       if (!res.ok) throw new Error("Failed to fetch request");
+  //       const data = await res.json();
+
+  //       if (data.customer) setCustomer (data.customer);
+  //       if (data.project_name) setProject (data.project_name);
+  //       if (data.mode) setMode (data.mode);
+        
+  //     } catch (err) {
+  //       console.error(err);
+  //     }
+  //   }
+
+  //   fetchRequest();
+  // }, [requestId]);
+  useEffect(() => {
     async function fetchRequest() {
       try {
         const res = await fetch(`/api/sales/customer_request/${requestId}`);
         if (!res.ok) throw new Error("Failed to fetch request");
         const data = await res.json();
 
-        if (data.customer) setCustomer (data.customer);
+        if (data.customer) {
+          const c = data.customer;
+          setCustomer({
+            id: c.id,
+            companyName: c.companyName || c.company_name || "",
+            contactPerson: c.contactPerson || c.contact_person || "",
+            email: c.email || "",
+            phone: c.phone || "",
+            address: c.address || "",
+          });
+        }
         if (data.project_name) setProject (data.project_name);
         if (data.mode) setMode (data.mode);
         
@@ -219,6 +250,25 @@ export default function QuotationForm({
     }
 
     fetchRequest();
+  }, [requestId]);
+
+  useEffect(() => {
+    async function checkIfSent() {
+      try {
+        const res = await fetch(`/api/sales/quotations?requestId=${requestId}`);
+        if (!res.ok) throw new Error("Failed to check quotation status");
+
+        const result = await res.json();
+        const data: SavedQuotation[] = result.quotations ?? [];
+
+        // if any quotation has status "sent"
+        const alreadySent = data.some((q) => q.status === "sent");
+        setIsSent(alreadySent);
+      } catch (err) {
+        console.error("Error checking sent quotations:", err);
+      }
+    }
+    checkIfSent();
   }, [requestId]);
 
   // === Validation helpers ===
@@ -588,6 +638,10 @@ export default function QuotationForm({
               : "Draft saved successfully."
             : "Quotation saved successfully!"
         );
+        
+        if (status === "draft" && sessionStorage.getItem("activeRestoreDraftId")) {
+          sessionStorage.removeItem("activeRestoringDraftId");
+        }
 
         if (status === "draft") {
           onSavedDraft?.({
@@ -614,18 +668,16 @@ export default function QuotationForm({
   };
 
   const handleSend = async () => {
-    setHasSubmitted(true);
-    
-  if (!validateAllFields()) {
-    //toast.error("Please fill in all required fields before saving.");
-    return;
-  }
+  setHasSubmitted(true);
+
+  if (!validateAllFields()) return;
 
   setIsLoading(true);
 
   try {
     let uploadedFilePath: string | null = null;
 
+    // Upload file if needed
     if (cadSketchFile.length > 0 && cadSketchFile[0] instanceof File) {
       if (cadSketchFile[0].size > MAX_FILE_SIZE) {
         toast.error("File too large. Max size is 10MB.");
@@ -642,7 +694,7 @@ export default function QuotationForm({
       }
     } else if (cadSketchFile.length > 0) {
       const first = cadSketchFile[0];
-      if(!(first instanceof File)) {
+      if (!(first instanceof File)) {
         uploadedFilePath = first.filePath || null;
       }
     }
@@ -659,20 +711,18 @@ export default function QuotationForm({
       })),
     }));
 
-    // Build attachedFiles array
-  const attachedFiles = cadSketchFile.map((f) => 
+    const attachedFiles = cadSketchFile.map((f) =>
       f instanceof File
-        ? {
-          fileName: f.name,
-          filePath: `/uploads/${f.name}`,
-        }
-      : {
-        fileName: f.name,
-        filePath: f.filePath || `/uploads/${f.name}`,
-      }
+        ? { fileName: f.name, filePath: `/uploads/${f.name}` }
+        : { fileName: f.name, filePath: f.filePath || `/uploads/${f.name}` }
     );
 
+    // ✅ Detect if this is a restored draft (UUID check)
+    const isRestoredDraft =
+      initialId && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(initialId);
+
     const payLoad = {
+      id: isRestoredDraft ? initialId : undefined,
       requestId,
       baseQuotationId: baseId ?? undefined,
       projectName: projectName || "",
@@ -690,19 +740,32 @@ export default function QuotationForm({
       items: itemsForSend,
     };
 
-    const res = await fetch("/api/sales/quotations", {
-      method: "POST",
-      headers: { "Content-Type" : "application/json" },
+    // ✅ Use PUT when restoring, POST otherwise
+    const url = isRestoredDraft
+      ? `/api/sales/quotations/${initialId}`
+      : "/api/sales/quotations";
+
+    const method = isRestoredDraft ? "PUT" : "POST";
+
+    console.log(`Sending quotation via ${method}:`, payLoad);
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payLoad),
     });
 
     const result = await res.json();
+
     if (res.ok && result.success) {
       toast.success("Quotation sent successfully!");
-      setIsSent(true);
+      window.dispatchEvent(new CustomEvent("quotation-sent"));
 
+      setIsSent(true);
       setQuotationNumber(result.data.quotationNumber);
       setRevisionLabel(result.data.revisionLabel);
+      setCustomer((prev) => prev ?? result.data.customer ?? prev);
+      setSavedQuotation(result.data);
 
       onSaved?.(result.data);
     } else {
@@ -710,32 +773,71 @@ export default function QuotationForm({
     }
   } catch (err) {
     console.error("Error sending quotation:", err);
-    toast.error("Error sending quotation.Please try again.");
+    toast.error("Error sending quotation. Please try again.");
   } finally {
     setIsLoading(false);
   }
 };
 
+
   // If preview requested, pass itemsWithTotals to PreviewDocument (so totalPrice is defined)
   if (showPreview) {
+    console.log("PreviewDocument props:", {
+  customer,
+  revisionLabel,
+  quotationNumber,
+  
+});
     const itemsForPreview = buildItemsWithTotals();
     return (
+      
+      // <PreviewDocument
+      //   items={itemsForPreview}
+      //   payment={payment}
+      //   delivery={delivery}
+      //   warranty={warranty}
+      //   validity={validity}
+      //   quotationNotes={quotationNotes}
+      //   requestId={requestId}
+      //   projectName={projectName}
+      //   vat={vat}
+      //   markup={markup}
+      //   cadSketchFile={cadSketchFile}
+      //   //revisionLabel={revisionLabel}
+      //   revisionLabel={revisionLabel || String(savedQuotation?.revisionLabel ?? "REV_00")}
+      //   baseQuotationId={baseId ?? requestId}
+      //   quotationNumber={quotationNumber}
+      //   //customer={customer}
+      //   customer={customer || savedQuotation?.customer || null}
+      //   onBack={() => setShowPreview(false)}
+      //   onSend={handleSend}
+      //   isSent={isSent}
+      //   quotation={{ createdAt: new Date().toISOString() }}
       <PreviewDocument
         items={itemsForPreview}
-        payment={payment}
-        delivery={delivery}
-        warranty={warranty}
-        validity={validity}
-        quotationNotes={quotationNotes}
+        payment={payment || ""}
+        delivery={delivery || ""}
+        warranty={warranty || ""}
+        validity={validity || ""}
+        quotationNotes={quotationNotes || ""}
         requestId={requestId}
-        projectName={projectName}
-        vat={vat}
-        markup={markup}
-        cadSketchFile={cadSketchFile}
-        revisionLabel={revisionLabel}
+        projectName={projectName || ""}
+        vat={vat || 0}
+        markup={markup || 0}
+        cadSketchFile={cadSketchFile || []}
+        revisionLabel={(
+          revisionLabel ||
+          (savedQuotation?.revisionLabel
+            ? savedQuotation.revisionLabel
+            : savedQuotation?.revisionNumber !== undefined
+            ? `REV-${String(savedQuotation.revisionNumber).padStart(2, "0")}`
+            : "REV-00"
+          )
+        )}
         baseQuotationId={baseId ?? requestId}
         quotationNumber={quotationNumber}
-        customer={customer}
+        //customer={customer}
+        customer={customer || savedQuotation?.customer || null}
         onBack={() => setShowPreview(false)}
         onSend={handleSend}
         isSent={isSent}

@@ -1,4 +1,4 @@
-// /app/api/sales/my_request/[id]/route.ts
+// /app/api/sales/customer_request/[id]/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { db } from "@/db/drizzle";
 import { quotation_requests, customer_profile, quotation_request_files } from "@/db/schema";
@@ -100,8 +100,16 @@ export async function PUT(
     const body = await req.json();
     const { status } = body;
 
-    if (!status) {
-      return NextResponse.json({ error: "Missing status" }, { status: 400 });
+    const validStatuses = [
+      "Pending",
+      "Accepted",
+      "Rejected",
+      "Cancelled",
+      "Cancel_Requested",
+    ] as const;
+
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
     }
 
     const [updated] = await db

@@ -2,7 +2,7 @@
 
 import { db } from "@/db/drizzle";
 import { quotations, quotationItems, quotationMaterials, quotationFiles } from "@/db/schema";
-import { eq, and, not } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextResponse, NextRequest } from "next/server";
 import { validateQuotation } from "@/lib/quotationSchema";
 import { z } from "zod";
@@ -27,14 +27,12 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         ...json,
         status: json.status === "restoring" ? "restoring" : json.status,
       });
-      console.log("PUT restoring status received:", data.status);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return NextResponse.json({ success: false, error: err.flatten().fieldErrors }, { status: 400 });
       }
       throw err;
     }
-    console.log(`[PUT /api/sales/quotations/${quotationId}] received status:`, data.status);
 
     const [current] = await db
       .select()
@@ -50,32 +48,6 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       console.log("Quotation status received:", data.status);
       return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
     }
-
-    if (data.status === "restoring") {
-      await db
-        .update(quotations)
-        .set({ status: "draft" })
-        .where(
-          and(
-            eq(quotations.requestId, current.requestId),
-            eq(quotations.status, "restoring"),
-            not(eq(quotations.id, quotationId))
-          )
-        );
-    }
-
-    if (data.status === "sent") {
-  await db
-    .delete(quotations)
-    .where(
-      and(
-        eq(quotations.requestId, current.requestId),
-        eq(quotations.status, "restoring"),
-        not(eq(quotations.id, quotationId))
-      )
-    );
-}
-
   
     await db
       .update(quotations)
@@ -167,9 +139,6 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         filePath: f.filePath.startsWith("/uploads/")
           ? f.filePath
           : `/uploads/${f.filePath.replace(/^\/+/, "")}`,
-        // filePath: f.filePath 
-        //   .replace(/^\/sales\/uploads\/+/, "/uploads/")
-        //   .replace(/^\/+/, "/uploads/"),
       }))
     : refreshed.cadSketch
     ? [
@@ -203,83 +172,55 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 /**
  * ✅ GET — fetch quotation by ID
  */
-
 export async function GET(_req: NextRequest, context: RouteContext) {
-  const { id } = await context.params; // ✅ correctly awaits the params promise
-  const quotationId = String(id);
-
-  if (!quotationId || quotationId === "NaN") {
-    return NextResponse.json(
-      { success: false, error: "Invalid or missing quotation ID" },
-      { status: 400 }
-    );
-  }
+  const { id } = await context.params;
 
   try {
     const quotation = await db.query.quotations.findFirst({
-      where: eq(quotations.id, quotationId),
+      where: eq(quotations.id, id),
       with: { 
-        items: { with: { materials: true } },
+        items: {with: { materials: true }}, 
         files: true,
-        request: { with: { customer: true } },
       },
     });
 
     if (!quotation) {
-      return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const cadSketchFile =
-      quotation.files?.length > 0
-        ? quotation.files.map((f) => ({
-            id: f.id,
-            name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
-            filePath: f.filePath.startsWith("/uploads/")
-              ? f.filePath
-              : `/uploads/${f.filePath.replace(/^\/+/, "")}`,
-          }))
-        : quotation.cadSketch
-        ? [
-            {
-              name: quotation.cadSketch,
-              filePath: quotation.cadSketch.startsWith("/uploads/")
-                ? quotation.cadSketch
-                : `/uploads/${quotation.cadSketch.replace(/^\/+/, "")}`,
-            },
-          ]
-        : [];
-
-    const revisionLabel = `REVISION-${String(
-      quotation.revisionNumber ?? 0
-    ).padStart(2, "0")}`;
+     const cadSketchFile =
+  quotation.files?.length > 0
+    ? quotation.files.map((f) => ({
+        id: f.id,
+        name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
+        filePath: f.filePath.startsWith("/uploads/")
+          ? f.filePath
+          : `/uploads/${f.filePath.replace(/^\/+/, "")}`,
+      }))
+    : quotation.cadSketch
+    ? [
+        {
+          name: quotation.cadSketch,
+          filePath: quotation.cadSketch.startsWith("/uploads/")
+            ? quotation.cadSketch
+            : `/uploads/${quotation.cadSketch.replace(/^\/+/, "")}`,
+        },
+      ]
+    : [];
 
     return NextResponse.json({
       success: true,
       data: {
         ...quotation,
-        revisionLabel,
+        revisionLabel: `REVISION-${String(quotation.revisionNumber ?? 0).padStart(2, "0")}`,
         cadSketchFile,
-      customer: quotation.request?.customer
-        ? {
-          id: quotation.request.customer.id,
-          companyName: quotation.request.customer.companyName,
-          contactPerson: quotation.request.customer.contactPerson,
-          email: quotation.request.customer.email,
-          phone: quotation.request.customer.phone,
-          address: quotation.request.customer.address,
-        }
-        : null,
       },
     });
   } catch (err) {
     console.error("Error fetching quotation:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch quotation" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch quotation" }, { status: 500 });
   }
 }
-
 
 /**
  * ✅ DELETE — delete quotation by ID

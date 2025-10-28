@@ -9,8 +9,9 @@ import { MoreHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import { format } from "date-fns";
 
-type StatusFilter = "" | "Pending" | "Accepted" | "Cancelled" | "Approved";
+type StatusFilter = "" | "Pending" | "Accepted" | "Cancelled";
 
 
 type QuotationRequest = {
@@ -107,7 +108,6 @@ const initialStatus = searchParams.get("status") as
   | "Pending"
   | "Accepted"
   | "Cancelled"
-  | "Approved"
   | null;
 
 const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus || "");
@@ -434,7 +434,7 @@ const confirmCancelRequest = async () => {
 <section className="flex items-center gap-3 justify-end mt-4 relative z-10 mr-10">
   {/* Search Input */}
   <div className="relative">
-    <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1">
+    <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1 hover:bg-gray-100">
     <Image src="/search-alt-2-svgrepo-com.svg" width={15} height={15} alt="Search" className="ml-5" />
     <input
       type="text"
@@ -449,12 +449,12 @@ const confirmCancelRequest = async () => {
   {/* Filter Dropdown */}
   <div className="relative" ref={statusRef}>
     <div
-      className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+      className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
       onClick={toggleFilterDropdown}
     >
       <Image src="/filter-svgrepo-com.svg" width={20} height={20} alt="Filter" className="" />
-      <span className="text-sm text-[#482b0e] ml-2">
-        {statusFilter ? statusFilter : "Filter"}
+      <span className="text-sm text-[#482b0e] ml-1">
+        {statusFilter || "All Status"}
       </span>
     {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
   </div>
@@ -462,7 +462,9 @@ const confirmCancelRequest = async () => {
 {showFilterDropdown && (
   <div className="absolute z-20 bg-white border-gray-200 mt-1 w-35 rounded shadow">
     <div
-    className="py-1 hover:bg-gray-100 cursor-pointer text-sm font-medium text-center"
+    className={`py-1 hover:bg-gray-100 cursor-pointer text-sm text-center ${
+      statusFilter === status ? "font-bold bg-gray-200" : ""
+    }`}
     onClick={() => {
       setStatusFilter(""); // Clear filter
       setShowFilterDropdown(false);
@@ -470,12 +472,14 @@ const confirmCancelRequest = async () => {
     >
       All Status
       </div>
-    {["Pending", "Accepted", "Cancelled", "Approved"].map((status) => (
+    {["Pending", "Accepted", "Cancelled"].map((status) => (
       <div
     key={status}
-    className="py-1 hover:bg-gray-100 cursor-pointer text-sm text-center"
+    className={`py-1 hover:bg-gray-100 cursor-pointer text-sm text-center ${
+      statusFilter === status ? "font-bold bg-gray-200" : ""
+    }`}
     onClick={() => {
-      setStatusFilter("");
+      setStatusFilter(status as StatusFilter);
       setShowFilterDropdown(false);
     }}
     >
@@ -494,15 +498,15 @@ const confirmCancelRequest = async () => {
 >
   <Image src="/sort-ascending-fill-svgrepo-com.svg" width={20} height={20} alt="Sort" className="" />
   <span className="ml-2 text-sm text-[#482b0e]">
-    {sortNewestFirst ? "Sort" : "Sort"}
+    {sortNewestFirst ? "N -> O" : "O -> N"}
   </span>
   {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
 </div>
 {showSortDropdown && (
   <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
     <button
-      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-        sortNewestFirst ? "font-bold text-blue-600" : ""
+      className={`w-full text-center px-4 py-2 hover:bg-gray-100 text-sm ${
+        sortNewestFirst ? "font-bold bg-gray-200" : ""
       }`}
       onClick={() => {
         setSortNewestFirst(true);
@@ -512,8 +516,8 @@ const confirmCancelRequest = async () => {
       Newest → Oldest
     </button>
   <button
-    className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-      !sortNewestFirst ? "font-bold text-blue-600" : ""
+    className={`w-full text-center px-4 py-2 hover:bg-gray-100 text-sm ${
+      !sortNewestFirst ? "font-bold bg-gray-200" : ""
         }`}
     onClick={() => {
       setSortNewestFirst(false);
@@ -634,20 +638,20 @@ const confirmCancelRequest = async () => {
 
      {/* Sliding Details Panel */}
 {selectedRequest && (
-  <div className="fixed top-0 right-0 h-full bg-white shadow-2xl w-[60%] max-w-5xl transform transition-transform duration-300 z-50">
-    <div className="p-8 h-full relative flex flex-col">
+  <div className="fixed top-0 right-0 h-full bg-white shadow-2xl w-[30%] /max-w-5xl transform transition-transform duration-300 z-50">
+    <div className="p-6 h-full relative flex flex-col">
       <button
-        className="absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-full"
+        className="absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-full cursor-pointer"
         onClick={closeDetailsPanel}
       >
-        <X size={28} />
+        <X size={20} />
       </button>
 
-      <h2 className="text-4xl font-bold mb-6 text-[#173f63]">Quotation Details</h2>
-
-      <div className="space-y-5 overflow-y-auto flex-1 pr-3 text-lg scrollbar-hidden">
+      <h2 className="text-center font-bold text-2xl">Request for Quotation Details</h2>
+      <div className="border-b border-gray-200 mt-4"></div>
+      <div className="space-y-4 overflow-y-auto flex-1 pr-3 scrollbar-hidden mt-2">
         {/* Customer Info */}
-        <div className="bg-gray-50 p-5 rounded-xl shadow-inner space-y-2">
+        {/* <div className="bg-gray-50 p-5 rounded-xl shadow-inner space-y-2">
           <h3 className="font-semibold text-xl mb-2 text-[#5a2347]">Customer Information</h3>
           <p>
             <span className="font-semibold">Name: </span>
@@ -665,55 +669,34 @@ const confirmCancelRequest = async () => {
             <span className="font-semibold">Email: </span>
             {selectedRequest.requester_email || "-"}
           </p>
-        </div>
+        </div> */}
 
         {/* Display Request ID */}
-        <p>
-          <span className="font-semibold">Request ID: </span>
-          {selectedRequest.id}
-        </p>
-
-        <p>
-          <span className="font-semibold">Project Name: </span>
-          <span className="uppercase">{selectedRequest.project_name}</span>
-        </p>
-        <p>
-          <span className="font-semibold">Mode: </span>
-          {selectedRequest.mode}
-        </p>
-        <p>
-          <span className="font-semibold">Message: </span>
-          <span className="whitespace-pre-wrap">{selectedRequest.message || "-"}</span>
-        </p>
-        <p>
-          <span className="font-semibold">Status: </span>
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-semibold ${
-              statusColors[selectedRequest.status] || ""
-            }`}
-          >
-            {selectedRequest.status}
-          </span>
-        </p>
+        {/* <p><strong>Request #:</strong> {selectedRequest.id}</p> */}
+        <p><strong>Project Name: </strong><span className="uppercase text-sm">{selectedRequest.project_name}</span></p>
+        <p><strong>Selected mode:</strong> {selectedRequest.mode}</p>
+        <p><strong>Message:</strong> {selectedRequest.message || "-"}</p>
+        <p><strong>Status:</strong>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                statusColors[selectedRequest.status] || ""
+              }`}
+            >
+               {selectedRequest.status}
+            </span>
+          </p>
 
         {/* ✅ Show reason if cancelled */}
         {selectedRequest.reason && (
-          <p>
-            <span className="font-semibold">Cancellation Reason: </span>
-            <span className="italic">{selectedRequest.reason}</span>
-          </p>
+          <p><strong>CancellationReason:</strong><span className="italic"> {selectedRequest.reason}</span></p>
         )}
-
-        <p>
-          <span className="font-semibold">Requested At: </span>
-          {new Date(selectedRequest.created_at).toLocaleString()}
-        </p>
+        <p><strong>Requested at:</strong><span className="italic"> {format(new Date(selectedRequest.created_at), "MMM d, yyy | hh:mm a")}</span></p>
 
         {/* Attachments */}
         {selectedRequest.files && selectedRequest.files.length > 0 && (
           <div>
-            <span className="font-semibold text-lg">Attachments:</span>
-            <div className="mt-3 flex flex-wrap gap-4">
+            <strong>Attachments:</strong>
+            <div className="mt-3 ml-4 flex flex-wrap gap-4">
               {selectedRequest.files.map((file, index) => {
                 const ext = file.path.split(".").pop()?.toLowerCase();
                 const isImage = ["jpg", "jpeg", "png", "gif"].includes(ext || "");
@@ -721,7 +704,7 @@ const confirmCancelRequest = async () => {
                 return (
                   <div
                     key={index}
-                    className="w-32 p-2 border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:shadow-lg hover:scale-105 transition-transform duration-200 bg-gray-50"
+                    className="w-full p-2 border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:shadow-lg hover:scale-105 transition-transform duration-200 bg-gray-50"
                     onClick={() =>
                       isImage ? setModalImage(file.path) : window.open(file.path, "_blank")
                     }
@@ -732,7 +715,7 @@ const confirmCancelRequest = async () => {
                         alt={`Attachment ${index + 1}`}
                         width={100}
                         height={100}
-                        className="object-cover w-20 h-20 rounded-md mb-2"
+                        className="object-cover w-50 h-20 rounded-md mb-2"
                       />
                     ) : (
                       <div className="w-20 h-20 flex items-center justify-center rounded-md bg-red-100 mb-2">

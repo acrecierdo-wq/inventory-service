@@ -160,7 +160,7 @@ import Image from "next/image";
 
 type QuotationRequest = {
   id: number;
-  status: "Pending" | "Approved" | "Cancelled" | "Processed" | "Accepted";
+  status: "Pending" | "Cancelled" | "Processed" | "Accepted";
   project_name: string;
 };
 
@@ -169,7 +169,7 @@ const CustomerPage = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [acceptedCount, setAcceptedCount] = useState(0);
   const [cancelledCount, setCancelledCount] = useState(0);
-  const [approvedCount, setApprovedCount] = useState(0);
+  //const [approvedCount, setApprovedCount] = useState(0);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -187,7 +187,7 @@ const CustomerPage = () => {
       setPendingCount(requests.filter((r) => r.status === "Pending").length);
       setAcceptedCount(requests.filter((r) => r.status === "Accepted").length);
       setCancelledCount(requests.filter((r) => r.status === "Cancelled").length);
-      setApprovedCount(requests.filter((r) => r.status === "Approved").length);
+      //setApprovedCount(requests.filter((r) => r.status === "Approved").length);
 
     };
 
@@ -276,7 +276,7 @@ const CustomerPage = () => {
             </div>
 
             {/* Approved */}
-            <div
+            {/* <div
               onClick={() => handleRedirect("Approved")}
               className="cursor-pointer w-[230px] h-[80px] shadow-2xl hover:shadow-xl transition-shadow duration-300 bg-white border-2 border-[#83d5b7] rounded-lg p-4 flex flex-col justify-center"
             >
@@ -295,7 +295,7 @@ const CustomerPage = () => {
                   {approvedCount}
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

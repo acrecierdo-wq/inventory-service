@@ -26,7 +26,7 @@ type QuotationRequest = {
         requester_contact?: string;
         requester_email?: string;
 };
-
+// request status
 const statusColors: Record<string, string> = {
   Pending: "text-yellow-600 bg-yellow-100",
   Accepted: "text-green-700 bg-green-100",

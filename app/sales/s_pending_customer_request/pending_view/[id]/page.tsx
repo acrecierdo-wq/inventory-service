@@ -511,7 +511,13 @@ const PendingViewPage = () => {
     fetchRequest();
   }, [fetchRequest]);
 
-  
+  useEffect(() => {
+    if (activeTab !== "quotation" && !restoringDraftId) {
+      setRestoredDraft(null);
+      setRestoringDraftId(null);
+      setQuotationForms([]);
+    }
+  }, [activeTab, restoringDraftId]);
 
   const initiateAction = (type: "Accepted" | "Rejected" | "Cancelled") => {
     setActionType(type);
@@ -750,7 +756,7 @@ const PendingViewPage = () => {
 
             {activeTab === "quotation" && (
               <QuotationFormSection
-                key={restoredDraft?.id || "new"}
+                key={restoredDraft ? restoredDraft.id : "new"}
                 requestId={request.id}
                 projectName={request.project_name}
                 mode={request.mode}
@@ -825,7 +831,6 @@ const PendingViewPage = () => {
 }]);
 
 
-                //window.dispatchEvent(new CustomEvent("restore-draft", { detail: { draft } }));
                 window.dispatchEvent(new CustomEvent("drafts-updated", { detail: { removedDraftId: draft.id } }));
 
                 const handleReset = () => {

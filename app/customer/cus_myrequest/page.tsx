@@ -2,11 +2,11 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { CustomerHeader } from "@/components/header-customer";
 import Link from "next/link";
 import Image from "next/image";
-import { Check, Truck, Package, ChevronDown } from "lucide-react";
+import { Check, Truck, Package } from "lucide-react";
 
 type QuotationRequest = {
   id: number;
@@ -30,6 +30,20 @@ const MyOrdersPage = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const requestsPerPage = 5;
+
+  const steps = [
+    { key: "quotation", label: "Quotation", icon: Package },
+    { key: "out_for_delivery", label: "Out for Delivery", icon: Truck },
+    { key: "completed", label: "Completed", icon: Check },
+  ];
+
+  const getActiveStep = (status: string) => {
+    const s = status.toLowerCase();
+    if (["quotation_sent", "quotation_accepted"].includes(s)) return 0;
+    if (["purchase_order_created", "processing", "out_for_delivery"].includes(s)) return 1;
+    if (s === "completed") return 2;
+    return 0;
+  };
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -60,10 +74,6 @@ const MyOrdersPage = () => {
       updated = updated.filter((req) => req.status === statusFilter);
     }
 
-    // Search filter
-    // Search filter
-// Search filter
-// Search filter
 if (searchQuery.trim()) {
   let query = searchQuery.toLowerCase().trim();
 
@@ -118,6 +128,29 @@ if (searchQuery.trim()) {
     setCurrentPage(1);
   }, [requests, statusFilter, timeFilter, searchQuery, sortNewestFirst]);
 
+  const filterRef = useRef<HTMLDivElement>(null);
+  const timeRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+              setShowFilterDropdown(false);
+      }
+      if (timeRef.current && !timeRef.current.contains(event.target as Node)) {
+              setShowTimeDropdown(false);
+      }
+      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
+              setShowSortDropdown(false);
+      }
+      };
+      document.addEventListener("click", handleClickOutside);
+      return () => {
+      document.removeEventListener("click", handleClickOutside);
+      };
+  }, []);
+  
+
   // Pagination slice
   const indexOfLast = currentPage * requestsPerPage;
   const indexOfFirst = indexOfLast - requestsPerPage;
@@ -126,32 +159,45 @@ if (searchQuery.trim()) {
 
   return (
     
-      <div className="bg-[#ffedce] min-h-screen w-full">
+      <div className="bg-[#ffedce] h-full w-full">
         <CustomerHeader />
 
         {/* Controls */}
         <div className="px-10 py-6">
-          <h1 className="text-4xl font-extrabold text-[#173f63]">MY ORDERS</h1>
+          {/* <h1 className="text-4xl font-extrabold text-[#173f63]">MY ORDERS</h1> */}
 
           <div className="flex items-center gap-3 justify-end mt-4 relative">
+            {/* Search */}
+            <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1 hover:bg-gray-100">
+              <Image src="/search-alt-2-svgrepo-com.svg" width={15} height={15} alt="Search" className="ml-5" />
+              <input
+                type="text"
+                className="ml-2 w-full bg-transparent outline-none"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
             {/* Status Filter */}
-            <div className="relative">
+            <div className="relative" ref={filterRef}>
               <button
-                className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 hover:bg-[#f0d2ad] active:border-b-4"
+                className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
                 onClick={() => setShowFilterDropdown((prev) => !prev)}
               >
-                <span className="text-[#482b0e] font-medium text-lg">
+                <Image src="/filter-svgrepo-com.svg" width={20} height={20} alt="Filter" className="" />
+                <span className="text-sm text-[#482b0e] ml-1">
                   {statusFilter || "Status"}
                 </span>
-                <ChevronDown className="ml-2 text-[#482b0e]" size={20} />
+                {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
               </button>
               {showFilterDropdown && (
-                <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
+                <div className="absolute mt-1 right-0 w-32 bg-white border rounded-md shadow-lg z-50">
                   {["", "Pending", "Accepted", "Cancelled", "Rejected"].map((status) => (
                     <button
                       key={status}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                        statusFilter === status ? "font-bold text-blue-600" : ""
+                      className={`w-full text-center px-4 py-1 hover:bg-gray-100 text-sm ${
+                        statusFilter === status ? "font-bold bg-gray-200" : ""
                       }`}
                       onClick={() => {
                         setStatusFilter(status);
@@ -166,23 +212,24 @@ if (searchQuery.trim()) {
             </div>
 
             {/* Time Filter */}
-            <div className="relative">
+            <div className="relative" ref={timeRef}>
               <button
-                className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 hover:bg-[#f0d2ad] active:border-b-4"
+                className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
                 onClick={() => setShowTimeDropdown((prev) => !prev)}
               >
-                <span className="text-[#482b0e] font-medium text-lg">
+                <Image src="/document-text-svgrepo-com.svg" width={20} height={20} alt="Filter" className="" />
+                <span className="text-sm text-[#482b0e] ml-1">
                   {timeFilter}
                 </span>
-                <ChevronDown className="ml-2 text-[#482b0e]" size={20} />
+                {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
               </button>
               {showTimeDropdown && (
-                <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
+                <div className="absolute mt-1 right-0 w-30 bg-white border rounded-md shadow-lg z-50">
                   {["All Time", "Today", "Yesterday", "This Week", "This Month"].map((time) => (
                     <button
                       key={time}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 ${
-                        timeFilter === time ? "font-bold text-blue-600" : ""
+                      className={`w-full text-center px-4 py-1 hover:bg-gray-100 text-sm ${
+                        timeFilter === time ? "font-bold bg-gray-200" : ""
                       }`}
                       onClick={() => {
                         setTimeFilter(time);
@@ -197,18 +244,26 @@ if (searchQuery.trim()) {
             </div>
 
             {/* Sort */}
-            <div className="relative">
+            <div className="relative" ref={sortRef}>
               <button
-                className="h-12 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 hover:bg-[#f0d2ad] active:border-b-4"
+                className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
                 onClick={() => setShowSortDropdown((prev) => !prev)}
               >
-                <span className="text-[#482b0e] font-medium text-lg">Sort</span>
-                <ChevronDown className="ml-2 text-[#482b0e]" size={20} />
+                <Image
+                  src="/sort-ascending-fill-svgrepo-com.svg"
+                  width={20}
+                  height={20}
+                  alt="Sort"
+                  className=""
+                />
+                <span className="text-sm text-[#482b0e] ml-1">Sort</span>
               </button>
               {showSortDropdown && (
                 <div className="absolute mt-1 right-0 w-48 bg-white border rounded-md shadow-lg z-50">
                   <button
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    className={`w-full text-center px-4 py-1 hover:bg-gray-100 text-sm ${
+                      sortNewestFirst ? "font-bold" : ""
+                    }`}
                     onClick={() => {
                       setSortNewestFirst(true);
                       setShowSortDropdown(false);
@@ -217,7 +272,9 @@ if (searchQuery.trim()) {
                     Newest → Oldest
                   </button>
                   <button
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    className={`w-full text-center px-4 py-1 hover:bg-gray-100 text-sm ${
+                      !sortNewestFirst ? "font-bold" : ""
+                    }`}
                     onClick={() => {
                       setSortNewestFirst(false);
                       setShowSortDropdown(false);
@@ -229,22 +286,11 @@ if (searchQuery.trim()) {
               )}
             </div>
 
-            {/* Search */}
-            <div className="h-12 w-96 rounded-3xl border-b-2 border-[#d2bda7] bg-white flex items-center px-3 text-[#8a6f56] text-lg">
-              <Image src="/search-alt-2-svgrepo-com.svg" width={20} height={20} alt="Search" />
-              <input
-                type="text"
-                className="ml-2 w-full bg-transparent outline-none"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
           </div>
         </div>
 
         {/* Orders */}
-        <div className="px-10 space-y-6">
+        <div className="px-10 space-y-6 mb-2">
           {currentRequests.length === 0 ? (
             <p className="text-gray-600">No requests found.</p>
           ) : (
@@ -267,7 +313,7 @@ if (searchQuery.trim()) {
                       <span className="font-semibold">Status:</span> {req.status}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 italic">
                     Requested at:{" "}
                     {new Date(req.created_at).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -283,8 +329,8 @@ if (searchQuery.trim()) {
                 </div>
 
                 {/* Progress Tracker + Button */}
-                <div className="flex items-center justify-between px-6">
-                  <div className="flex items-center flex-1">
+                <div className="flex items-center justify-between px-6 ml-6 mr-6">
+                  {/* <div className="flex items-center flex-1">
                     <div className="flex flex-col items-center">
                       <div className="w-12 h-12 rounded-full bg-[#f59e0b] flex items-center justify-center shadow-lg">
                         <Package className="text-white w-6 h-6" />
@@ -301,17 +347,41 @@ if (searchQuery.trim()) {
                       <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center shadow-lg">
                         <Check className="text-white w-6 h-6" />
                       </div>
-                    </div>
-                  </div>
-
-                  <Link
+                    </div> */}
+                    {steps.map((step, index) => {
+                      const isActive = index <= getActiveStep(req.status);
+                      return (
+                        <div key={step.key} className="flex items-center flex-1">
+                          <div className="flex flex-col items-center">
+                            <div
+                              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${
+                                isActive ? "bg-green-500" : "bg-gray-300"
+                              }`}
+                            >
+                              <step.icon className="text-white w-6 h-6" />
+                            </div>
+                            <span className="text-xs mt-1"></span>
+                          </div>
+                          {index < steps.length - 1 && (
+                            <div
+                              className={`flex-1 h-1 mx-2 ${
+                                index < getActiveStep(req.status) ? "bg-green-500" : "bg-gray-300"
+                              }`}
+                            ></div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <Link
                     href={`/customer/cus_myrequest/track_my_order/${req.id}`}
-                    className="ml-6 px-5 py-2 rounded-3xl bg-[#f59e0b] text-white font-semibold shadow hover:bg-[#e68908] transition"
+                    className="px-4 py-2 rounded-3xl bg-[#f59e0b] text-white font-semibold shadow hover:bg-[#e68908] transition"
                   >
                     Track Order
                   </Link>
+                  </div>
+
+                  
                 </div>
-              </div>
             ))
           )}
         </div>

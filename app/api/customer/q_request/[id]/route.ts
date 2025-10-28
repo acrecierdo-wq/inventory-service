@@ -340,6 +340,13 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+function normalizeUploadPath(filePath: string) {
+  if (!filePath) return "";
+  // remove leading /sales/uploads or duplicate /uploads/
+  const stripped = filePath.replace(/^\/?(sales\/)?uploads\/+/, "");
+  return `/uploads/${stripped}`;
+}
+
 // ✅ GET quotation request (with full quotation details)
 export async function GET(_req: NextRequest, context: RouteContext) {
   const { id } = await context.params;
@@ -377,11 +384,17 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Request not found." }, { status: 404 });
     }
 
-    // fetch files
+    // fetch  request files
     const files = await db
       .select()
       .from(quotation_request_files)
       .where(eq(quotation_request_files.request_id, requestId));
+
+    const normalizedRequestFiles = files.map((f) => ({
+      id: f.id,
+      name: f.path.split("/").pop() || "uplaoded_file",
+      filePath: normalizeUploadPath(f.path),
+    }));
 
     // ✅ fetch quotation + nested data
     const [quotation] = await db
@@ -389,43 +402,80 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       .from(quotations)
       .where(eq(quotations.requestId, requestId));
 
-    if (!quotation) {
-      return NextResponse.json({ ...request, files, quotation: null, customer, });
+    let normalizedQuotation = null;
+
+    // if (!quotation) {
+    //   return NextResponse.json({ ...request, files, quotation: null, customer, });
+    // }
+
+    // // ✅ fetch quotation items + materials + quotation files
+    // const items = await db
+    //   .select()
+    //   .from(quotationItems)
+    //   .where(eq(quotationItems.quotationId, quotation.id));
+
+    // const materials = await db
+    //   .select()
+    //   .from(quotationMaterials)
+
+    // const qFiles = await db
+    //   .select()
+    //   .from(quotationFiles)
+    //   .where(eq(quotationFiles.quotationId, quotation.id));
+
+    // // ✅ merge materials into items
+    // const mergedItems = items.map((item) => ({
+    //   ...item,
+    //   materials: materials.filter((m) => m.quotationItemId === item.id),
+    // }));
+    if (quotation) {
+      const items = await db
+        .select()
+        .from(quotationItems)
+        .where(eq(quotationItems.quotationId, quotation.id));
+
+      const materials = await db.select().from(quotationMaterials);
+
+      const mergedItems = items.map((item) => ({
+        ...item,
+        materials: materials.filter((m) => m.quotationItemId === item.id),
+      }));
+
+      const qFiles = await db
+        .select()
+        .from(quotationFiles)
+        .where(eq(quotationFiles.quotationId, quotation.id));
+
+      const normalizedQFiles = qFiles.map((f) => ({
+        id: f.id,
+        name: f.fileName || f.filePath.split("/").pop() || "uploaded_files",
+        filePath: normalizeUploadPath(f.filePath),
+      }));
+
+      const cadSketchFile = quotation.cadSketch
+        ? [
+          {
+            name: quotation.cadSketch.split("/").pop() || "uploaded_file",
+            filePath: normalizeUploadPath(quotation.cadSketch),
+          },
+        ]
+      : [];
+
+      normalizedQuotation = {
+        ...quotation,
+        status: quotation.status,
+        items: mergedItems,
+        files: normalizedQFiles,
+        cadSketch: cadSketchFile,
+        revisionLabel: `REVISION-${String(quotation.revisionNumber ?? 0).padStart(2, "0")}`,
+      };
     }
-
-    // ✅ fetch quotation items + materials + quotation files
-    const items = await db
-      .select()
-      .from(quotationItems)
-      .where(eq(quotationItems.quotationId, quotation.id));
-
-    const materials = await db
-      .select()
-      .from(quotationMaterials)
-
-    const qFiles = await db
-      .select()
-      .from(quotationFiles)
-      .where(eq(quotationFiles.quotationId, quotation.id));
-
-    // ✅ merge materials into items
-    const mergedItems = items.map((item) => ({
-      ...item,
-      materials: materials.filter((m) => m.quotationItemId === item.id),
-    }));
 
     return NextResponse.json({
       ...request,
-      files,
-      quotation: {
-        ...quotation,
-        items: mergedItems,
-        files: qFiles,
-        revisionLabel: `REVISION-${String(quotation.revisionNumber ?? 0).padStart(2, "0")}`,
-        cadSketch: quotation.cadSketch
-        ? [{ name: quotation.cadSketch, filePath: `/sales/uploads/${quotation.cadSketch}` }]
-        : [],
-      },
+      files: normalizedRequestFiles,
+      quotation: normalizedQuotation,
+      quotationStatus: normalizedQuotation?.status ?? request.status,
       customer: {
         id: customer.id,
         companyName: customer.companyName,
@@ -456,7 +506,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     const body = await req.json();
     const { status } = body;
 
-    const allowedStatuses = ["accepted", "rejected", "revision_requested"];
+    const allowedStatuses = ["approved", "rejected", "revision_requested"];
     if (!status || !allowedStatuses.includes(status)) {
       return NextResponse.json({ error: "Invalid or missing status." }, { status: 400 });
     }
@@ -484,18 +534,28 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Request not found." }, { status: 404 });
     }
 
-    const [updatedRequest] = await db
-      .update(quotation_requests)
-      .set({ status })
-      .where(eq(quotation_requests.id, requestId))
-      .returning();
+    // const [updatedRequest] = await db
+    //   .update(quotation_requests)
+    //   .set({ status })
+    //   .where(eq(quotation_requests.id, requestId))
+    //   .returning();
+
+    const now = new Date();
 
     const [updatedQuotation] = await db
       .update(quotations)
-      .set({ status })
+      .set({ 
+        status,
+        customerActionAt: now,
+        updatedAt: now,
+      })
       .where(eq(quotations.requestId, requestId))
       .returning()
 
+    if (!updatedQuotation) {
+      return NextResponse.json({ error: "Quotation not found for this request." }, { status: 404 });
+    }
+    
     const items = await db
       .select()
       .from(quotationItems)
@@ -505,32 +565,59 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       .select()
       .from(quotationMaterials);
 
-      const qFiles = await db
-        .select()
-        .from(quotationFiles)
-        .where(eq(quotationFiles.quotationId, updatedQuotation.id));
+      // const qFiles = await db
+      //   .select()
+      //   .from(quotationFiles)
+      //   .where(eq(quotationFiles.quotationId, updatedQuotation.id));
 
       const mergedItems = items.map((item) => ({
         ...item,
         materials: materials.filter((m) => m.quotationItemId === item.id),
       }));
 
+    const qFiles = await db
+      .select()
+      .from(quotationFiles)
+      .where(eq(quotationFiles.quotationId, updatedQuotation.id));
+    
+    const normalizedQFiles = qFiles.map((f) => ({
+      id: f.id,
+      name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
+      filePath: normalizeUploadPath(f.filePath),
+    }));
+
+    const cadSketchFile = updatedQuotation.cadSketch
+      ? [
+        {
+          name: updatedQuotation.cadSketch.split("/").pop() || "uploaded_file",
+          filePath: normalizeUploadPath(updatedQuotation.cadSketch),
+        },
+      ]
+    : [];
+
     const files = await db
       .select()
       .from(quotation_request_files)
       .where(eq(quotation_request_files.request_id, requestId));
+    
+    const normalizedRequestFiles = files.map((f) => ({
+      id: f.id,
+      name: f.path.split("/").pop() || "uploaded_file",
+      filePath: normalizeUploadPath(f.path),
+    }));
 
     return NextResponse.json({
-      ...updatedRequest,
-      files,
+//...updatedRequest,
+      files: normalizedRequestFiles,
       quotation: {
         ...updatedQuotation,
         items: mergedItems,
-        files: qFiles,
+        files: normalizedQFiles,
+        cadSketch: cadSketchFile,
         revisionLabel: `REVISION-${String(quotations.revisionNumber ?? 0).padStart(2, "0")}`,
-        cadSketch: quotations.cadSketch
-        ? [{ name: quotations.cadSketch, filePath: `/sales/uploads/${quotations.cadSketch}` }]
-        : [] as { name: string; filePath: string}[],
+        // cadSketch: quotations.cadSketch
+        // ? [{ name: quotations.cadSketch, filePath: `/sales/uploads/${quotations.cadSketch}` }]
+        // : [] as { name: string; filePath: string}[],
       },
       customer: {
         id: customer.id,
@@ -543,6 +630,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       },
       success: true,
       message: `Quotation ${status} successfully.`,
+      timestamp: new Date().toISOString(),
       
     });
   } catch (err) {

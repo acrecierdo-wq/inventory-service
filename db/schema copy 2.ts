@@ -166,16 +166,7 @@ export const quotation_requests = pgTable("quotation_requests", {
   project_name: text("project_name").notNull(),
   mode: text("mode"),
   message: text("message"),
-  status: varchar("status", { length: 20 })
-    .notNull()
-    .$type<
-      | "Pending"
-      | "Accepted"
-      | "Rejected"
-      | "Cancelled"
-      | "Cancel_Requested"
-    >()
-    .default("Pending"),
+  status: text("status").default("Pending"),
   customer_id: integer("customer_id").notNull().references(() => customer_profile.id),
   created_at: timestamp("created_at").defaultNow(),
 });
@@ -228,7 +219,7 @@ export const quotations = pgTable("quotations", {
       | "restoring"
       | "sent"
       | "revision_requested"
-      | "approved"
+      | "accepted"
       | "rejected"
       | "expired"
     >()
@@ -245,8 +236,6 @@ export const quotations = pgTable("quotations", {
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-
-  customerActionAt: timestamp("customer_action_at").defaultNow().notNull(),
 });
 
 {/* Quotation Items */}
@@ -291,22 +280,9 @@ export const quotationFiles = pgTable("quotation_files", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
-export const quotationRequestsRelations = relations(quotation_requests, ({ one, many }) => ({
-  customer: one(customer_profile, {
-    fields: [quotation_requests.customer_id],
-    references: [customer_profile.id],
-  }),
-  quotations: many(quotations),
-  files: many(quotation_request_files),
-}));
-
 
 // Quotations → Items
-export const quotationsRelations = relations(quotations, ({ one, many }) => ({
-  request: one(quotation_requests, {
-    fields: [quotations.requestId],
-    references: [quotation_requests.id],
-  }),
+export const quotationsRelations = relations(quotations, ({ many }) => ({
   items: many(quotationItems),
   files: many(quotationFiles),
 }));

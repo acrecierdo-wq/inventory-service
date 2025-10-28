@@ -45,10 +45,12 @@ export type SavedQuotation = {
   files?: { id: number; path: string }[],
   cadSketchFile?: PreviewFile[];
   revisionLabel?: string;
+  revisionNumber?: number;
   baseQuotationId?: number;
   quotationNumber?: string;
   customer?: Customer;
   createdAt?: string;
+  isNew?: boolean;
 };
 
 export type FileData = {

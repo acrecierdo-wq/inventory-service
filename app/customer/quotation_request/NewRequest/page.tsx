@@ -760,9 +760,9 @@ const NewRequest = () => {
 
   const isSubmitDisabled =
     projectName.trim() === "" ||
-    mode === "" ||
+    mode === ""
     //message.trim() === "" ||
-    files.length === 0;
+    //files.length === 0;
 
   // Submit handler
   const handleSubmit = async () => {

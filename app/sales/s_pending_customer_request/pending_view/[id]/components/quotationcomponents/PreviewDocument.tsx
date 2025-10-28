@@ -5,7 +5,7 @@
 import React from "react";
 import { format } from "date-fns";
 import { PreviewFile, QuotationItem, Customer } from "@/app/sales/types/quotation";
-import Image from "next/image";
+import Image from "next/image"; 
 
 // Types
 
@@ -75,12 +75,10 @@ function formatField(label: string, rawValue: string) {
   }
 
   const pluralize = (count: string, unit: string) => {
-    const num = Number(count.split("-")[0]); // handles ranges like 3-4
-    if (isNaN(num) || num === 1 || num === 0) {
-      return unit.replace(/s$/, ""); // singular for 0 and 1
-    }
-    return unit.endsWith("s") ? unit : unit + "s";
-  };
+  const num = Number(count.split("-")[0]);
+  if (isNaN(num) || num === 1) return unit.replace(/s$/, ""); // singular
+  return unit.endsWith("s") ? unit : unit + "s"; // plural
+};
 
   const formattedUnit =
     /^\d+(-\d+)?$/.test(numberPart) && unitPart
@@ -90,7 +88,7 @@ function formatField(label: string, rawValue: string) {
   switch (label) {
     case "Delivery":
       if (/day|week|month/.test(unitPart)) {
-        return `${numberPart} working ${formattedUnit.includes("day") ? "days" : formattedUnit} upon receipt of P.O.`;
+        return `${numberPart} working ${formattedUnit} upon receipt of P.O.`;
       }
       return value;
 
@@ -127,12 +125,25 @@ const currencyFormatter = new Intl.NumberFormat("en-PH", {
 });
 
 // Calculate summary
+// const calculateSummary = (items: QuotationItem[], vat: number, markup: number) => {
+//   const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0);
+//   const markupAmount = subtotal * (markup / 100);
+//   const totalWithMarkup = subtotal + markupAmount;
+//   const vatAmount = totalWithMarkup * (vat / 100);
+//   const grandTotal = totalWithMarkup + vatAmount;
+//   return { subtotal, markupAmount, vatAmount, grandTotal };
+// };
+
 const calculateSummary = (items: QuotationItem[], vat: number, markup: number) => {
-  const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0);
-  const markupAmount = subtotal * (markup / 100);
+  const subtotal = items.reduce((sum, i) => sum + Number(i.totalPrice), 0);
+  const numericMarkup = Number(markup);
+  const numericVat = Number(vat);
+
+  const markupAmount = subtotal * (numericMarkup / 100);
   const totalWithMarkup = subtotal + markupAmount;
-  const vatAmount = totalWithMarkup * (vat / 100);
+  const vatAmount = totalWithMarkup * (numericVat / 100);
   const grandTotal = totalWithMarkup + vatAmount;
+
   return { subtotal, markupAmount, vatAmount, grandTotal };
 };
 
@@ -210,7 +221,7 @@ export function PreviewDocument({
 
               <div className="mt-4 text-sm text-gray-700 space-y-2"> 
                 <p className="font-bold"><span className="font-bold underline">Attention:</span> {customer.contactPerson}</p>
-                <p className="font-bold"><span className="font-bold underline">Project:</span> {projectName || "N/A"}</p>
+                <p className="font-bold"><span className="font-bold underline">Project:</span> <span className="uppercase">{projectName || "N/A"}</span></p>
               </div>
 
               </div>
@@ -297,7 +308,7 @@ export function PreviewDocument({
       <section className="flex flex-row justify-between">
 
       {/* Quotation Details */}
-        <div className="space-y-1 text-sm text-gray-700 mb-4 bg-[#fef4e4] w-[400px] p-2 rounded">
+        <div className="space-y-4 text-sm text-gray-700 mb-4 bg-[#fef4e4] w-[400px] p-2 rounded">
           <div></div>
           <p className="flex justify-between"><span className="font-bold">Payment:</span> {formatField("Payment", payment)}</p>
           <p className="flex justify-between"><span className="font-bold">Delivery:</span> {formatField("Delivery", delivery)}</p>

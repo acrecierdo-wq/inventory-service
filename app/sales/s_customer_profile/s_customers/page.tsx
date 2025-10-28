@@ -1,115 +1,239 @@
-// app/sales/s_customer_profile/s_customers/page.tsx
+// // app/sales/s_customer_profile/s_customers/page.tsx
 
+// import { Header } from "@/components/header";
+// import Image from "next/image";
+// import Link from "next/link";
+
+// const SalesCustomerProfilePage = () => {
+//     return (
+//         <div className="bg-[#ffedce] h-full w-full">
+//             <Header />
+
+//         {/* Customer Profiles */}
+//         <div className="flex flex-row justify-end mt-5 gap-4">
+//         {/* <span className="uppercase text-4xl text-[#173f63] font-bold mt-5 ml-5">Customer Profiles</span> */}
+        
+        
+//             {/* Search */}
+//             <div className="flex flex-row gap-4">
+//             <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1">
+//               <Image
+//                   src="/search-alt-2-svgrepo-com.svg"
+//                   width={20}
+//                   height={20}
+//                   alt="Search"
+//                   className="ml-5" 
+//               />
+//               <input
+//               type="text"
+//               placeholder="Search..."
+//               className="ml-2 w-full bg-transparent outline-none"
+//               //value={searchQuery}
+//               //onChange={(e) => setSearchQuery(e.target.value)}
+//             />
+//               </div>
+//             </div>
+
+//             {/* Filter */}
+//             <div className="flex flex-row gap-4">
+//             <div>
+//               <div className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
+                
+//                 <Image
+//                 src="/filter-svgrepo-com.svg"
+//                 width={20}
+//                 height={20}
+//                 alt="filter"
+//                 className="ml-0" 
+//             />
+//                 Filter
+//             </div>
+//             </div>
+//             </div>
+
+//             {/* Sort */}
+//             <div className="flex flex-row gap-4 mr-10">
+//             <div className="relative">
+//               <div className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
+                
+//                 <Image
+//                 src="/sort-ascending-fill-svgrepo-com.svg"
+//                 width={20}
+//                 height={20}
+//                 alt="filter"
+//                 className="ml-0" 
+//             />
+//                 Sort
+//             </div>
+//             </div>
+//             </div>
+//             </div>
+                  
+//             {/* Table */}
+//             <div className="flex-1 overflow-y-auto px-10 mt-2">
+//               <div className="bg-white rounded shadow-md mb-2">
+//                 <div>
+//                   <div className="bg-[#fcd0d0] grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+//                     <span>ID No.</span>
+//                     <span>CUSTOMER NAME</span>
+//                     <span>STATUS</span>
+//                     <span>REQUEST</span>
+//                     <span>ACTION</span>
+//                   </div>
+//                 </div>
+//               <div>
+//               <div className="grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center">
+//                   <span>001</span>
+//                   <span>Shopee</span>
+//                   <span>Active</span>
+//                   <span>001</span>
+//           <span className="w-[100px] border border-[#d2bda7] bg-white rounded-3xl shadow hover:bg-[#ffe9b6]">
+//             <Link href="/sales/s_customer_profile/s_customers/s_view_details">
+//               <span className="text-sm font-semibold">View Details</span>
+//             </Link>
+//           </span>
+              
+//                         </div>
+//                     </div>
+//                     </div>
+//             </div>
+//         </div>
+//     )
+// }
+// export default SalesCustomerProfilePage;
+
+// app/sales/s_customer_profile/s_customers/page.tsx
+"use client";
 
 import { Header } from "@/components/header";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
-const SalesCustomersPage = () => {
-    return (
-            <div className="bg-[#ffedce] min-h-screen w-full">
-                <Header />
-                <div className="p-4">
-                    {/* Back Button */}
-                    {/* <Button variant="primary" className="rounded-full bg-white hover:bg-yellow-500/30 border-[#642248] border-b-4 active:border-b-8">
-                        <Link href="/sales/s_customer_profile">
-                            <Image
-                                src="/arrow-left-svgrepo-com.svg"
-                                width={20}
-                                height={20}
-                                alt="left"
-                            />
-                        </Link>
-                    </Button> */}
+interface Customer {
+  id: number;
+  companyName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  clientCode: string;
+  address: string;
+  status?: string; // optional if you have active/inactive
+}
 
-                    {/* Main Container */}
-                    <div className="flex flex-row gap-4 mt-4">
-                        {/* Gradient Card */}
-                        <div className="relative w-[200px] h-[530px] rounded-3xl bg-[#173f63] p-4 flex flex-col items-center">
-                            <Image src="/profile-circle-svgrepo-com.svg" height={100} width={100} alt="profile" className="invert mb-4" />
-                            <span className="text-white font-bold text-xl">SHOPEE</span><br></br><br></br>
-                            <span className="text-white font-bold text-sm ">📩shoppee@gmail.com</span>
-                            <span className="text-white font-bold text-sm ">📞123-4567-890</span>
-                            <span className="text-white font-bold text-sm ">📍Manila, Philippines</span>
-                        </div>
+const SalesCustomerProfilePage = () => {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
 
-                        {/* Right Section */}
-                        <div className="flex-1">
-                            <h2 className="text-[#5a4632] text-2xl font-bold mb-4">Request History</h2>
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const res = await fetch("/api/sales/customer");
+        const data = await res.json();
+        setCustomers(data);
+      } catch (err) {
+        console.error("Failed to load customers:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustomers();
+  }, []);
 
-                            {/* Header Bar */}
-                            <div className="flex items-center gap-4">
-                                <div className="inline-block bg-[#173f63] p-3 rounded w-50" style={{ clipPath: "polygon(0 0, 0 1000%, 100% 100%, 75% 0%)" }}>
-                                    <span className="text-2xl text-white font-bold">Services</span>
-                                </div>
-                                {/* <div className="inline-block bg-[#173f63] p-3 rounded w-70" style={{ clipPath: "polygon(0 0, 0 1000%, 100% 100%, 75% 0%)" }}>
-                                    <span className="text-2xl text-white font-bold">Non-Consumables</span>
-                                </div> */}
+  return (
+    <div className="bg-[#ffedce] h-full w-full">
+      <Header />
 
-                                <div className="flex ml-15 h-9 w-64 border-[#d2bda7] border-b-4 bg-white rounded-3xl px-4">
-                                    <Image src="/search-alt-2-svgrepo-com.svg" width={20} height={20} alt="Search" />
-                                </div>
-
-                                <div className="flex items-center h-10 px-4 bg-white border-[#d2bda7] border-b-4 rounded-2xl">
-                                    <Image src="/filter-svgrepo-com.svg" width={20} height={20} alt="Filter" />
-                                    <span className="ml-2 text-[#482b0e] font-semibold">Filter</span>
-                                </div>
-
-                                <div className="flex items-center h-10 px-4 bg-white border-[#d2bda7] border-b-4 rounded-2xl">
-                                    <Image src="/sort-ascending-fill-svgrepo-com.svg" width={20} height={20} alt="Sort" />
-                                    <span className="ml-2 text-[#482b0e] font-semibold">Sort</span>
-                                </div>
-                            </div>
-
-                            {/* Table Header */}
-                            <div className="grid grid-cols-6 gap-2 bg-white mt-6 py-3 px-2 border-2 text-[#5a4632] font-semibold text-sm">
-                                <span>REQ NO.</span>
-                                <span>DATE | TIME</span>
-                                <span>TYPE</span>
-                                <span>STATUS</span>
-                                <span>ACTIONS</span>
-                            </div>
-
-                            {/* Sample Row */}
-                            <div className="grid grid-cols-6 gap-2 bg-[#fef4e4] py-3 px-2 text-sm">
-                                <span>001</span>
-                                <span>04/10/2025 10:00 AM</span>
-                                <span>Consumables</span>
-                                <span>
-                                    <span className="bg-[#173f63] text-white px-3 py-1 rounded-3xl">Pending</span>
-                                </span>
-                                <div className="">
-          <button className="px-4 py-1 border border-[#d2bda7] bg-white rounded-3xl shadow hover:bg-[#ffe9b6] transition-all">
-            <Link href="/sales/s_customer_profile/s_customers/s_view_details">
-              <div className="text-sm font-semibold">View Details</div>
-            </Link>
-          </button>
+      {/* Search + Filter Bar */}
+      <div className="flex flex-row justify-end mt-5 gap-4">
+        {/* Search */}
+        <div className="flex flex-row gap-4">
+          <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1">
+            <Image
+              src="/search-alt-2-svgrepo-com.svg"
+              width={20}
+              height={20}
+              alt="Search"
+              className="ml-5"
+            />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="ml-2 w-full bg-transparent outline-none"
+            />
+          </div>
         </div>
-                            </div>
 
-    {/* Pagination */}
-    {/* <div className="ml-190 mt-5">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious className="rounded-full border-[#d2bda7] border-b-4 bg-white hover:bg-yellow-500/30" />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink isActive className="text-[#482b0e] font-semibold border-[#d2bda7] border-b-4 bg-white hover:bg-yellow-500/30">
-                  1
-                </PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext className="rounded-full border-[#d2bda7] border-b-4 bg-white hover:bg-yellow-500/30" />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div> */}
-                        </div>
-                    </div>
-                </div>
-            </div>
-    );
+        {/* Filter */}
+        <div className="flex flex-row gap-4">
+          <div className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
+            <Image
+              src="/filter-svgrepo-com.svg"
+              width={20}
+              height={20}
+              alt="filter"
+              className="ml-0"
+            />
+            Filter
+          </div>
+        </div>
+
+        {/* Sort */}
+        <div className="flex flex-row gap-4 mr-10">
+          <div className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
+            <Image
+              src="/sort-ascending-fill-svgrepo-com.svg"
+              width={20}
+              height={20}
+              alt="sort"
+              className="ml-0"
+            />
+            Sort
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-y-auto px-10 mt-2">
+        <div className="bg-white rounded shadow-md mb-2">
+          {/* Table Header */}
+          <div className="bg-[#fcd0d0] grid grid-cols-[1fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+            <span>ID No.</span>
+            <span>COMPANY NAME</span>
+            <span>CONTACT PERSON</span>
+            <span>STATUS</span>
+            <span>ACTION</span>
+          </div>
+
+          {/* Table Rows */}
+          {loading ? (
+            <div className="text-center py-5 text-gray-500">Loading...</div>
+          ) : customers.length === 0 ? (
+            <div className="text-center py-5 text-gray-500">No customers found.</div>
+          ) : (
+            customers.map((customer) => (
+              <div
+                key={customer.id}
+                className="grid grid-cols-[1fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+              >
+                <span>{customer.id}</span>
+                <span>{customer.companyName}</span>
+                <span>{customer.contactPerson}</span>
+                <span>{customer.email}</span>
+                <span className="w-[100px] border border-[#d2bda7] bg-white rounded-3xl shadow hover:bg-[#ffe9b6]">
+                  <Link
+                    href={`/sales/s_customer_profile/s_customers/s_view_details/${customer.id}`}
+                  >
+                    <span className="text-sm font-semibold">View Details</span>
+                  </Link>
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default SalesCustomersPage;
+export default SalesCustomerProfilePage;

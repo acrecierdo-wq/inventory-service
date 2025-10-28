@@ -199,6 +199,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CustomerHeader } from "@/components/header-customer";
 import { Package, Truck, FileCheck, CheckCircle2, LucidePersonStanding, FileText } from "lucide-react"; // added icons
+import { format } from "date-fns";
 
 type QuotationRequest = {
   id: number;
@@ -211,8 +212,9 @@ type QuotationRequest = {
 
 type QuotationDetail = {
   id: number;
-  created_at: string;
+  createdAt: string;
   file_url?: string;
+  status: string;
 };
 
 const statusColors: Record<string, string> = {
@@ -231,36 +233,46 @@ const TrackMyOrderPage = () => {
   const [activeStep, setActiveStep] = useState("Quotation");
   const [showQuotationTable, setShowQuotationTable] = useState(false);
 
-  const fetchRequest = useCallback(async () => async () => {
-      try {
-        console.log("Fetching request for ID:", id);
-        const res = await fetch(`/api/customer/q_request/${id}`);
-        if (!res.ok) throw new Error("Failed to fetch request");
-        const data = await res.json();
-        setRequest(data);
-        if (data.status) setActiveStep(data.status);
-      } catch (err) {
-        console.error(err);
-      }
-    },[id]);
+  // const fetchRequest = useCallback(async () => async () => {
+  //     try {
+  //       console.log("Fetching request for ID:", id);
+  //       const res = await fetch(`/api/customer/q_request/${id}`);
+  //       if (!res.ok) throw new Error("Failed to fetch request");
+  //       const data = await res.json();
+  //       setRequest(data);
+  //       if (data.status) setActiveStep(data.status);
+  //     } catch (err) {
+  //       console.error(err);
+  //     }
+  //   },[id]);
+  const fetchRequest = useCallback(async () => {
+    if (!id || isNaN(Number(id))) return;
+
+  try {
+    console.log("Fetching request for ID:", id);
+    const res = await fetch(`/api/customer/q_request/${id}`);
+    if (!res.ok) throw new Error("Failed to fetch request");
+    const data = await res.json();
+
+    setRequest(data);
+    if (data.status) setActiveStep(data.status);
+  } catch (err) {
+    console.error(err);
+  }
+}, [id]);
+
 
   useEffect(() => {
-    const handleStatusUpdate = (
-      //e: CustomEvent<{ status: string }>
-    ) => {
-      fetchRequest();
-    };
+    const handleStatusUpdate = () => fetchRequest();
+
+    fetchRequest();
 
     window.addEventListener("quotation-status-updated", handleStatusUpdate as EventListener);
+    
     return () => {
       window.removeEventListener("quotation-status-updated", handleStatusUpdate as EventListener);
     };
   }, [fetchRequest]);
-
-  useEffect(() => { 
-    if (!id || isNaN(Number(id))) return;
-      fetchRequest();
-  }, [id, fetchRequest]);
 
   if (!request) {
     return (
@@ -277,13 +289,22 @@ const TrackMyOrderPage = () => {
 
   const quotation = request.quotation;
 
+  const handleBack = () => router.back();
+
   return (
-      <div className="bg-[#ffedce] min-h-screen w-full">
+      <div className="bg-[#ffedce] min-h-screen w-full /font-sans">
         {/* Header */}
         <div className="">
           <CustomerHeader />
         </div>
 
+         <div className="flex justify-end mr-5 mt-2">
+          <button
+            className="text-sm px-4 py-1 bg-white border border-[#d2bda7] text-[#5a4632] rounded-3xl shadow hover:bg-[#f59f0b1b] transition-all cursor-pointer"
+            onClick={handleBack}
+          >
+            &larr; Back
+          </button></div>
         {/* White Container */}
         <div className="flex justify-center px-4 sm:px-6 py-4">
           <div className="bg-white rounded-2xl shadow-lg 
@@ -304,14 +325,13 @@ const TrackMyOrderPage = () => {
                 <span className="font-semibold">Mode:</span>{" "}
                 {request.mode || "N/A"}
               </p>
-              <p className="font-semibold">Status: 
+              <p className="text-gray-700 font-semibold">Status: 
                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[request.status] || ""}`}>
                          {request.status}
                       </span>
               </p>
-              <p className="text-sm text-gray-700 mt-2 italic">
-                Requested at:{" "}
-                {new Date(request.created_at).toLocaleDateString("en-US", {
+              <p><span className="mt-2 font-semibold text-gray-700">Requested at:{" "}</span>
+                <span className="italic">{new Date(request.created_at).toLocaleDateString("en-US", {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
@@ -320,7 +340,7 @@ const TrackMyOrderPage = () => {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
-                })}
+                })}</span>
               </p>
             </div>
 
@@ -374,33 +394,47 @@ const TrackMyOrderPage = () => {
                         {step}
                       </button>
 
-                      {/* Sub Circle */}
-                      {step === "Quotation" && request?.status && ["accepted", "rejected", "revision_requested"].includes(request.status) && (
+                      {/* Sub Circle - must be quotation status*/}
+                      {step === "Quotation" && quotation?.status && ["approved", "rejected", "revision_requested"].includes(quotation.status) && (
                         <div className="absolute top-1/2 right-0 translate-x-6 -translate-y-1/2 flex flex-col items-center">
                           <div
-                            title={`Quotation ${request.status.replace("_", " ")}`}
-                            className={`w-4 h-4 rounded-full border-2 shadow-sm ${
-                              request.status === "accepted"
+                            onClick={() => setActiveStep("Quotation Status")}
+                            title={`Quotation ${quotation.status.replace("_", " ")}`}
+                            className={`w-4 h-4 rounded-full border-2 shadow-sm transition-transform hover:scale-110 ${
+                              quotation.status === "approved"
                                 ? "bg-green-500 border-green-600"
-                                : request.status === "rejected"
+                                : quotation.status === "rejected"
                                 ? "bg-red-500 border-red-600"
-                                : request.status === "revison_requested"
+                                : quotation.status === "revision_requested"
                                 ? "bg-yellow-400 border-yellow-500"
                                 : "bg-gray-300 border-gray-400"
                             }`}
-                          />
+                          ></div>
                           <span className="text-[10px] text-gray-600 mt-1 capitalize">
-                            {request.status.replace("_", " ")}
+                            {quotation.status.replace("_", " ")}
                           </span>
+                          {activeStep === "Quotation Status" && (
+                          <span className="text-[10px] text-gray-700 mt-1 capitalize bg-white px-2 py-[2px] rounded shadow-sm border">
+                            {quotation.status.replace("_", " ")}
+                          </span>
+                        )}
                         </div>
                       )}
 
                       {/* Connector */}
                       {idx < steps.length - 1 && (
                         <div
-                          className={`absolute top-6 left-1/2 w-full h-1 
+                          className={`absolute top-6 left-1/2 w-full h-1 transition-all duration-300 
                             ${
-                              activeStep === steps[idx + 1] || activeStep === step
+                              step === "Quotation" && quotation?.status
+                                ? quotation.status === "approved"
+                                  ? "bg-green-500"
+                                  : quotation.status === "rejected"
+                                  ? "bg-red-500"
+                                  : quotation.status === "revision_requested"
+                                  ? "bg-yellow-400"
+                                  : "bg-gray-300"
+                              : activeStep === steps[idx + 1] || activeStep === step
                                 ? "bg-[#f59e0b]"
                                 : "bg-gray-300"
                             }`}
@@ -447,7 +481,7 @@ const TrackMyOrderPage = () => {
                       <tbody>
                         <tr className="border-t bg-white">
                           <td className="p-3">
-                            {new Date(quotation.created_at).toLocaleDateString("en-US", {
+                            {/* {new Date(quotation.created_at).toLocaleDateString("en-US", {
                               year: "numeric",
                               month: "short",
                               day: "numeric",
@@ -456,7 +490,8 @@ const TrackMyOrderPage = () => {
                               hour: "2-digit",
                               minute: "2-digit",
                               hour12: true,
-                            })}
+                            })} */}
+                            {format(new Date(quotation.createdAt), "MMM d, yyy | hh:mm a")}
                           </td>
                           <td className="p-3">
                             <button

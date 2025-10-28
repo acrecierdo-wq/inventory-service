@@ -54,6 +54,7 @@ export const itemSchema = z.object({
 
 export const quotationSchema = z.object({
     requestId: z.coerce.number().int().positive(),
+    baseQuotationId: z.string().uuid().optional(),
     projectName: z.string().optional(),
     mode: z.string().optional(),
     payment: z.string().min(1, "Payment is required."),
@@ -79,6 +80,7 @@ export const quotationSchema = z.object({
 export const draftSchema = z.object({
   id: z.string().optional(),
   requestId: z.number(),
+  baseQuotationId: z.string().uuid().optional(),
   projectName: z.string().optional(),
   mode: z.string().optional(),
   payment: z.string().nullable().optional(),
@@ -90,13 +92,15 @@ export const draftSchema = z.object({
   vat: z.number().optional().default(12),
   markup: z.number().optional().default(5),
   items: z.array(draftItemSchema).optional(),
-  status: z.literal("draft", "restoring"),
+  //status: z.literal("draft", "restoring"),
+  status: z.enum(["draft", "restoring"]).default("draft"),
   attachedFiles: z.array(z.object({ fileName: z.string(), filePath: z.string() })).optional(),
 });
 
 export const sentSchema = z.object({
   id: z.string().optional(),
   requestId: z.number(),
+  baseQuotationId: z.string().uuid().optional(),
   mode: z.string().min(1, "Mode is required"),
   projectName: z.string().min(1, "Project name is required"),
   payment: z.string().min(1, "Payment is required"),
@@ -127,11 +131,14 @@ export function validateQuotation(data: unknown): DraftInput | SentInput {
   const status = obj.status as string | undefined;
 
   // Treat "restoring" like "draft"
+  // if (status === "draft" || status === "restoring") {
+  //   return draftSchema.parse({
+  //     ...obj,
+  //     status: "draft", // normalize
+  //   });
+  // }
   if (status === "draft" || status === "restoring") {
-    return draftSchema.parse({
-      ...obj,
-      status: "draft", // normalize
-    });
+    return draftSchema.parse(obj);
   }
 
   // Sent quotations must be fully valid
@@ -146,12 +153,11 @@ export function validateQuotation(data: unknown): DraftInput | SentInput {
   });
 }
 
-
-
 export type QuotationInput = DraftInput | SentInput;
 export type QuotationUpdateInput = Partial<{
   id: string;
   requestId: number;
+  baseQuotationId?: string;
   projectName: string;
   mode: string;
   payment: string;
@@ -177,6 +183,6 @@ export type QuotationUpdateInput = Partial<{
     fileName: string;
     filePath: string;
   }[];
-  status?: "draft" | "restoring" | "sent" | "accepted" | "rejected" | "revision_requested" | "expired";
+  status?: "draft" | "restoring" | "sent" | "approved" | "rejected" | "revision_requested" | "expired";
 }>;
 

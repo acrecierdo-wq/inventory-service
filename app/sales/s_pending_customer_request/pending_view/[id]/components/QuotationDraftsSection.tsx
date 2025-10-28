@@ -211,7 +211,13 @@ type Props = {
   hasSentQuotation?: boolean;
 };
 
-export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId, locked, hasSentQuotation }: Props) {
+export function QuotationDraftsSection({ 
+  requestId, 
+  onRestore, 
+  restoringDraftId, 
+  locked, 
+  hasSentQuotation 
+}: Props) {
   const [drafts, setDrafts] = useState<Draft[]>([]);
 
   const fetchDrafts = useCallback(async () => {
@@ -244,7 +250,15 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
   };
 
   const handleRestore = async (draft: Draft) => {
-    console.log("Restoring draft:", draft);
+     console.log("%c[handleRestoreDraft] CALLED", "color: red; font-weight: bold;", draft);
+   // console.log("Restoring draft:", draft);
+
+    // prevent restoring if a quotation already sent
+    if (hasSentQuotation) {
+      toast.warning("You cannot restore drafts after a quotation has been sent.");
+      return;
+    }
+
     if (locked || restoringDraftId) {
       toast.warning("Another draft is already being restored.");
       return;
@@ -282,7 +296,7 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
         setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
 
       //window.dispatchEvent(new CustomEvent("drafts-locked"));
-      window.dispatchEvent(new CustomEvent("drafts-updated", { detail: { removedDraftId: draft.id }, }));
+      window.dispatchEvent(new CustomEvent("drafts-updated", { detail: { removedDraftId: draft.id }, })); 
 
       toast.success("Draft restored successfully!");
       } else {
@@ -296,15 +310,129 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
     }
   };
 
+  useEffect(() => {
+    const handleDraftsUpdated = () => {
+      console.log("[QuotationDraftsSection] Refreshing drfat lists after update...");
+      fetchDrafts();
+    };
+
+    window.addEventListener("drafts-updated", handleDraftsUpdated);
+    window.addEventListener("drafts-unlocked", handleDraftsUpdated);
+
+    return () => {
+      window.removeEventListener("drafts-updated", handleDraftsUpdated);
+      window.removeEventListener("drafts-unlocked", handleDraftsUpdated);
+    };
+  }, [fetchDrafts]);
+
   return (
     <div className="mb-5 space-y-4">
       <h3 className="font-bold text-lg text-[#880c0c]">Quotation Drafts</h3>
 
-      {hasSentQuotation && (
-        <p className="text-[#880c0c9b] italic">A quotation has already been sent to the customer.You cannot restore drafts, but you can delete them if needed.</p>
+      {hasSentQuotation ? (
+        <p className="text-[#880c0c9b] italic">
+          A quotation has already been sent to the customer. You cannot restore drafts, but you can delete them if needed.
+        </p>
+      ) : drafts.length === 0 ? (
+        <p className="text-[#880c0c9b] italic">No drafts saved yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {drafts.map((draft) => {
+            const isLocked = !!locked || !!restoringDraftId || hasSentQuotation;
+            const isRestoring = restoringDraftId === draft.id;
+
+            return (
+              <div
+                key={draft.id}
+                className="border p-4 rounded-xl bg-gray-50 shadow-sm"
+              >
+                <p>
+                  <strong className="font-semibold text-[#880c0c]">Quotation #:</strong>{" "}
+                  {draft.quotationNumber || `Draft-${draft.id}`}
+                </p>
+                <p>
+                  <strong className="font-semibold text-[#880c0c]">Project:</strong>{" "}
+                  <span className="uppercase">{draft.projectName}</span>
+                </p>
+                <p>
+                  <strong className="font-semibold text-[#880c0c]">Notes:</strong>{" "}
+                  {draft.quotationNotes || "-"}
+                </p>
+
+                <div className="flex flex-col">
+                <div className="flex gap-3 mt-3">
+                  {/* Restoring Button */}
+                  {/* <button
+                    onClick={() => handleRestore(draft)}
+                    disabled={isLocked}
+                    className={`px-4 py-2 rounded text-white transition-all ${
+                      hasSentQuotation
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : isRestoring
+                        ? "bg-blue-400 cursor-wait"
+                        : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                    }`}
+                  >
+                    {isRestoring ? "Restoring..." : "Restore"}
+                  </button> */}
+                  <button
+                    onClick={() => handleRestore(draft)}
+                    disabled={isLocked || draft.status === "restoring"}
+                    className={`px-4 py-2 rounded text-white transition-all ${
+                      hasSentQuotation
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : draft.status === "restoring"
+                        ? "bg-blue-400 cursor-wait"
+                        : isRestoring
+                        ? "bg-blue-400 cursor-wait"
+                        : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                    }`}
+                  >
+                    {draft.status === "restoring" || isRestoring ? "Restoring..." : "Restore"}
+                  </button>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => handleDelete(draft.id)}
+                    // disabled={!!isLocked || !!restoringDraftId}
+                    // className={`px-4 py-2 rounded text-white transition-all ${
+                    //   !!locked || !!restoringDraftId
+                    //     ? "bg-gray-400 cursor-not-allowed"
+                    //     : "bg-red-600 hover:bg-red-700 cursor-pointer"
+                    // }`}
+                    disabled={!!locked || !!restoringDraftId || draft.status === "restoring"}
+                    className={`px-4 py-2 rounded text-white transition-all ${
+                      !!locked || !!restoringDraftId || draft.status === "restoring"
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-red-600 hover:bg-red-700 cursor-pointer"
+                    }`}
+                  >
+                    Delete
+                  </button>
+                </div>
+                {hasSentQuotation ? (
+                    <p className="text-sm text-gray-400 italic mt-2">
+                      A quotation has already been sent to the customer. There won&apos;t be any drafts to restore.
+                    </p>
+                  ) : isRestoring || draft.status === "restoring"? (
+                    <p className="text-sm text-gray-400 italic mt-2">
+                      This draft is currently being restored. Cancel it before restoring or deleting.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {drafts.length === 0 ? (
+    </div>
+  );
+}
+
+export default QuotationDraftsSection;
+
+{/* {drafts.length === 0 ? (
         <p className="text-[#880c0c9b] italic">No drafts saved yet.</p>
       ) : (
         <div className="space-y-4">
@@ -345,10 +473,5 @@ export function QuotationDraftsSection({ requestId, onRestore, restoringDraftId,
             </div>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
-
-export default QuotationDraftsSection;
+      )} */}
 
