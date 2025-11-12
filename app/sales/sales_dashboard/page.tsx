@@ -1,6 +1,5 @@
 "use client";
 
-import SalesClientComponent from "@/app/validate/sales_validate";
 import { Header } from "@/components/header";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -41,7 +40,6 @@ const fetchRequests = async () => {
   }, []);
 
   return (
-    <SalesClientComponent>
       <main className="bg-[#ffedce] h-full w-full">
         <Header />
 
@@ -80,7 +78,6 @@ const fetchRequests = async () => {
 
         </div>
       </main>
-    </SalesClientComponent>
   );
 };
 

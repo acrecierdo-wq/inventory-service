@@ -802,7 +802,7 @@ const NewInternalUsagePage = () => {
   const { user } = useUser();
   const [personnelName, setPersonnelName] = useState("");
   const [department, setDepartment] = useState("");
-  const [purpose, setPurpose] = useState("");
+  const [purpose, setPurpose] = useState(""); 
   const [authorizedBy, setAuthorizedBy] = useState("");
   const [note, setNote] = useState("");
   const [loggedBy, setLoggedBy] = useState("");
@@ -973,7 +973,7 @@ const NewInternalUsagePage = () => {
       const qty = Number(quantity);
 
       if (qty > stockData.stock) {
-        toast.warning(`⚠️ "${selectedItem.name}" currently has only ${stockData.stock} in stock. You are adding ${qty}.`);
+        toast.warning(`⚠️ Understock: "${selectedItem.name}" currently has only ${stockData.stock} in stock. You are utilizing ${qty}.`, { duration: 10000 });
         setIsAdding(false);
         setSelectedItem(null);
         setSelectedSize(null);
@@ -984,11 +984,11 @@ const NewInternalUsagePage = () => {
       }
       
       if (stockData.stock - qty <= stockData.criticalLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this issuance.`);
+        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this utilization.`, { duration: 10000 });
       } else if (stockData.stock - qty <= stockData.reorderLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this issuance.`);
+        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this utilization.`, { duration: 10000 });
       }
-
+ 
       const candidate: FormItem = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
@@ -1132,7 +1132,9 @@ const NewInternalUsagePage = () => {
 
   useEffect(() => {
     if (user) {
-      setLoggedBy(user.username || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+     setLoggedBy(
+      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
+    );
     }
   }, [user]);
 

@@ -12,14 +12,16 @@ import { Replenishment, ReplenishmentItemDetail } from "@/app/warehouse/replenis
 type ReplenishmentActionsProps = {
   item: Replenishment;
   onDelete: (id: number) => void;
+  onRestore: (id: number) => void;
 };
 
-const ReplenishmentActions = ({ item, onDelete }: ReplenishmentActionsProps) => {
+const ReplenishmentActions = ({ item, onDelete, onRestore }: ReplenishmentActionsProps) => {
   console.log("ReplenishmentActions props.item:", item);
 
   const [openDropdown, setOpenDropdown] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState(false);
 
   const [items, setItems] = useState<ReplenishmentItemDetail[]>([]);
 
@@ -39,6 +41,25 @@ const ReplenishmentActions = ({ item, onDelete }: ReplenishmentActionsProps) => 
   const handleContinueReplenishment = () => {
     router.push(`/warehouse/replenishment_log/continue/${item.id}`);
   };
+
+  const handleRestore = async (id: number) => {
+      try {
+        const res = await fetch(`/api/replenishment/${id}`, { method: "PATCH" });
+        if (!res.ok) throw new Error("Failed to restore replenishment log.");
+  
+        toast.success("Replenishment log restored successfully!");
+  
+        // ✅ instantly update parent list
+        onRestore(id);
+  
+        // ✅ close dialog
+        setConfirmRestore(false);
+  
+      } catch (err) {
+        console.error(err);
+        toast.error("Error restoring replenishment log.");
+      }
+    };
 
   useEffect(() => {
     if (item.items) {
@@ -116,6 +137,7 @@ const ReplenishmentActions = ({ item, onDelete }: ReplenishmentActionsProps) => 
           )}
 
           {item.status === "Archived" && (
+            <>
             <div
               onClick={(e) => {
                 e.stopPropagation();
@@ -126,6 +148,16 @@ const ReplenishmentActions = ({ item, onDelete }: ReplenishmentActionsProps) => 
             >
               View Details
             </div>
+            <div
+              onClick={() => {
+                setConfirmRestore(true);
+                setOpenDropdown(false);
+              }}
+              className="px-4 py-2 hover:bg-green-100 text-green-700 cursor-pointer"
+            >
+              Restore
+            </div>
+            </>
           )}
         </div>
       )}
@@ -203,6 +235,29 @@ const ReplenishmentActions = ({ item, onDelete }: ReplenishmentActionsProps) => 
             <button
               className="px-4 py-1 rounded bg-red-600 text-white hover:bg-red-700"
               onClick={() => handleDelete(item.id)}
+            >
+              Confirm
+            </button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Restore Confirmation */}
+      <AlertDialog open={confirmRestore} onOpenChange={setConfirmRestore}>
+        <AlertDialogTitle>
+        </AlertDialogTitle>
+        <AlertDialogContent>
+          <div className="text-lg font-semibold">Are you sure?</div>
+          <p>This will restore the selected replenishment log record.</p>
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              className="px-4 py-1 rounded bg-gray-300 hover:bg-gray-400"
+              onClick={() => setConfirmRestore(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-1 rounded bg-green-600 text-white hover:bg-green-800"
+              onClick={() => handleRestore(item.id)}
             >
               Confirm
             </button>

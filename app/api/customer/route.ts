@@ -50,9 +50,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { companyName, contactPerson, email, address, phone, clientCode } = body ?? {};
+    const { companyName, contactPerson, email, address, phone, role, clientCode } = body ?? {};
 
-    if (!companyName || !contactPerson || !email || !address || !phone || !clientCode) {
+    if (!companyName || !contactPerson || !email || !address || !phone || !role || !clientCode) {
       return NextResponse.json(
         { error: "Missing required fields (companyname, contactPerson,email, address, phone, clientCode)" },
         { status: 400 }
@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
           contactPerson: contactPerson ?? existing[0].contactPerson,
           address: body.address,
           phone: body.phone,
+          role: body.role,
           clientCode: body.clientCode,
         })
         .where(eq(customer_profile.clerkId, userId));
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
         email,
         address,
         phone,
+        role,
         clientCode: body.clientCode,
       });
     }

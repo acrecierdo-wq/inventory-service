@@ -23,8 +23,6 @@ type Combination = {
   unitName: string | null;
 };
 
-
-
 interface Props {
   draftData?: DraftIssuance;
   draftId?: string;
@@ -283,7 +281,7 @@ useEffect(() => {
 
       // warn user before adding items
       if (qty > stockData.stock) {
-        toast.warning(`⚠️ "${selectedItem.name}" currently has only ${stockData.stock} in stock. You are adding ${qty}.`);
+        toast.warning(`⚠️ Understock:"${selectedItem.name}" currently has only ${stockData.stock} in stock. You are issuing ${qty}.`, { duration: 10000 });
         setIsAdding(false);
         setSelectedItem(null);
         setSelectedSize(null);
@@ -294,10 +292,10 @@ useEffect(() => {
       }
       
       if (stockData.stock - qty <= stockData.criticalLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this issuance.`);
+        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this issuance.`, { duration: 10000 });
       } else if (stockData.stock - qty <= stockData.reorderLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this issuance.`);
-      }
+        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this issuance.`, { duration: 10000 });
+      } 
 
       const candidate: FormItem = {
         itemId: String(found.id),
@@ -493,7 +491,7 @@ useEffect(() => {
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
           <div className="flex flex-row justify-between">
-            <h1 className="text-3xl font-bold text-[#173f63] mb-2">Log Item Issuance</h1>
+            {/* <h1 className="text-3xl font-bold text-[#173f63] mb-2">Log Item Issuance</h1> */}
             <p className="text-md font-bold text-[#173f63]">Issuance Ref: {issuanceRef ?? "Draft"}</p>
           </div>
 
@@ -753,6 +751,7 @@ useEffect(() => {
                 <p className="mb-2 text-sm text-gray-700">Client: {clientName}</p>
                 <p className="mb-2 text-sm text-gray-700">Dispatcher: {dispatcherName}</p>
                 <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drNumber || "Draft"}</p>
+                <p className="mb-2 text-sm text-gray-700">Customer PO Number: {customerPoNumber}</p>
 
                 <table className="w-full mt-4 text-sm border">
                   <thead className="bg-[#f5e6d3] text-[#482b0e]">

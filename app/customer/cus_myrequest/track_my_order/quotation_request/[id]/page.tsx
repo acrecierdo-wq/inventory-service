@@ -189,8 +189,27 @@ export default function CustomerQuotationPage() {
     }
   };
 
-  if (loading) return <div className="text-center mt-10 text-gray-500">Loading quotation...</div>;
-  if (!quotation) return <div className="text-center mt-10 text-red-500">Quotation not found.</div>;
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#ffedce] flex flex-col">
+        <CustomerHeader />
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-gray-600 text-lg animate-pulse italic">Loading quotation...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!quotation) {
+    return (
+      <main className="min-h-screen bg-[#ffedce] flex flex-col">
+        <CustomerHeader />
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-red-600 text-lg font-medium">Quotation not found.</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="bg-[#ffedce]">

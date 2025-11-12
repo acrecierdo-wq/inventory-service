@@ -105,6 +105,9 @@ export const Header = () => {
         case "warehouseman":
           router.push("/warehouse/w_dashboard");
           break;
+          case "purchasing":
+          router.push("/purchasing/dashboard");
+          break;
         default:
           router.push("/customer/cus_dashboard");
       }

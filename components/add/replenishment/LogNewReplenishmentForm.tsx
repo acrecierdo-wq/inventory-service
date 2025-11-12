@@ -275,6 +275,27 @@ useEffect(() => {
         return;
       }
 
+       const stockRes = await fetch(`/api/items/${found.id}`);
+      if (!stockRes.ok) {
+        toast.error("Unable to fetch stock for item.");
+        setIsAdding(false);
+        return;
+      }
+
+      const stockData = await stockRes.json();
+      const qty = Number(quantity);
+
+      if (stockData.stock + qty >= stockData.ceilingLevel) {
+        toast.warning(` Overstock: "${selectedItem.name}" currently has ${stockData.stock} in stock. You are replenishing ${qty}. It will go beyond ceiling level of ${stockData.ceilingLevel}.`, { duration: 10000 });
+        setIsAdding(false);
+        setSelectedItem(null);
+        setSelectedSize(null);
+        setSelectedVariant(null);
+        setSelectedUnit(null);
+        setQuantity("");
+        return;
+      }
+
       const candidate: FormInfo = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
@@ -437,7 +458,9 @@ useEffect(() => {
 
   useEffect(() => {
       if (user) {
-        setRecordedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
+         setRecordedBy(
+      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
+    );
       }
     }, [user]);
 
@@ -485,7 +508,7 @@ useEffect(() => {
               <input
                 type="text"
                 value={remarks}
-                onChange={(e) => setPoRefNum(e.target.value)}
+                onChange={(e) => setRemarks(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>

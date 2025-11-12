@@ -313,3 +313,40 @@ export async function GET(_req: NextRequest, context: RouteContext ) {
 }
 
 // Latest version - Sept.2
+
+// additional function (10/31/25)
+
+export async function PATCH(_req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const issuanceId = Number(id);
+
+    if (!issuanceId || isNaN(issuanceId)) {
+      return NextResponse.json({ error: "Invalid issuance ID." }, { status: 400 });
+    }
+
+    const [existing] = await db
+      .select()
+      .from(itemIssuances)
+      .where(eq(itemIssuances.id, issuanceId));
+
+      if (!existing) {
+        return NextResponse.json({ error: "Issuance not found." }, { status: 404 });
+      }
+
+      if (existing.status !== "Archived") {
+        return NextResponse.json({ error: "Only archived issuances can be restored." }, { status: 400 });
+      }
+
+      await db
+        .update(itemIssuances)
+        .set({ status: "Issued" })
+        .where(eq(itemIssuances.id, issuanceId))
+        .returning();
+
+      return NextResponse.json({ message: "Issuance restored successfully. "});
+  } catch (error) {
+    console.error("PATCH /api/issuances/[id] restore error:", error);
+    return NextResponse.json({ error: "Failed to restore issuance." }, { status: 500 });
+  }
+}

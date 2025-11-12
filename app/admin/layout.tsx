@@ -1,5 +1,6 @@
 import { SideBarAdmin } from "@/components/sidebar-admin";
 import RoleGuard from "../validate/role_guard";
+import MustChangePasswordRedirect from "@/components/change-password/change-password-redirect"; 
 
 type Props = {
     children: React.ReactNode;
@@ -8,6 +9,7 @@ type Props = {
 const AdminLayout = ({children,}: Props) => {
     return (
         <RoleGuard allowedRoles={["admin"]}>
+        <MustChangePasswordRedirect>
         <div className="min-h-screen flex flex-row bg-dash">
         <>
         <SideBarAdmin/>
@@ -18,6 +20,7 @@ const AdminLayout = ({children,}: Props) => {
           </main>
         </>
         </div>
+        </MustChangePasswordRedirect>
         </RoleGuard>
     );
 }

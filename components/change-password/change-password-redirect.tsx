@@ -28,6 +28,7 @@ export default function MustChangePasswordRedirect({
         if (role === "warehouseman") myAccountRoute = "/warehouse/my-account";
         if (role === "sales") myAccountRoute = "/sales/my-account";
         if (role === "admin") myAccountRoute = "/admin/my-account";
+        if (role === "purchasing") myAccountRoute = "/purchasing/my-account";
 
         // only redirect if not already on my-account page
         if (pathname !== myAccountRoute) {

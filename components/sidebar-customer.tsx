@@ -53,7 +53,7 @@ export const SideBarCustomer = ({ className }: Props) => {
           iconSrc="/profile-round-1342-svgrepo-com.svg"
           onClick={closeAllDropdowns}
         />
-        <SidebarItem
+        {/* <SidebarItem
           label="Order History"
           href="/customer/cus_orderhistory"
           iconSrc="/document-add-svgrepo-com.svg"
@@ -64,7 +64,7 @@ export const SideBarCustomer = ({ className }: Props) => {
           href="/customer/p&s/non-consumables"
           iconSrc="/document-add-svgrepo-com.svg"
           onClick={closeAllDropdowns}
-        />
+        /> */}
       </div>
     </div>
   );

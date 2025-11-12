@@ -234,7 +234,9 @@ const router = useRouter();
       
 <div className="flex flex-row justify-between px-4 mt-2 gap-4">
   {/* Left: Customer Profile Card */}
-  <div className="flex-[0.4] bg-[#fcd0d0] rounded p-6 mb-10 shadow-md">
+  <div className="flex flex-col flex-[0.4]">
+    <div className=" bg-[#fcd0d0] rounded p-6 mb-2 shadow-md">
+    <>
     {customer ? (
         <>
         <div className="flex flex-col items-center mb-2">
@@ -258,6 +260,17 @@ const router = useRouter();
     ): (
         <p className="text-center text-gray-600 italic">Loading customer details...</p>
     )}
+    </>
+  </div>
+  {/* Back Button */}
+        <div className="mt-8">
+          <button
+            onClick={() => router.push("/sales/s_customer_profile/s_customers")}
+            className="text-sm px-4 py-2 bg-white border border-[#d2bda7] text-[#5a4632] rounded-3xl shadow hover:bg-[#fcd0d0] transition-all cursor-pointer"
+          >
+            Back to Customers
+          </button>
+        </div>
   </div>
 
   {/* Right: Table Section */}
@@ -326,16 +339,6 @@ const router = useRouter();
   </section>
   
 </div>
-{/* Back Button */}
-        <div className="px-5">
-          <button
-            onClick={() => router.push("/sales/s_customer_profile/s_customers")}
-            className="text-sm px-4 py-2 bg-white border border-[#d2bda7] text-[#5a4632] rounded-3xl shadow hover:bg-[#fcd0d0] transition-all cursor-pointer"
-          >
-            Back to Customers
-          </button>
-        </div>
-
 
         {/* Floating confirmation box */}
         {showActionConfirm && (

@@ -3,17 +3,12 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { SidebarItem } from "./sidebar-items";
-import { Button } from "./ui/button";
-import { useState} from "react";
-
 
 type Props = {
     className?: string;
 };
 
 export const SideBarAdmin = ({className}: Props) => {
-    const [isServiceOpen, setIsServiceOpen] = useState(false);
-    const [isInventoryOpen, setIsInventoryOpen] = useState(false);
    
     // const closeAllDropdowns = () => {       // Close both dropdowns when clicking outside
     //     setIsServiceOpen(false);
@@ -37,7 +32,7 @@ export const SideBarAdmin = ({className}: Props) => {
                 href="/admin/admin_dashboard" 
                 iconSrc="/tray.svg"
                 />
-                <SidebarItem 
+                {/* <SidebarItem 
                 label="Reports" 
                 href="/admin/reports" 
                 iconSrc="/tray.svg"
@@ -46,18 +41,18 @@ export const SideBarAdmin = ({className}: Props) => {
                 label="Customer Profile" 
                 href="/admin/customer_profile" 
                 iconSrc="/tray.svg"
-                />
+                /> */}
                 {/* Service Dropdown */}
-                <Button 
+                {/* <Button 
                 variant="ghost"
                 onClick={() => {setIsServiceOpen(!isServiceOpen)
                     // setIsInventoryOpen(false);
                 }}
                 >
                 <Image src="/tray.svg" height={20} width={20} alt="Service" />
-                    <span className="flex flex-col gap-y-1 flex-1">Service</span>
+                    <span className="flex flex-col gap-y-1 flex-1">Service</span> */}
                     {/* <ChevronDown size={16} className={`transition-transform ${isServiceOpen ? "rotate-180" : ""}`} /> */}
-                </Button>
+                {/* </Button>
                 {isServiceOpen && (
                     <div className="pl-2 flex flex-col">
                         <SidebarItem 
@@ -71,19 +66,19 @@ export const SideBarAdmin = ({className}: Props) => {
                         iconSrc="/tray.svg"
                 />
                     </div>
-                )}
+                )} */}
 
                 {/* Inventory Dropdown */}
-                <Button 
+                {/* <Button 
                 variant="ghost"
                 onClick={() => {setIsInventoryOpen(!isInventoryOpen);
                     // setIsServiceOpen(false);
                 }}
                 >
                 <Image src="/tray.svg" height={20} width={20} alt="Inventory" />
-                    <span className="flex flex-col gap-y-1 flex-1">Inventory</span>
+                    <span className="flex flex-col gap-y-1 flex-1">Inventory</span> */}
                     {/* <ChevronDown size={16} className={`transition-transform ${isInventoryOpen ? "rotate-180" : ""}`} /> */}
-                </Button>
+                {/* </Button>
                 {isInventoryOpen && (
                     <div className="pl-2 flex flex-col">
                         <SidebarItem 
@@ -97,10 +92,15 @@ export const SideBarAdmin = ({className}: Props) => {
                         iconSrc="/tray.svg"
                         />
                 </div>
-                )}
+                )} */}
                 <SidebarItem 
                 label="Accounts" 
                 href="/admin/accounts" 
+                iconSrc="/tray.svg"
+                />
+                <SidebarItem 
+                label="Audit Trail" 
+                href="/admin/audit_trails" 
                 iconSrc="/tray.svg"
                 />
             </div>

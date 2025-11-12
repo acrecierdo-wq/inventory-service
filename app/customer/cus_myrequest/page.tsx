@@ -29,7 +29,7 @@ const MyOrdersPage = () => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const requestsPerPage = 5;
+  const recordsPerPage = 5;
 
   const steps = [
     { key: "quotation", label: "Quotation", icon: Package },
@@ -152,21 +152,35 @@ if (searchQuery.trim()) {
   
 
   // Pagination slice
-  const indexOfLast = currentPage * requestsPerPage;
-  const indexOfFirst = indexOfLast - requestsPerPage;
-  const currentRequests = filteredRequests.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredRequests.length / requestsPerPage);
+  // const indexOfLast = currentPage * requestsPerPage;
+  // const indexOfFirst = indexOfLast - requestsPerPage;
+  // const currentRequests = filteredRequests.slice(indexOfFirst, indexOfLast);
+  // const totalPages = Math.ceil(filteredRequests.length / requestsPerPage);
+
+  const totalPages = Math.ceil(filteredRequests.length / recordsPerPage);
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
+  );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
 
   return (
     
-      <div className="bg-[#ffedce] h-full w-full">
+      <main className="relative bg-[#ffedce] h-full w-full mb-20">
         <CustomerHeader />
 
         {/* Controls */}
-        <div className="px-10 py-6">
-          {/* <h1 className="text-4xl font-extrabold text-[#173f63]">MY ORDERS</h1> */}
+        <div className="px-10 py-2">
 
-          <div className="flex items-center gap-3 justify-end mt-4 relative">
+          <div className="flex items-center gap-3 justify-end mt-2 relative">
             {/* Search */}
             <div className="h-8 w-70 rounded-3xl border-[#d2bda7] border-b-2 bg-white flex flex-row text-[#8a6f56] mt-1 hover:bg-gray-100">
               <Image src="/search-alt-2-svgrepo-com.svg" width={15} height={15} alt="Search" className="ml-5" />
@@ -291,10 +305,10 @@ if (searchQuery.trim()) {
 
         {/* Orders */}
         <div className="px-10 space-y-6 mb-2">
-          {currentRequests.length === 0 ? (
+          {paginatedRequests.length === 0 ? (
             <p className="text-gray-600">No requests found.</p>
           ) : (
-            currentRequests.map((req) => (
+            paginatedRequests.map((req) => (
               <div
                 key={req.id}
                 className="rounded-xl bg-white shadow-md p-6 hover:shadow-lg transition"
@@ -387,7 +401,7 @@ if (searchQuery.trim()) {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {/* {totalPages > 1 && (
           <div className="flex justify-center mt-8 space-x-2">
             {Array.from({ length: totalPages }, (_, i) => (
               <button
@@ -403,8 +417,42 @@ if (searchQuery.trim()) {
               </button>
             ))}
           </div>
-        )}
-      </div>
+        )} */}
+{/* Pagination */}
+{totalPages > 1 && (
+  <div className="absolute bottom-0 left-0 w-full bg-[#ffedce] py-3 flex justify-center items-center gap-2 z-50">
+    <button
+      onClick={handlePrevPage}
+      disabled={currentPage === 1}
+      className={`h-8 px-4 rounded-md transition ${
+        currentPage === 1
+          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+          : "bg-[#0c2a42] text-white hover:bg-[#163b5f]"
+      }`}
+    >
+      Prev
+    </button>
+
+    <span className="text-[#5a4632] text-sm font-medium">
+      Page {currentPage} of {totalPages}
+    </span>
+
+    <button
+      onClick={handleNextPage}
+      disabled={currentPage === totalPages}
+      className={`h-8 px-4 rounded-md transition ${
+        currentPage === totalPages
+          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+          : "bg-[#0c2a42] text-white hover:bg-[#163b5f]"
+      }`}
+    >
+      Next
+    </button>
+  </div>
+)}
+
+        
+      </main>
   );
 };
 

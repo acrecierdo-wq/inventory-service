@@ -197,11 +197,11 @@ const SalesCustomerProfilePage = () => {
       <div className="flex-1 overflow-y-auto px-10 mt-2">
         <div className="bg-white rounded shadow-md mb-2">
           {/* Table Header */}
-          <div className="bg-[#fcd0d0] grid grid-cols-[1fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+          <div className="bg-[#fcd0d0] grid grid-cols-[0.5fr_2fr_2fr_2fr_0.5fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
             <span>ID No.</span>
             <span>COMPANY NAME</span>
             <span>CONTACT PERSON</span>
-            <span>STATUS</span>
+            <span>POSITION</span>
             <span>ACTION</span>
           </div>
 
@@ -214,7 +214,7 @@ const SalesCustomerProfilePage = () => {
             customers.map((customer) => (
               <div
                 key={customer.id}
-                className="grid grid-cols-[1fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+                className="grid grid-cols-[0.5fr_2fr_2fr_2fr_0.5fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
               >
                 <span>{customer.id}</span>
                 <span>{customer.companyName}</span>

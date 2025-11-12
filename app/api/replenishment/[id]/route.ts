@@ -300,3 +300,38 @@ export async function GET(_req: NextRequest, context: RouteContext ) {
     );
   }
 }
+
+export async function PATCH(_req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const replenishId = Number(id);
+
+    if (!replenishId || isNaN(replenishId)) {
+      return NextResponse.json({ error: "Invalid issuance ID." }, { status: 400 });
+    }
+
+    const [existing] = await db
+      .select()
+      .from(itemReplenishments)
+      .where(eq(itemReplenishments.id, replenishId));
+
+      if (!existing) {
+        return NextResponse.json({ error: "Replenishment not found." }, { status: 404 });
+      }
+
+      if (existing.status !== "Archived") {
+        return NextResponse.json({ error: "Only archived issuances can be restored." }, { status: 400 });
+      }
+
+      await db
+        .update(itemReplenishments)
+        .set({ status: "Replenished" })
+        .where(eq(itemReplenishments.id, replenishId))
+        .returning();
+
+      return NextResponse.json({ message: "Replenishment restored successfully. "});
+  } catch (error) {
+    console.error("PATCH /api/replenishment/[id] restore error:", error);
+    return NextResponse.json({ error: "Failed to restore replenishment." }, { status: 500 });
+  }
+}

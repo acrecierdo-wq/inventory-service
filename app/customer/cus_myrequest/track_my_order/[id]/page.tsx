@@ -198,8 +198,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CustomerHeader } from "@/components/header-customer";
-import { Package, Truck, FileCheck, CheckCircle2, LucidePersonStanding, FileText } from "lucide-react"; // added icons
+import { Package, Truck, FileCheck, CheckCircle2, LucidePersonStanding, FileText, Upload } from "lucide-react"; // added icons
 import { format } from "date-fns";
+
+interface PurchaseOrder {
+  id: number;
+  quotationId: number;
+  poNumber: string;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  status: string;
+}
 
 type QuotationRequest = {
   id: number;
@@ -208,6 +220,7 @@ type QuotationRequest = {
   status: string;
   created_at: string;
   quotation?: QuotationDetail | null;
+  purchaseOrder?: PurchaseOrder | null;
 };
 
 type QuotationDetail = {
@@ -215,6 +228,7 @@ type QuotationDetail = {
   createdAt: string;
   file_url?: string;
   status: string;
+  quotationNumber: string;
 };
 
 const statusColors: Record<string, string> = {
@@ -232,34 +246,47 @@ const TrackMyOrderPage = () => {
   const [request, setRequest] = useState<QuotationRequest | null>(null);
   const [activeStep, setActiveStep] = useState("Quotation");
   const [showQuotationTable, setShowQuotationTable] = useState(false);
+  const [showPOTable, setShowPOTable] = useState(false);
 
-  // const fetchRequest = useCallback(async () => async () => {
-  //     try {
-  //       console.log("Fetching request for ID:", id);
-  //       const res = await fetch(`/api/customer/q_request/${id}`);
-  //       if (!res.ok) throw new Error("Failed to fetch request");
-  //       const data = await res.json();
-  //       setRequest(data);
-  //       if (data.status) setActiveStep(data.status);
-  //     } catch (err) {
-  //       console.error(err);
-  //     }
-  //   },[id]);
-  const fetchRequest = useCallback(async () => {
-    if (!id || isNaN(Number(id))) return;
+const fetchRequest = useCallback(async () => {
+  if (!id || isNaN(Number(id))) return;
 
   try {
     console.log("Fetching request for ID:", id);
     const res = await fetch(`/api/customer/q_request/${id}`);
     if (!res.ok) throw new Error("Failed to fetch request");
+
     const data = await res.json();
 
-    setRequest(data);
-    if (data.status) setActiveStep(data.status);
+    // ✅ You can destructure directly from `data`
+    const { quotation, purchaseOrder, quotationStatus, ...requestData } = data;
+
+    // ✅ Combine into single state (without using any)
+    setRequest({
+      ...requestData,
+      quotation,
+      purchaseOrder,
+      quotationStatus,
+    });
+
+    // ✅ Sync stepper with status
+    if (quotationStatus) setActiveStep(quotationStatus);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching request:", err);
   }
 }, [id]);
+
+useEffect(() => {
+  if (!request) return;
+
+  if (request?.quotation?.status === "approved" && !request.purchaseOrder) {
+    setActiveStep("Purchase Order");
+  } else if (request?.purchaseOrder) {
+    setActiveStep("Processing");
+  } else {
+    setActiveStep("Quotation");
+  }
+}, [request]);
 
 
   useEffect(() => {
@@ -281,14 +308,14 @@ const TrackMyOrderPage = () => {
             <CustomerHeader />
           </div>
           <div className="flex justify-center items-center h-[80vh]">
-            <p className="text-lg text-gray-600 italic">Loading request...</p>
+            <p className="text-lg text-gray-600 italic animate-pulse">Loading request...</p>
           </div>
         </div>
     );
   }
 
   const quotation = request.quotation;
-
+  const po = request.purchaseOrder;
   const handleBack = () => router.back();
 
   return (
@@ -309,8 +336,7 @@ const TrackMyOrderPage = () => {
         <div className="flex justify-center px-4 sm:px-6 py-4">
           <div className="bg-white rounded-2xl shadow-lg 
                           p-4 sm:p-6 md:p-8 lg:p-10 
-                          w-full 
-                          max-h-[90vh] overflow-y-auto">
+                          w-full overflow-visible">
             
             {/* Order Info */}
             <h2 className="text-lg sm:text-3xl font-bold text-gray-700 mb-4">
@@ -351,6 +377,7 @@ const TrackMyOrderPage = () => {
                 {steps.map((step, idx) => {
                   const isActive = activeStep === step;
                   const isQuotationReady = quotation && step === "Quotation";
+                  const isPOUploaded = !!request?.purchaseOrder;
 
                   return (
                     <div
@@ -358,29 +385,38 @@ const TrackMyOrderPage = () => {
                       className="flex flex-col items-center text-center flex-1 relative"
                     >
                       {/* Main Circle */}
-                      <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition cursor-pointer z-10
-                          ${
-                            isQuotationReady
-                              ? "bg-green-500 text-white"
+                        <div
+                          className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition cursor-pointer z-10 ${
+                            step === "Purchase Order"
+                              ? isPOUploaded
+                                ? "bg-green-500 text-white"
+                                : isQuotationReady
+                                ? "bg-[#f59e0b] text-white"
+                                : "bg-gray-300 text-gray-500"
+                              : step === "Quotation"
+                              ? isQuotationReady
+                                ? "bg-green-500 text-white"
+                                : isActive
+                                ? "bg-[#f59e0b] text-white"
+                                : "bg-gray-300 text-gray-500"
                               : isActive
                               ? "bg-[#f59e0b] text-white"
                               : "bg-gray-300 text-gray-500"
                           }`}
-                        onClick={() => setActiveStep(step)}
-                      >
-                        {step === "Quotation" ? (
-                          <Package className="w-6 h-6" />
-                        ) : step === "Purchase Order" ? (
-                          <FileCheck className="w-6 h-6" />
-                        ) : step === "Processing" ? (
-                          <LucidePersonStanding className="w-6 h-6" />
-                        ) : step === "Out for Delivery" ? (
-                          <Truck className="w-6 h-6" />
-                        ) : (
-                          <CheckCircle2 className="w-6 h-6" />
-                        )}
-                      </div>
+                          onClick={() => setActiveStep(step)}
+                        >
+                          {step === "Quotation" ? (
+                            <Package className="w-6 h-6" />
+                          ) : step === "Purchase Order" ? (
+                            <FileCheck className="w-6 h-6" />
+                          ) : step === "Processing" ? (
+                            <LucidePersonStanding className="w-6 h-6" />
+                          ) : step === "Out for Delivery" ? (
+                            <Truck className="w-6 h-6" />
+                          ) : (
+                            <CheckCircle2 className="w-6 h-6" />
+                          )}
+                        </div>
 
                       {/* Label */}
                       <button
@@ -448,6 +484,7 @@ const TrackMyOrderPage = () => {
 
             {/* Step Content */}
             <div className="bg-[#f59f0b1b] rounded-xl shadow-inner p-6 mt-6 space-y-4">
+              {/* QUOTATION STEP */}
               {activeStep === "Quotation" && (
                 <>
                 {!quotation ? (
@@ -461,9 +498,9 @@ const TrackMyOrderPage = () => {
                     </p>
                     <button
                       onClick={() => setShowQuotationTable(!showQuotationTable)}
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
+                      className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 cursor-pointer transition"
                     >
-                      {showQuotationTable ? "Hide" : "Open"}
+                      {showQuotationTable ? "Hide Details" : "Open"}
                     </button>
                   </div>
                 )}
@@ -474,25 +511,21 @@ const TrackMyOrderPage = () => {
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-[#f59f0bb7] text-white">
                         <tr>
-                          <th className="p-3">Date | Time Created</th>
-                          <th className="p-3">Quotation File</th>
+                          <th className="p-3">Date Created</th>
+                          <th className="p-3">Time Created</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Quotation Files</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr className="border-t bg-white">
                           <td className="p-3">
-                            {/* {new Date(quotation.created_at).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}{" "}
-                            {new Date(quotation.created_at).toLocaleTimeString("en-US", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })} */}
-                            {format(new Date(quotation.createdAt), "MMM d, yyy | hh:mm a")}
+                            {format(new Date(quotation.createdAt), "MMM d, yyy")}
                           </td>
+                          <td className="p-3">
+                            {format(new Date(quotation.createdAt), "hh:mm a")}
+                          </td>
+                          <td className="p-3">{quotation.status}</td>
                           <td className="p-3">
                             <button
                               onClick={() =>
@@ -500,9 +533,9 @@ const TrackMyOrderPage = () => {
                                   `/customer/cus_myrequest/track_my_order/quotation_request/${request.id}`
                                 )
                               }
-                              className="text-blue-600 hover:text-blue-800"
+                              className="text-blue-600 hover:text-blue-800 cursor-pointer transition"
                             >
-                              <FileText className="inline w-6 h-6"/>
+                              <FileText className="inline w-6 h-6"/> {quotation.quotationNumber}
                             </button>
                           </td>
                         </tr>
@@ -513,19 +546,102 @@ const TrackMyOrderPage = () => {
               </>
               )}
 
-              {activeStep === "Purchase Order" && (
+              {/* {activeStep === "Purchase Order" && (
                 <p className="text-gray-700 text-lg">
                   No purchase order uploaded.
                 </p>
-              )}
+              )} */}
+              
+              {/* PURCHASE ORDER STEP */}
+{activeStep === "Purchase Order" && (
+  <>
+    {request?.quotation?.status === "approved" && !request?.purchaseOrder ? (
+      <div className="text-gray-700 text-lg flex justify-between items-center">
+        <span>
+          <strong>Quotation Approved!</strong> Please upload your
+          Purchase Order to continue.
+        </span>
+        <a
+          href={`/customer/cus_myrequest/track_my_order/purchase_order/?quotationId=${request?.quotation?.id}&requestId=${request.id}`}
+          className="inline-flex items-center gap-2 bg-[#f59e0b] text-white px-4 py-2 rounded-lg hover:bg-[#d48a0a] transition"
+        >
+          <Upload className="w-4 h-4" />
+          Upload Purchase Order
+        </a>
+      </div>
+    ) : request?.purchaseOrder ? (
+      <div className="text-gray-700 text-lg">
+        <div className="flex justify-between items-center">
+          <p>
+            A purchase order has been uploaded. Click <b>Open</b> to view details.
+          </p>
+          <button
+            onClick={() => setShowPOTable(!showPOTable)}
+            className="mt-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
+          >
+            {showPOTable ? "Hide Details" : "Open"}
+          </button>
+        </div>
+
+        {/* PO DETAILS TABLE */}
+        {po && showPOTable && (
+          <div className="mt-4 border border-[#f59e0b] rounded-lg overflow-hidden bg-white shadow-md">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[#f59f0b] text-white">
+                <tr>
+                  <th className="p-3">Date Uploaded</th>
+                  <th className="p-3">Time Uploaded</th>
+                  <th className="p-3">PO Number</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">File</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t bg-white hover:bg-gray-50">
+                  <td className="p-3">
+                    {po.uploadedAt ? format(new Date(po.uploadedAt), "MMM d, yyyy") : "—"}
+                  </td>
+                  <td className="p-3">
+                    {po.uploadedAt ? format(new Date(po.uploadedAt), "hh:mm a") : "—"}
+                  </td>
+                  <td className="p-3">{po.poNumber || "—"}</td>
+                  <td className="p-3 capitalize">{po.status || "Pending"}</td>
+                  <td className="p-3">
+                    {po.filePath ? (
+                      <a
+                        href={po.filePath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 flex items-center gap-1 hover:underline"
+                      >
+                        <FileText className="w-4 h-4" />
+                        {po.fileName || po.filePath.split("/").pop()}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">No file</span>
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    ) : (
+      <p className="text-gray-700 text-lg">Waiting for quotation approval.</p>
+    )}
+  </>
+)}
+
+
               {activeStep === "Processing" && (
                 <p className="text-gray-700 text-lg">
-                  No purchase order uploaded.
+                  No purchase order uploaded. This section will update once your order progresses further.
                 </p>
               )}
               {activeStep === "Out for Delivery" && (
                 <p className="text-gray-700 text-lg">
-                  No purchase order uploaded.
+                  No purchase order uploaded. This section will update once your order progresses further.
                 </p>
               )}
               {activeStep === "Completed" && (

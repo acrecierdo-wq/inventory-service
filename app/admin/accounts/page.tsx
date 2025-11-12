@@ -6,13 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { set } from "zod";
 
 type StaffUser = {
   id: string;
   username: string | null;
   email: string | null;
+  contactNumber: string | null;
   role: string | null;
-  status: "active" | "deactivated";
+  status: "Active" | "Inactive";
 };
 
 type CreatedUser = {
@@ -25,7 +27,8 @@ type CreatedUser = {
 export default function CreateUserPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("warehouseman");
+  const [contactNumber, setContactNumber] = useState("");
+  const [role, setRole] = useState("role");
   const [loading, setLoading] = useState(false);
 
   const [staff, setStaff] = useState<StaffUser[]>([]);
@@ -83,13 +86,15 @@ export default function CreateUserPage() {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, role }),
+        body: JSON.stringify({ username, email, role, contactNumber }),
       });
       const data = await res.json();
       if (res.ok) {
         toast.success("User created!");
         setUsername("");
         setEmail("");
+        setContactNumber("");
+        setRole("role");
         // show credentails to admin
         setLastCreated({
           userId: data.userId,
@@ -134,7 +139,7 @@ export default function CreateUserPage() {
   }
 
   return (
-    <main className="h-screen w-full bg-[#ffedce]">
+    <main className="h-full w-full bg-[#ffedce]">
       <Header />
 
       <div >
@@ -142,7 +147,7 @@ export default function CreateUserPage() {
       <section className="flex flex-col gap-6 mt-4 md:flex-row justify-center items-start">
       
       {/* Form */}
-      <div className="w-[600px] h-[250px] bg-white p-4 rounded shadow">
+      <div className="w-[600px] h-[300px] bg-white p-4 rounded shadow">
         <h1 className="text-xl font-bold text-[#173f63] mb-2">Create Accounts</h1>
 
         <form  onSubmit={handleSubmit} className="space-y-2 w-full">
@@ -160,20 +165,30 @@ export default function CreateUserPage() {
             onChange={(e) => setEmail(e.target.value)}
           />
 
+          <input 
+            className="border p-2 w-full rounded hover:bg-gray-100 text-sm"
+            placeholder="Contact Number"
+            value={contactNumber}
+            onChange={(e) => setContactNumber(e.target.value)}
+          />
+
           <Select onValueChange={setRole} value={role}>
-            <SelectTrigger className="border p-2 w-full rounded">
+            <SelectTrigger className="border p-2 w-full rounded hover:bg-gray-100">
               <SelectValue placeholder="Select a role" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="role">Select a Role</SelectItem>
               <SelectItem value="warehouseman">Warehouseman</SelectItem>
               <SelectItem value="sales">Sales</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="purchasing">Purchasing</SelectItem>
             </SelectContent>
           </Select>
 
         <div className="flex items-center justify-center">
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800 mt-2"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800 mt-2 cursor-pointer"
             disabled={loading}
           >
             {loading ? "Creating..." : "Create User"}
@@ -184,7 +199,7 @@ export default function CreateUserPage() {
       
       {/* Credentials box */}
       <div className="w-[600px] h-[250px] p-4 bg-green-100 rounded shadow">
-        <h3 className="text-[#173f63] font-bold">New user credentials</h3>
+        <h3 className="text-[#173f63] font-bold">New User Credentials</h3>
         <div className="border-t border-[#173f63] pt-4 mt-4 w-[550px]"></div>
         
         {lastCreated ? (
@@ -223,7 +238,7 @@ export default function CreateUserPage() {
                 }}
                 disabled={isSending}
                 className={`bg-blue-600 text-white px-3 py-1 rounded 
-                  ${isSending ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-800"}`}
+                  ${isSending ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-800 cursor-pointer"}`}
               >
                 {isSending ? "Sending..." : "Send to Email"}
               </button>
@@ -237,7 +252,7 @@ export default function CreateUserPage() {
                 }}
                 disabled={isCopying}
                 className={`bg-gray-600 text-white px-3 py-1 rounded
-                  ${isCopying ? "opacity-50 cursor-not-alled" : "hover:bg-gray-800"}`}
+                  ${isCopying ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-800 cursor-pointer"}`}
               >
                 {isCopying ? "Copying..." : "Copy"}
               </button>
@@ -257,50 +272,46 @@ export default function CreateUserPage() {
         <section className="p-5">
         <h2 className="text-xl font-bold text-[#173f63] p-2">Staff List</h2>
 
-        {loadingStaff ? (
-  <p>Loading staff...</p>
-) : staff.length === 0 ? (
-  <p>No staff found</p>
-) : (
-  <ScrollArea className="h-[300px] rounded">
+  <ScrollArea className="bg-white h-[250px] rounded shadow p-2 relative">
     <div className="">
-      <table className="min-w-full text-left">
-        <thead>
-          <tr className="bg-[#fffcf6]">
-            <th className="p-2 border-b-2 border-[#d2bda7] sticky top-0 z-10 bg-[#fffcf6]">
-              Username
-            </th>
-            <th className="p-2 border-b-2 border-[#d2bda7] sticky top-0 z-10 bg-[#fffcf6]">
-              Email
-            </th>
-            <th className="p-2 border-b-2 border-[#d2bda7] sticky top-0 z-10 bg-[#fffcf6]">
-              Role
-            </th>
-            <th className="p-2 border-b-2 border-[#d2bda7] sticky top-0 z-10 bg-[#fffcf6] text-center">
-              Status
-            </th>
-            <th className="p-2 border-b-2 border-[#d2bda7] sticky top-0 z-10 bg-[#fffcf6] text-center">
-              Actions
-            </th>
-          </tr>
+      <table className="min-w-full text-left border-collapse">
+        <thead className="sticky top-0 z-0">
+          <tr className="bg-[#fff4e0] rounded shadow">
+                  <th className="p-2">Username</th>
+                  <th className="p-2">Email</th>
+                  <th className="p-2">Contact</th>
+                  <th className="p-2">Role</th>
+                  <th className="p-2">Status</th>
+                  <th className="p-2 text-center">Actions</th>
+                </tr>
         </thead>
         <tbody>
-          {staff.map((u) => (
+          {loadingStaff ? (
+          <tr>
+            <td colSpan={6} className="p-2 text-center italic">Loading...</td>
+          </tr>
+          ) : staff.length === 0 ? (
+          <tr>
+            <td colSpan={6} className="p-2 text-center italic">No staff found</td>
+          </tr>
+          ) : (
+          staff.map((u) => (
             <tr key={u.id} className="bg-white">
               <td className="p-2 border-b">{u.username ?? "-"}</td>
               <td className="p-2 border-b">{u.email ?? "-"}</td>
+              <td className="p-2 border-b">{u.contactNumber ?? "-"}</td>
               <td className="p-2 border-b capitalize">{u.role}</td>
               <td className="p-2 border-b">
                 <div className="flex flex-col gap-2">
                   <span
                     className={`px-5 py-1 rounded-full text-xs font-medium text-center
                     ${
-                      u.status === "active"
+                      u.status === "Active"
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
                     }`}
                   >
-                    {u.status === "active" ? "Active" : "Inactive"}
+                    {u.status === "Active" ? "Active" : "Inactive"}
                   </span>
                 </div>
               </td>
@@ -311,7 +322,7 @@ export default function CreateUserPage() {
                   ) : loadingUserId === u.id ? (
                     <svg
                       className="animate-spin h-5 w-5 text-gray-500"
-                      xmlns="https://www.w.3.org/2000/svg"
+                      xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
                     >
@@ -331,17 +342,17 @@ export default function CreateUserPage() {
                     </svg>
                   ) : (
                     <>
-                    {u.status === "active" ? (
+                    {u.status === "Active" ? (
                       <button
                         onClick={() => updateUser(u.id, "deactivate")}
-                        className="w-[100px] bg-red-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-red-800"
+                        className="w-[100px] bg-red-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-red-800 cursor-pointer"
                       >
                         Deactivate
                       </button>
                     ) : (
                       <button
                         onClick={() => updateUser(u.id, "activate")}
-                        className="w-[100px] bg-green-600 tetx-white text-sm font-semibold py-1 rounded-4xl hover:bg-green-800"
+                        className="w-[100px] bg-green-600 text-white text-sm font-semibold py-1 rounded-3xl hover:bg-green-800 cursor-pointer"
                       >
                         Activate
                       </button>
@@ -350,7 +361,7 @@ export default function CreateUserPage() {
                       onClick={() =>
                         updateUser(u.id, "changeRole", u.role === "warehouseman" ? "sales" : "warehouseman")
                       }
-                      className="w-[100px] bg-blue-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-blue-800"
+                      className="w-[100px] bg-blue-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-blue-800 cursor-pointer"
                     >
                       Change Role
                     </button>
@@ -359,13 +370,15 @@ export default function CreateUserPage() {
                 </div>
               </td>
             </tr>
-          ))}
+          ))
+          )}
         </tbody>
       </table>
     </div>
+    <div className="absolute top-[46px] left-0 right-0 border-b-2 border-[#d2bda7] pointer-events-none"></div>
   </ScrollArea>
-)}
 
+   
         </section>
 
     </div>

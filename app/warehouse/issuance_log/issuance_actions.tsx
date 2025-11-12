@@ -12,14 +12,16 @@ import { IssuanceItem, IssuanceItemDetail } from "./types/issuance";
 type IssuanceActionsProps = {
   item: IssuanceItem;
   onDelete: (id: number) => void;
+  onRestore: (id: number) => void;
 };
 
-const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
+const IssuanceActions = ({ item, onDelete, onRestore }: IssuanceActionsProps) => {
   console.log("IssuanceActions props.item:", item);
 
   const [openDropdown, setOpenDropdown] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState(false);
 
   const [items, setItems] = useState<IssuanceItemDetail[]>([]);
 
@@ -35,6 +37,26 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
       toast.error("Error archiving issuance.");
     }
   };
+
+const handleRestore = async (id: number) => {
+    try {
+      const res = await fetch(`/api/issuances/${id}`, { method: "PATCH" });
+      if (!res.ok) throw new Error("Failed to restore issuance log.");
+
+      toast.success("Issuance log restored successfully!");
+
+      // ✅ instantly update parent list
+      onRestore(id);
+
+      // ✅ close dialog
+      setConfirmRestore(false);
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Error restoring issuance log.");
+    }
+  };
+
 
   const handleContinueIssuance = () => {
     router.push(`/warehouse/issuance_log/continue/${item.id}`);
@@ -116,6 +138,7 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
           )}
 
           {item.status === "Archived" && (
+            <>
             <div
               onClick={(e) => {
                 e.stopPropagation();
@@ -126,6 +149,17 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
             >
               View Details
             </div>
+            
+            <div
+              onClick={() => {
+                setConfirmRestore(true);
+                setOpenDropdown(false);
+              }}
+              className="px-4 py-2 hover:bg-green-100 text-green-700 cursor-pointer"
+            >
+              Restore
+            </div>
+            </>
           )}
         </div>
       )}
@@ -140,6 +174,7 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
           <div><strong>Client Name:</strong> {item.clientName}</div>
           <div><strong>Dispatcher Name:</strong> {item.dispatcherName}</div>
           <div><strong>DR Number:</strong> {item.drNumber || "-"}</div>
+          <div><strong>Customer PO Number:</strong> {item.customerPoNumber || "-"}</div>
           <div className="flex items-center gap-2"><span><strong>Status:</strong></span>
             <span
             className={`px-2 py-0.5 rounded text-sm font-medium ${
@@ -178,7 +213,7 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
                                         ))}
                                     </tbody>
                                 </table>
-          <div>Issuance Reference: {item.issuanceRef}</div>
+          {/* <div>Issuance Reference: {item.issuanceRef}</div> */}
           </div>
 
           {/* Add more item details here */}
@@ -203,6 +238,30 @@ const IssuanceActions = ({ item, onDelete }: IssuanceActionsProps) => {
             <button
               className="px-4 py-1 rounded bg-red-600 text-white hover:bg-red-700"
               onClick={() => handleDelete(item.id)}
+            >
+              Confirm
+            </button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Restore Confirmation */}
+      <AlertDialog open={confirmRestore} onOpenChange={setConfirmRestore}>
+        <AlertDialogTitle>
+        </AlertDialogTitle>
+        <AlertDialogContent>
+          <div className="text-lg font-semibold">Are you sure?</div>
+          <p>This will restore the selected issuance log record.</p>
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              className="px-4 py-1 rounded bg-gray-300 hover:bg-gray-400"
+              onClick={() => setConfirmRestore(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-1 rounded bg-green-600 text-white hover:bg-green-800"
+              onClick={() => handleRestore(item.id)}
             >
               Confirm
             </button>

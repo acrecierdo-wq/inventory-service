@@ -373,7 +373,7 @@ export default function PreviewDocumentCustomer({
 }: PreviewDocumentCustomerProps) {
 
   // 🧮 Memoized safe totals
-  const { subtotal, markupAmount, vatAmount, grandTotal } = useMemo(
+  const { subtotal, vatAmount, grandTotal } = useMemo(
     () => calculateSummary(items, vat, markup),
     [items, vat, markup]
   );
@@ -396,19 +396,7 @@ const [actionTimestamp, setActionTimestamp] = useState<string | null>(
 
   const router = useRouter();
 
-  // const handleCustomerAction = (status: "approved" | "rejected" | "revision_requested") => {
-  //   onCustomerAction(status);
-  //   setActionStatus(status);
-  //   setActionTimeStamp(format(new Date(), "MMM d, yyyy, h:mm a"));
-
-  //   if (status === "approved") {
-  //     toast.success("Quotation approved succssfully!");
-  //   } else if (status === "rejected") {
-  //     toast.error("Quotation rejected.");
-  //   } else if (status === "revision_requested") {
-  //     toast("Revision request sent.");
-  //   }
-  // };
+  const [showUploadPrompt, setShowUploadPrompt] = useState(false);
 
   const handleCustomerActionInternal = async (selectedStatus: "approved" | "rejected" | "revision_requested") => {
     try {
@@ -426,12 +414,17 @@ const [actionTimestamp, setActionTimestamp] = useState<string | null>(
 
       router.refresh();
 
-      if (selectedStatus === "approved") toast.success("Quotation approved successfully!");
-      else if (selectedStatus === "rejected") toast.error("Quotation rejected.");
-      else toast("Revision request sent.");
+      if (selectedStatus === "approved") {
+        toast.success("Quotation approved successfully!");
+        setShowUploadPrompt(true);
+      }
+      else if (selectedStatus === "rejected") 
+        toast.error("Quotation rejected.");
+      else 
+        toast("Revision request sent.");
     } catch (err) {
-      console.error("Error updating status",  err);
-      toast.error("Something went wrong. Please try again.");
+        console.error("Error updating status",  err);
+        toast.error("Something went wrong. Please try again.");
     }
   };
 
@@ -574,19 +567,19 @@ const [actionTimestamp, setActionTimestamp] = useState<string | null>(
         </div>
 
         {/* Totals without box */}
-        <div className="w-full sm:w-80  space-y-2 text-gray-700 text-sm bg-gray-100 p-2 rounded">
+        <div className="w-full sm:w-80 h-full  space-y-2 text-gray-700 text-sm bg-gray-100 p-2 rounded">
           <div className="flex justify-between">
             <span className="font-bold">Subtotal:</span>
             <span>{currencyFormatter.format(subtotal)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="font-bold">Markup ({markup}%):</span>
-            <span>{currencyFormatter.format(markupAmount)}</span>
+            {/* <span className="font-bold">Markup ({markup}%):</span>
+            <span>{currencyFormatter.format(markupAmount)}</span> */}
           </div>
-          <div className="flex justify-between border-t border-dashed pt-2 mt-2">
+          {/* <div className="flex justify-between border-t border-dashed pt-2 mt-2">
             <span className="font-bold">Amount before VAT:</span>
             <span>{currencyFormatter.format(subtotal + markupAmount)}</span>
-          </div>
+          </div> */}
           <div className="flex justify-between">
             <span className="font-bold">VAT ({vat}%):</span>
             <span>{currencyFormatter.format(vatAmount)}</span>
@@ -737,6 +730,25 @@ const [actionTimestamp, setActionTimestamp] = useState<string | null>(
           </div>
           )}
         </footer>
+
+        {showUploadPrompt && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg w-[400px] text-center shadow-lg">
+              <h2 className="text-lg font-semibold mb-2">Quotation Approved</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Please prepare to uplaod your Purchase Order to continue your request.
+              </p>
+              <button
+                onClick={() => {
+                  setShowUploadPrompt(false);
+                  // close PreviewDocumentCustomer
+                  router.refresh();
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-800 cursor-pointer"
+              >Okay</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

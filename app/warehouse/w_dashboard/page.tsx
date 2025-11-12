@@ -3,9 +3,15 @@
 
 import { Header } from "@/components/header";
 import { useEffect, useState } from "react";
-import { InventoryCategory, InventoryItemsReport, ChartData, PieChartData } from "@/app/warehouse/w_inventory/w_inventory_list/types/inventory";
+import { InventoryCategory, InventoryItemsReport, ChartData } from "@/app/warehouse/w_inventory/w_inventory_list/types/inventory";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, CartesianGrid} from 'recharts';
+import { TooltipProps } from "recharts";
 
+type CustomTooltipData = {
+  name: string;
+  value: number;
+  items: string[];
+};
 
 const WarehouseInventoryReportsPage = () => {
     const [items, setItems] = useState<InventoryItemsReport[]>([]);
@@ -62,26 +68,89 @@ const WarehouseInventoryReportsPage = () => {
             )
         );
 
-    const pieChartData: PieChartData[] = Object.values(
-        items.reduce<Record<string, { name: string; value: number }>>(
-            (acc, item) => {
-                const status = item.status || "Unknown";
-                if (!acc[status]) acc[status] = { name: status, value: 0 };
-                acc[status].value += 1;
-                return acc; 
-            },
-            {}
-        )
-    );
+    // const pieChartData: PieChartData[] = Object.values(
+    //     items.reduce<Record<string, { name: string; value: number }>>(
+    //         (acc, item) => {
+    //             const status = item.status || "Unknown";
+    //             if (!acc[status]) acc[status] = { name: status, value: 0 };
+    //             acc[status].value += 1;
+    //             return acc; 
+    //         },
+    //         {}
+    //     )
+    // );
     
-    const COLORS = ["#16A34A", "#62748e", "#0088FE", "#FFBB28", "#d12f2f"]
+    // const COLORS = ["#16A34A", "#62748e", "#0088FE", "#FFBB28", "#d12f2f"]
 
+    // ✅ Compute Pie Chart Data Dynamically Based on Current Filters
+    const pieChartData = Object.values(
+    filteredItems.reduce<Record<string, { name: string; value: number; items: string[] }>>(
+        (acc, item) => {
+        const status = item.status || "Unknown";
+        if (!acc[status]) acc[status] = { name: status, value: 0, items: [] };
+        acc[status].value += 1;
+        acc[status].items.push(item.name);
+        return acc;
+        },
+        {}
+    )
+    );
+
+    const totalStatusCount = pieChartData.reduce((sum, entry) => sum + entry.value, 0);
+
+    const STATUS_COLORS: Record<string, string> = {
+    "In Stock": "#16A34A",
+    "Reorder Level": "#FFBB28",
+    "Critical Level": "#d12f2f",
+    "No Stock": "#62748e",
+    "Overstock": "#0088FE",
+    Unknown: "#9ca3af",
+    };
+
+    // ✅ Custom Tooltip Component
+    const CustomTooltip = (
+      props: TooltipProps<number, string> & {
+        payload?: { payload: CustomTooltipData }[];
+      }
+    ) => {
+      const { active, payload } = props;
+    
+      if (active && payload && payload.length > 0) {
+        const data = payload[0].payload;
+    
+        return (
+          <div className="bg-white p-2 shadow-md border rounded text-sm">
+            <p className="font-semibold text-[#173f63]">{data.name}</p>
+            <p className="text-gray-700 mb-1">
+              {data.value} item{data.value > 1 ? "s" : ""}
+            </p>
+            <ul className="list-disc list-inside text-xs text-gray-600 max-h-32 overflow-y-auto">
+              {data.items.map((itemName, idx) => (
+                <li key={idx}>{itemName}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+    
+      return null;
+    };
 
     return (
         <div className="h-screen w-full bg-[#ffedce] flex flex-col">
             <Header />
             <div className="p-6">
-                <h1 className="text-3xl font-bold text-[#173f63] mb-4">DASHBOARD</h1>
+                {/* <h1 className="text-3xl font-bold text-[#173f63] mb-4">DASHBOARD</h1> */}
+                <div className="flex justify-end">
+                    {loading ? (
+                    <p>Loading...</p>
+                ) : (
+                    <div className="bg-white shadow rounded p-4 w-80 h-25 space-y-2">
+                        <p className="text-2xl font-sans">Total Items: <strong>{totalItems}</strong></p>
+                        <p className="text-2xl font-sans">Total Stocks: <strong>{totalStock}</strong></p>
+                    </div>
+                )}
+</div>
 
                 <div className="flex justify-between items-center mb-4">
                 <div className="flex gap-4">
@@ -120,30 +189,10 @@ const WarehouseInventoryReportsPage = () => {
                 >
                     Export to CSV
                 </button>*/}
-
-                {loading ? (
-                    <p>Loading...</p>
-                ) : (
-                    <div className="bg-white shadow rounded text-center p-2 w-50">
-                        <p className="text-lg font-sans">Total Items: <strong>{totalItems}</strong></p>
-                        <p className="text-lg font-sans">Total Stocks: <strong>{totalStock}</strong></p>
-
-                        {/*<div className="mt-4">
-                            <h2 className="text-md font-semibold mb-1">Status Breakdown:</h2>
-                            <ul className="list-disc list-inside">
-                                {Object.entries(statusCounts).map(([status, count]) => (
-                                    <li key={status} className="text-sm">
-                                        {status}: <strong>{count}</strong>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>*/}
-                    </div>
-                )}
                 </div>
                 
-                <div className="flex flex-row bg-[#598297] p-4 justify-center gap-5">
-                <div className="bg-white p-2 rounded shadow w-140 ml-2">
+                <div className="flex flex-row bg-[#f59f0b1b] p-4 justify-center gap-5 shadow-xl">
+                <div className="bg-white p-2 rounded shadow-md w-140 ml-2">
                     <h3 className=" font-semibold mb-2">Stock by Category {selectedCategory && `– ${selectedCategory}`}</h3>
                     <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={chartData} >
@@ -164,28 +213,42 @@ const WarehouseInventoryReportsPage = () => {
                 </div>
 
                 <div className="bg-white p-2 rounded shadow w-140">
-                    <h3 className="font-semibold mb-2">Item Status Distribution {selectedCategory && `– ${selectedCategory}`}</h3>
-                    <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                            <Pie
-                            data={pieChartData}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={50}
-                            label={({ name, percent }) => `${name} (${(percent?.toFixed(0) ?? 0)}%)`}
-                            //style={{ fontSize: '10px' }}
-                            >
-                                {pieChartData.map((_, index) => (
-                                    <Cell key={index} fill={COLORS[index % COLORS.length]} style={{ fontSize: '15px'}} />
-                                ))}
-                            </Pie>
-                            <Legend />
-                            <Tooltip />
-                        </PieChart>
+                <h3 className="font-semibold mb-2">
+                    Item Status Distribution
+                    {selectedCategory && ` – ${selectedCategory}`}
+                </h3>
+
+                {pieChartData.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center mt-10">No data available</p>
+                ) : (
+                    <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                        <Pie
+                        data={pieChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ name, value }) =>
+                            `${name}: ${(((value ?? 0) / totalStatusCount) * 100).toFixed(1)}%`
+                        }
+                        >
+                        {pieChartData.map((entry, index) => (
+                            <Cell
+                            key={`cell-${index}`}
+                            fill={STATUS_COLORS[entry.name] || "#ccc"}
+                            />
+                        ))}
+                        </Pie>
+                        {/* ✅ Use the Custom Tooltip */}
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                    </PieChart>
                     </ResponsiveContainer>
+                )}
                 </div>
+
                 </div>
             </div>
         </div>

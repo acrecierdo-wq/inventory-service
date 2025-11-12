@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       console.error("Password verification failed:", err);
       return NextResponse.json(
         {
-          error: "Password verification failed.",
+          error: "Password invalid. Enter correct password.",
           details: err instanceof Error ? err.message : String(err),
         },
         { status: 400 }
@@ -88,9 +88,7 @@ export async function POST(req: NextRequest) {
 
     // ✅ Safe "loggedBy" field
     const loggedBySafe =
-      user.fullName?.trim() ||
-      user.emailAddresses[0]?.emailAddress ||
-      "System";
+      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
 
     // 👇 continue with your insert logic here...
 

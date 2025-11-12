@@ -100,34 +100,6 @@ useEffect(() => {
       }
     });
 
-    // const exportToCSV = () => {
-    //     const headers = ["Item Name", "Category", "Unit", "Variant", "Size", "Stock", "Status"];
-    //     const rows = filteredItems.map((item) => [
-    //         item.name,
-    //         item.category?.name || "(None)",
-    //         item.unit?.name || "(None)",
-    //         item.variant?.name || "(None)",
-    //         item.size?.name || "(None)",
-    //         item.stock ?? 0,
-    //         item.status,
-    //     ]);
-
-    //     const BOM = "\uFEFF";
-    //     const csvContent =
-    //     BOM +
-    //     [headers, ...rows]
-    //     .map((row) => row.map((cell) => `"${cell}"`).join(","))
-    //     .join("\n");
-
-    //     const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
-    //     const link = document.createElement("a");
-    //     link.setAttribute("href", encodedUri);
-    //     link.setAttribute("download", "inventory_report.csv");
-    //     document.body.appendChild(link);
-    //     link.click();
-    //     document.body.removeChild(link);
-    // };
-
     const exportToCSV = () => {
           return new Promise<void>((resolve) => {
             const headers = ["Item name", "Category", "Size", "Variant", "Unit", "Stock", "Status"];
@@ -326,7 +298,7 @@ useEffect(() => {
                 onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
               >
                 <Image src="/select-category-svgrepo-com.svg" width={20} height={20} alt="Category" />
-                <span className=" text-sm text-[#482b0e]">{selectedCategory || "Categories"}</span>
+                <span className="text-sm text-[#482b0e]">{selectedCategory || "Categories"}</span>
               </div>
 
               {categoryDropdownOpen && (
@@ -534,7 +506,7 @@ useEffect(() => {
                           toast("Item deleted successfully");
                           fetchItems(); // refresh items
                         } else {
-                          toast(json.message || "Failed to delete item");
+                          toast(json.message || "Failed to delete item. Item already used in your logs.");
                         }
                       } catch (error) {
                         console.error(error);

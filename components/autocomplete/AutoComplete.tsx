@@ -4,7 +4,12 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
-type Suggestion = { id: string | number; name: string };
+type Suggestion = { 
+  id: string | number; 
+  name: string 
+  supplierName?: string;
+  itemName?: string;
+};
 
 type AutoCompleteProps = {
   label: string;
@@ -27,7 +32,7 @@ export default function AutoComplete({
   disabled = false,
   parentId = null,
 }: AutoCompleteProps) {
-  const [inputValue, setInputValue] = useState(value?.name || "");
+  const [inputValue, setInputValue] = useState(value?.name || value?.supplierName || value?.itemName ||"");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,13 +43,13 @@ export default function AutoComplete({
 
   // keep input synced with external value
   useEffect(() => {
-    const next = value?.name || "";
+    const next = value?.name || value?.supplierName || value?.itemName || "";
     setInputValue((prev) => (prev !== next ? next : prev));
   }, [value]);
 
   const handleSelect = useCallback((selected: Suggestion) => {
     justSelectedRef.current = true;
-    setInputValue(selected.name);
+    setInputValue(selected.name || selected.supplierName || selected.itemName || "");
     onChange(selected);
     setSuggestions([]);
     setShowSuggestions(false);
@@ -61,7 +66,9 @@ export default function AutoComplete({
       inputValue.trim().length === 0
         ? options
         : options.filter(o =>
-            o.name.toLowerCase().includes(inputValue.toLowerCase())
+            (o.name || o.supplierName || o.itemName || "")
+            .toLowerCase()
+            .includes(inputValue.toLowerCase())
           );
     setSuggestions(next);
     return;
@@ -124,6 +131,7 @@ export default function AutoComplete({
     return () => window.removeEventListener("pointerdown", handlePointerDown);
   }, [showSuggestions]);
 
+  const getDisplayName = (s: Suggestion) => s.name || s.supplierName || s.itemName || "Unnamed";
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -165,7 +173,7 @@ export default function AutoComplete({
                   onMouseDown={(e) => e.preventDefault()} // prevent input blur before click
                   onClick={() => handleSelect(s)}
                 >
-                  {s.name}
+                  {getDisplayName(s)}
                 </li>
               ))}
             </ul>

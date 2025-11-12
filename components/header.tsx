@@ -133,7 +133,7 @@ export const Header = ({className}: Props) => {
                 <div className="text-[#642248] font-bold text-lg sm:text-xl">
                 Inventory and Service Management System
                 {isSignedIn ? (
-                    <div className="text-sm font-bold">- Welcome, {user.username ||user.firstName || user.emailAddresses[0].emailAddress}!</div>
+                    <div className="text-sm font-bold capitalize">- Welcome, {user.username ||user.firstName || user.emailAddresses[0].emailAddress}!</div>
                 ) : (
                     <div className="text-sm font-semibold">- Welcome, Guest!</div>
                 )}
@@ -163,7 +163,7 @@ export const Header = ({className}: Props) => {
                                 <AvatarFallback>{user?.firstName?.[0] || "U"}</AvatarFallback>
                                 </Avatar>
                                 <p
-                                 className="mt-1 text-xs font-medium text-[#642248]">
+                                 className="mt-1 text-xs font-medium text-[#642248] capitalize">
                                     {user?.username||user?.fullName || user?.primaryEmailAddress?.emailAddress}
                                  </p>
                             </div>
@@ -179,6 +179,7 @@ export const Header = ({className}: Props) => {
                                     if (role === "warehouseman") myAccountRoute = "/warehouse/my-account";
                                     if (role === "sales") myAccountRoute = "/sales/my-account";
                                     if (role === "admin") myAccountRoute = "/admin/my-account";
+                                    if (role === "purchasing") myAccountRoute = "/purchasing/my-account";
 
                                     router.push(myAccountRoute);
                                 }}

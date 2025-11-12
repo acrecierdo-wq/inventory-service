@@ -3,6 +3,23 @@
 import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid, numeric, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+export const audit_logs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+
+  entity: varchar("entity").notNull(),
+  entityId: varchar("entity_id"),
+
+  action: varchar("action").notNull(),
+  description: varchar("description"),
+
+  actorId: varchar("actor_id").notNull(),
+  actorName: varchar("actor_name"),
+  actorRole: varchar("actor_role"),
+
+  timestamp: timestamp("timestamp").defaultNow(),
+  module: varchar("module"),
+});
+
 export const categories = pgTable("categories", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: varchar("name", { length: 100 }).notNull(),
@@ -114,17 +131,73 @@ export const internalUsageItems = pgTable("internal_usage_items", {
   quantity: integer("quantity").notNull(),
 });
 
-{/* App users db */}
+{/* Purchasing Purchase Orders */}
+export const purchasingPurchaseOrders = pgTable("purchasing_purchase_orders", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
-export const appUsers = pgTable("app_users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
-  fullName: text("full_name"),
-  email: text("email").notNull(),
-  pinHash: text("pin_hash"),
+  poNumber: varchar("po_number", { length: 100 }).notNull(),
+  date: timestamp("date").defaultNow().notNull(),
+
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+
+  terms: varchar("terms"),
+  deliveryMode: varchar("delivery_mode"),
+  projectName: varchar("project_name"),
+  remarks: varchar("remarks"),
+
+  accountName: varchar("account_name"),
+  preparedBy: varchar("prepared_by").notNull(),
+  status: varchar("status", { enum: ["Pending", "Partial", "Complete"] }).notNull().default("Pending"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+{/* Purchase Order Items */}
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+
+  purchasingPurchaseOrderId: integer("purchasing_purchase_order_id").notNull().references(() => purchasingPurchaseOrders.id, { onDelete: "cascade" }),
+
+  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict" }),
+  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
+  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
+  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
+
+  quantity: integer("quantity").notNull(),
+  unitPrice: numeric("unit_price", { precision: 10, scale: 2}),
+  totalPrice: numeric("total_price", { precision: 12, scale: 2 }),
+
+  receivedQuantity: integer("received_quantity").default(0),
+});
+
+{/* Supplier List */}
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  supplierName: varchar("supplier_name").notNull(),
+  email: varchar("email").notNull(),
+  contactNumber: varchar("contact_number").notNull(),
+  role: varchar("role"),
+  tinNumber: varchar("tin_number"),
+  address: varchar("address"),
+  status: varchar("status", { enum: ["Active", "Inactive"]}).notNull().default("Active"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  loggedBy: varchar("logged_by").notNull(),
+});
+
+{/* Personnel Accounts */}
+export const personnelAccounts = pgTable("personnel_accounts", {
+  id: serial("id").primaryKey(),
+  clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
+  username: varchar("username", { length: 50 }).notNull(),
+  email: varchar("email", { length: 50 }).notNull().unique(),
+  contactNumber: varchar("contact_number", { length: 20 }).notNull(),
+  role: varchar("role", { length: 50 }).notNull(),
+  status: varchar("status", { enum: ["Active", "Inactive"]}).default("Active"),
+  createdAt: timestamp("created_at").defaultNow(),
+}); 
 
 {/* Item replenishments */}
 
@@ -197,13 +270,34 @@ export const customer_profile = pgTable("customer_profile", {
 
   companyName: text("company_name").notNull(),
   contactPerson: text("contact_person").notNull(),
+  role: text("role").notNull(),
   email: text("email").notNull(),
   address: varchar("address", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 255 }).notNull(),
+  tinNumber: varchar("tin_number", { length: 255 }),
   clientCode: varchar("client_code", { length: 10 }).notNull(),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+{/* Purchase Order */}
+export const purchase_orders = pgTable("purchase_orders", {
+  id: uuid("id").primaryKey(),
+  customerId: integer("customer_id").references(() => customer_profile.id),
+
+  quotationId: uuid("quotation_id").references(() => quotations.id),
+
+  poNumber: varchar("po_number").notNull(),
+
+  fileName: varchar("file_name"),
+  filePath: varchar("file_path"),
+  fileType: varchar("file_type"),
+
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  uploadedBy: varchar("uploaded_by"),
+  action: varchar("action").default("uploaded"),
+  status: varchar("status" , { enum: ["Pending", "Accepted", "Rejected"]}).default("Pending"),
 });
 
 {/* Quotations */}
@@ -235,7 +329,7 @@ export const quotations = pgTable("quotations", {
     .default("draft"),
   payment: varchar("payment", { length: 50 }).notNull(),
   validity: varchar("validity").notNull(),
-  delivery: varchar("delivery", { length: 100 }).notNull(),
+  delivery: varchar("delivery", { length: 100 }),
   warranty: varchar("warranty", { length: 50 }).notNull(),
   quotationNotes: text("quotation_notes"),
   cadSketch: varchar("cad_sketch", { length: 255 }),

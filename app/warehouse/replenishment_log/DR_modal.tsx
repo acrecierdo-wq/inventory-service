@@ -14,14 +14,14 @@ type DRModalProps = {
 
 export default function DelRefModal({ onClose, onConfirm }: DRModalProps) {
     const [drRefNum, setDrRefNum] = useState("");
-    const [isDraft, setIsDraft] = useState(false);
+    const [isDraft, ] = useState(false);
 
     const canConfirm = drRefNum.trim() !== "" || isDraft;
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
             <div className="bg-white p-6 rounded shadow-md w-[400px]">
-                <h2 className="text-lg font-bold mb-3">Finalize Issuance</h2>
+                <h2 className="text-lg font-bold mb-3">Finalize Replenishment</h2>
                 <input 
                     type="text"
                     placeholder="Enter DR Number"
@@ -30,7 +30,7 @@ export default function DelRefModal({ onClose, onConfirm }: DRModalProps) {
                     onChange={(e) => setDrRefNum(e.target.value)}
                     disabled={isDraft}
                 />
-                <label className="flex items-center space-x-2 mb-4">
+                {/* <label className="flex items-center space-x-2 mb-4">
                     <input 
                         type="checkbox"
                         checked={isDraft}
@@ -40,7 +40,7 @@ export default function DelRefModal({ onClose, onConfirm }: DRModalProps) {
                         }}
                     />
                     <span>Save as Draft</span>
-                </label>
+                </label> */}
 
                 <div className="flex justify-end gap-2">
                     <button onClick={onClose} className="px-4 py-2 rounded bg-gray-200 text-gray-600 cursor-pointer hover:bg-gray-400">Cancel</button>

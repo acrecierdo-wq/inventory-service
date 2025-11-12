@@ -233,7 +233,7 @@ if (isDuplicate) {
         
             <section className="flex flex-row gap-9">
               <p className="w-[120px] text-black text-start text-sm">
-                Item Name:
+                Item Name:<span className="text-red-500"> *</span>
                 </p>
               <div className="w-[320px]">
               <Input
@@ -247,7 +247,7 @@ if (isDuplicate) {
 
         <section className="flex flex-row gap-9">
           <div className="w-[120px] text-black text-start text-sm">
-          Category:
+          Category: <span className="text-red-500"> *</span>
           </div>
           <div className="w-[320px] text-black">
             <Select onValueChange={(value: string | number) => setFormData({ ...formData, categoryId: Number(value) })}
@@ -269,7 +269,7 @@ if (isDuplicate) {
 
         <section className="flex flex-row gap-9">
           <div className="w-[120px] text-black text-start text-sm">
-            Size:
+            Size: 
           </div>
           <div className="w-[320px] text-black">
           <Select onValueChange={(value) => setFormData({ ...formData, sizeId: value !== "" ? Number(value) : null})}
@@ -309,7 +309,7 @@ if (isDuplicate) {
 
         <section className="flex flex-row gap-9">
           <div className="w-[120px] text-black text-start text-sm">
-            Unit:
+            Unit:<span className="text-red-500"> *</span>
           </div>
           <div className="w-[320px] text-black">
           <Select onValueChange={(value: string | number) => setFormData({ ...formData, unitId: Number(value) })}
@@ -329,7 +329,7 @@ if (isDuplicate) {
 
         <section className="flex flex-row gap-9">
           <div className="w-[120px] text-black text-start text-sm">
-            Quantity in Stock:
+            Quantity in Stock:<span className="text-red-500"> *</span>
           </div>
           <div className="w-[320px] text-black">
             <input

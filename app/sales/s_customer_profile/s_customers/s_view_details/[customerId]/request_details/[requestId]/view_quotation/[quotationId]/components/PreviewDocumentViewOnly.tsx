@@ -221,6 +221,8 @@
 //   );
 // }
 
+// app/sales/s_customer_profile/s_customers/s_view_details/[customerId]/request_details/[requestId]/view_quotation/[quotationId]/components/PreviewDocumentViewOnly.tsx
+
 "use client";
 
 import React from "react";
@@ -405,13 +407,15 @@ export default function PreviewDocumentViewOnly({ quotation }: Props) {
 
   return (
     <main className="bg-[#ffedce] min-h-screen w-full">
-      <button
-            className="px-4 py-2 rounded-full bg-white text-[#880c0c] hover:bg-[#cf3a3a] hover:text-white font-medium"
+      <div className="flex justify-end">
+        <button
+            className="text-sm px-4 py-2 bg-white border border-[#d2bda7] text-[#5a4632] rounded-3xl shadow hover:bg-[#fcd0d0] transition-all"
             onClick={handleBack}
           >
             &larr; Back
           </button>
-    <div className="font-sans p-6 flex justify-center min-h-screen">
+      </div>
+    <div className="font-sans p-4 flex justify-center min-h-screen">
       <div className="w-full max-w-6xl bg-white shadow-lg rounded-lg p-6 relative border border-gray-200">
         {/* Header */}
         <header className="h-30 rounded-2xl bg-gradient-to-r from-[#e3ae01] via-[#dc5034] to-[#faf0c5] p-4 mb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center">

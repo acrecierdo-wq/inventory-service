@@ -389,7 +389,7 @@ const IssuanceLogPage = () => {
                             "PPP p"
                         )}
                     </span>
-                    <span>{issuance.clientName}</span>
+                    <span className="text-sm">{issuance.clientName}</span>
                     <span>{issuance.dispatcherName}</span>
                     <span>{issuance.drNumber || "-"}</span>
                     <span className={`text-center px-5 text-sm py-1 rounded-4xl
@@ -400,7 +400,9 @@ const IssuanceLogPage = () => {
                         {issuance.status}
                     </span>
                     <span className="relative flex items-center justify-center">
-                        <IssuanceActions item={issuance} onDelete={async (id:number) => {
+                        <IssuanceActions 
+                        item={issuance} 
+                        onDelete={async (id:number) => {
 
                     try {
                         await fetch(`/api/issuances/${id}`, { 
@@ -416,6 +418,26 @@ const IssuanceLogPage = () => {
                     toast.error("Failed to archive issuance.");
                   }
                 }}
+                onRestore={async (id:number) => {
+                try {
+                    // instantly remove from list
+                    setItemIssuances(prev => prev.filter(i => i.id !== id));
+
+                    // then sync with backend
+                    await fetch(`/api/issuances/${id}`, { method: "PATCH" });
+
+                    toast.success("Issuance restored successfully.");
+
+                    // optionally: re-fetch to ensure data is up-to-date
+                    const updatedRes = await fetch("/api/issuances");
+                    const updatedData = await updatedRes.json();
+                    setItemIssuances(updatedData);
+
+                } catch {
+                    toast.error("Failed to restore issuance.");
+                }
+                }}
+
                   />
                     </span>
                     </div>

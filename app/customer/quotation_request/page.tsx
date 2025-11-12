@@ -101,6 +101,10 @@ const QuotationRequestPage = () => {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+
   //const [profileComplete, setProfileComplete] = useState(false);
   
   const searchParams = useSearchParams();
@@ -413,23 +417,26 @@ const confirmCancelRequest = async () => {
   const closeDetailsPanel = () => setSelectedRequest(null);
   const closeModal = () => setModalImage(null);
 
+  const totalPages = Math.ceil(filteredRequests.length / recordsPerPage);
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
+  );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
   return (
       <main className="h-screen w-full bg-[#ffedce] flex flex-col relative">
         <CustomerHeader />
 
         {/* Header & Controls */}
         <div className="">
-          <div className="flex justify-between items-center ml-10 mt-5">
-          
-            <button
-              onClick={handleNewRequest}
-              className="h-10 w-35 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
-            >
-              {/* <Plus size={24} className="text-[#482b0e]" /> */}
-              <Image src="/circle-plus-svgrepo-com.svg" width={20} height={20} alt="Add" />
-              <span className="ml-2 text-sm text-[#482b0e] font-bold">New Request</span>
-            </button>
-          </div>
 
 <section className="flex items-center gap-3 justify-end mt-4 relative z-10 mr-10">
   {/* Search Input */}
@@ -530,6 +537,15 @@ const confirmCancelRequest = async () => {
   )}
 </div>
 
+<button
+  onClick={handleNewRequest}
+  className="h-10 w-35 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+>
+  {/* <Plus size={24} className="text-[#482b0e]" /> */}
+  <Image src="/circle-plus-svgrepo-com.svg" width={20} height={20} alt="Add" />
+  <span className="ml-2 text-sm text-[#482b0e] font-bold">New Request</span>
+</button>
+
 </section>
 
 {/* Table */}
@@ -548,8 +564,8 @@ const confirmCancelRequest = async () => {
         </div>
 
         {/* Rows */}
-        {filteredRequests.length > 0 ? (
-          filteredRequests.map((req, index) => (
+        {paginatedRequests.length > 0 ? (
+          paginatedRequests.map((req, index) => (
             <div
               key={req.id ?? index}
               className="grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
@@ -847,6 +863,36 @@ const confirmCancelRequest = async () => {
             onClose={() => setToastMessage("")}
           />
         )} */}
+      {/* Pagination */}
+      <div className="absolute bottom-0 left-0 w-full bg-[#ffedce] py-3 flex justify-center items-center gap-2 z-50">
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 1}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === 1
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f]"
+          }`}
+        >
+          Prev
+        </button>
+
+        <span className="text-[#5a4632] text-sm">
+          Page {currentPage} of {totalPages}
+        </span>
+
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === totalPages}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === totalPages
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f]"
+          }`}
+        >
+          Next
+        </button>
+      </div>
       </main>
   );
 };

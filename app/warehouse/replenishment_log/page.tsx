@@ -403,7 +403,9 @@ const ReplenishmentPage = () => {
                         {replenishments.status}
                     </span>
                     <span className="relative flex items-center justify-center">
-                        <ReplenishmentActions item={replenishments} onDelete={async (id:number) => {
+                        <ReplenishmentActions 
+                        item={replenishments} 
+                        onDelete={async (id:number) => {
 
                     try {
                         await fetch(`/api/replenishment/${id}`, { 
@@ -418,6 +420,25 @@ const ReplenishmentPage = () => {
                   } catch {
                     toast.error("Failed to archive replenishment.");
                   }
+                }}
+                onRestore={async (id:number) => {
+                try {
+                    // instantly remove from list
+                    setReplenishments(prev => prev.filter(i => i.id !== id));
+                
+                    // then sync with backend
+                    await fetch(`/api/replenishment/${id}`, { method: "PATCH" });
+                
+                    toast.success("Replenishment restored successfully.");
+                
+                    // optionally: re-fetch to ensure data is up-to-date
+                    const updatedRes = await fetch("/api/replenishment");
+                    const updatedData = await updatedRes.json();
+                    setReplenishments(updatedData);
+                
+                } catch {
+                    toast.error("Failed to restore replenishment.");
+                }
                 }}
                   />
                     </span>
