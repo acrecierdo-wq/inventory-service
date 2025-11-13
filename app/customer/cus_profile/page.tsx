@@ -7,7 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation"; // ✅ import router
 import { CustomerHeader } from "@/components/header-customer";
 import { toast } from "sonner";
-import { Mail, User, Phone, MapPin, Loader2, Edit3, X, Check, Building2 } from "lucide-react";
+import { Mail, User, Phone, MapPin, Building2 } from "lucide-react";
 
 export default function CustomerProfile() {
   const { user } = useUser();
@@ -15,7 +15,9 @@ export default function CustomerProfile() {
 
   const [profile, setProfile] = useState({
     companyName: "",
+    tinNumber: "",
     contactPerson: "",
+    role: "",
     email: "",
     phone: "",
     address: "",
@@ -35,8 +37,10 @@ export default function CustomerProfile() {
         companyName: "",
         contactPerson: user.fullName || "",
         email: user.primaryEmailAddress?.emailAddress || "",
+        role: "",
         phone: "",
         address: "",
+        tinNumber: "",
         clientCode: "",
       };
       setProfile(newProfile);
@@ -75,8 +79,16 @@ export default function CustomerProfile() {
       newErrors.companyName = "Company name is required.";
     }
 
+    if (!profile.tinNumber || profile.tinNumber.trim().length < 2) {
+      newErrors.tinNumber = "TIN number is required.";
+    }
+
     if (!profile.contactPerson || profile.contactPerson.trim().length < 2) {
       newErrors.contactPerson = "Contact person is required.";
+    }
+
+    if (!profile.role || profile.role.trim().length < 2) {
+      newErrors.role = "Contact person's role is required.";
     }
 
     if (!profile.phone) {
@@ -122,7 +134,7 @@ export default function CustomerProfile() {
       });
 
       if (res.ok) {
-        toast.success("✅ Profile updated!");
+        toast.success("Profile updated!");
         setOriginalProfile(profile);
         setIsEditing(false);
         setIsFirstTime(false); // After saving, no longer first time
@@ -147,13 +159,13 @@ export default function CustomerProfile() {
   };
 
   return (
-    <>
+    <main className="bg-[#ffedce] h-full">
       <CustomerHeader />
-      <div className="p-8 bg-white shadow-xl rounded-2xl max-w-2xl mx-auto mt-8">
-        <h1 className="text-3xl font-extrabold mb-8 text-[#173f63] text-center">
+      <section className="p-2">
+        <div className="p-8 bg-white shadow-xl rounded-2xl max-w-2xl mx-auto">
+        <h1 className="text-2xl font-extrabold mb-4 text-[#173f63] text-center">
           Customer Profile
         </h1>
-        
 
         <div className="space-y-6">
           {/* Company Name */}
@@ -171,6 +183,23 @@ export default function CustomerProfile() {
             </label>
             {errors.companyName && (
               <p className="text-red-500 text-sm mt-1">{errors.companyName}</p>
+            )}
+          </div>
+          {/* TIN Number */}
+          <div className="relative">
+            <Building2 className="absolute left-3 top-3 text-gray-400" size={20} />
+            <input
+              type="text"
+              value={profile.tinNumber}
+              onChange={(e) => setProfile({ ...profile, tinNumber: e.target.value })}
+              placeholder="Enter TIN number"
+              className={`w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-2 focus:ring-[#173f63] focus:outline-none`}
+            />
+            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
+              TIN Number
+            </label>
+            {errors.tinNumber && (
+              <p className="text-red-500 text-sm mt-1">{errors.tinNumber}</p>
             )}
           </div>
 
@@ -194,6 +223,24 @@ export default function CustomerProfile() {
             </label>
             {errors.contactPerson && (
               <p className="text-red-500 text-sm mt-1">{errors.contactPerson}</p>
+            )}
+          </div>
+
+          {/* Role */}
+          <div className="relative">
+            <User className="absolute left-3 top-3 text-gray-400" size={20} />
+            <input
+              type="text"
+              value={profile.role}
+              onChange={(e) => setProfile({ ...profile, role: e.target.value })}
+              placeholder="Enter your company role"
+              className={`w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-2 focus:ring-[#173f63] focus:outline-none`}
+            />
+            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
+              Role
+            </label>
+            {errors.role && (
+              <p className="text-red-500 text-sm mt-1">{errors.role}</p>
             )}
           </div>
 
@@ -260,19 +307,20 @@ export default function CustomerProfile() {
           </div>
           {/* Client Code (eg. SPX for shopee, LAZ for lazada)*/}
           <div className="relative">
+            <Building2 className="absolute left-3 top-3 text-gray-400" size={20} />
             <input 
               type="text"
               value={profile.clientCode || ""}
               readOnly={!isEditing && !isFirstTime}
               onChange={(e) => setProfile({ ...profile, clientCode: e.target.value.toUpperCase() })}
               placeholder="Enter your client code (e.g. LV for Luis Vuitton)"
-              className={`w-full pl-3 pr-3 py-3 border rounded-lg ${
+              className={`w-full pl-10 pr-3 py-3 border rounded-lg ${
                 isEditing || isFirstTime
                   ? "focus:ring-2 focus:ring-[#173f63] focus:outline-none}"
                   : "bg-gray-100 cursor-not-allowed"
               } ${errors.clientCode ? "border-red-500" : ""}`}
             />
-            <label className="text-xs text-gray-500 absolute left-3 -top-2 bg-white px-1">
+            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
               Client Code
             </label>
             {errors.clientCode && (
@@ -281,14 +329,14 @@ export default function CustomerProfile() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3">
             {(!isEditing && !isFirstTime) && (
               <button
                 onClick={() => setIsEditing(true)}
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg bg-[#173f63] hover:bg-[#0f2b45] text-white font-semibold shadow-md transition"
+                className="h-8 w-15 text-center gap-2 px-2 rounded-lg bg-[#173f63] hover:bg-[#0f2b45] text-white font-semibold shadow-md transition cursor-pointer"
               >
-                <Edit3 size={18} /> Edit
+                Edit
               </button>
             )}
             {(isEditing || isFirstTime) && (
@@ -297,31 +345,26 @@ export default function CustomerProfile() {
                   <button
                     onClick={handleCancel}
                     disabled={loading}
-                    className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold transition"
+                    className="h-8 w-15 text-center gap-2 px-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold transition cursor-pointer"
                   >
-                    <X size={18} /> Cancel
+                    Cancel
                   </button>
                 )}
                 <button
                   onClick={handleSave}
                   disabled={loading}
-                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md transition"
+                  className={`h-8 w-15 text-center gap-2 px-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md transition cursor-pointer ${
+                    loading ? "cursor-not-allowed bg-gray-200" : ""
+                  }`}
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="animate-spin" size={18} /> Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={18} /> Save
-                    </>
-                  )}
+                  {loading ? "Saving..." : "Save"}
                 </button>
               </>
             )}
           </div>
         </div>
       </div>
-    </>
+      </section>
+    </main>
   );
 }

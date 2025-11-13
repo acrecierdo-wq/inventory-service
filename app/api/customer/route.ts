@@ -27,7 +27,7 @@ export async function GET() {
     const profile = rows[0];
 
     const incomplete =
-    !profile.companyName || !profile.contactPerson || !profile.phone || !profile.address || !profile.clientCode;
+    !profile.companyName || !profile.contactPerson || !profile.phone || !profile.address || !profile.clientCode || !profile.tinNumber || !profile.email || !profile.role;
 
     if (incomplete) {
       return NextResponse.json({ status: "incomplete-profile", data: profile }, { status: 200 });
@@ -50,9 +50,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { companyName, contactPerson, email, address, phone, role, clientCode } = body ?? {};
+    const { companyName, contactPerson, email, address, phone, role, clientCode, tinNumber } = body ?? {};
 
-    if (!companyName || !contactPerson || !email || !address || !phone || !role || !clientCode) {
+    if (!companyName || !contactPerson || !email || !address || !phone || !role || !clientCode || !tinNumber) {
       return NextResponse.json(
         { error: "Missing required fields (companyname, contactPerson,email, address, phone, clientCode)" },
         { status: 400 }
@@ -73,6 +73,8 @@ export async function POST(req: NextRequest) {
           contactPerson: contactPerson ?? existing[0].contactPerson,
           address: body.address,
           phone: body.phone,
+          email: body.email,
+          tinNumber: body.tinNumber,
           role: body.role,
           clientCode: body.clientCode,
         })
@@ -85,6 +87,7 @@ export async function POST(req: NextRequest) {
         email,
         address,
         phone,
+        tinNumber,
         role,
         clientCode: body.clientCode,
       });
