@@ -287,10 +287,9 @@ if (!itemData) {
       description: `Purchase Order ${formattedPoNumber} created.`,
       actorId: user.id,
       actorName:
-        user.fullName ||
-        user.firstName ||
-        user.emailAddresses[0]?.emailAddress ||
-        "System",
+        user.username ||
+        
+        "Purchasing",
       actorRole: role || "Purchasing",
       module: "Purchasing / Purchase Orders",
       timestamp: now,

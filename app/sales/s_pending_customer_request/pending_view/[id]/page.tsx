@@ -422,7 +422,6 @@ import { QuotationFormSection } from "./components/QuotationFormSection";
 import { QuotationItem } from "@/app/sales/types/quotation";
 import QuotationDraftsSection, { Draft } from "./components/QuotationDraftsSection";
 import { SavedQuotation } from "@/app/sales/types/quotation";
-import Image from "next/image";
 
 type QuotationFile = {
   id: number;
@@ -693,64 +692,76 @@ const PendingViewPage = () => {
                   </div>
                 )}
 
-                {/* Attachments */}
-                {request.files && request.files.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-bold text-lg mb-4 text-[#880c0c]">Attachments</h4>
+{/* Attachments */}
+{request.files && request.files.length > 0 && (
+  <div className="mt-6">
+    <h4 className="font-bold text-lg mb-4 text-[#880c0c]">Attachments</h4>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {request.files.map((file) => {
-                        const fileName = file.path.split("/").pop();
-                        const fileExt = fileName?.split(".").pop()?.toLowerCase();
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {request.files.map((file) => {
+        const fileName = file.path.split("/").pop() || "file";
+        const fileExt = fileName.split(".").pop()?.toLowerCase() || "";
+        const isImage = ["jpg", "jpeg", "png"].includes(fileExt);
+        const isPDF = fileExt === "pdf";
 
-                        const isImage = ["jpg", "jpeg", "png"].includes(fileExt!);
-                        const isPDF = fileExt === "pdf";
-
-                        return (
-                          <div
-                            key={file.id}
-                            className="relative border border-gray-300 rounded-xl p-3 bg-white shadow hover:shadow-lg hover:scale-105 transition cursor-pointer"
-                            onClick={() => window.open(file.path, "_blank")}
-                          >
-                            {isImage ? (
-                              file.path.startsWith("blob:") ? (
-                                // Local preview → raw img (no optimization)
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={file.path}
-                                  alt={fileName}
-                                  className="object-contain h-full w-full"
-                                />
-                              ) : (
-                                // Remote image → use Next.js Image optimization
-                                <Image
-                                  src={file.path ?? ""}
-                                  alt={fileName ?? "preview image"}
-                                  width={500}
-                                  height={500}
-                                  className="object-contain h-full w-full"
-                                  style={{ objectFit: "contain" }}
-                                />
-                              )
-                            ) : isPDF ? (
-                              <iframe src={file.path} className="w-full h-full rounded" />
-                            ) : (
-                              <div className="text-gray-600 text-sm text-center flex flex-col items-center justify-center h-full">
-                                📄
-                                <span className="mt-2">{fileExt?.toUpperCase()} File</span>
-                              </div>
-                            )}
-
-                            {/* File Name */}
-                            <div className="mt-2 text-center text-sm text-gray-700 truncate">
-                              {fileName}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+        return (
+          <div
+            key={file.id}
+            className="group border border-gray-300 rounded-xl bg-white shadow hover:shadow-lg hover:scale-105 transition p-2 cursor-pointer flex flex-col"
+          >
+            {/* File Preview */}
+            <div className="relative w-full h-48 flex items-center justify-center bg-gray-50 rounded-md overflow-hidden">
+              {isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={file.path}
+                  alt={fileName}
+                  className="object-contain w-full h-full"
+                  onError={(e) => {
+                    // fallback for broken image links
+                    (e.currentTarget as HTMLImageElement).src = "/file-icon.png";
+                  }}
+                />
+              ) : isPDF ? (
+                <object
+                  data={file.path}
+                  type="application/pdf"
+                  className="w-full h-full rounded"
+                >
+                  <div className="text-center text-sm text-gray-600">
+                    PDF preview not supported.{" "}
+                    <a href={file.path} target="_blank" className="underline text-[#880c0c]">
+                      Open file
+                    </a>
                   </div>
-                )}
+                </object>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-600 text-sm">
+                  📎
+                  <span className="mt-2">{fileExt.toUpperCase() || "FILE"}</span>
+                </div>
+              )}
+            </div>
+
+            {/* File Info */}
+            <div className="mt-2 flex flex-col items-center justify-between">
+              <p className="text-sm text-gray-700 font-medium truncate w-full text-center">
+                {fileName}
+              </p>
+              <button
+                className="text-xs mt-1 text-[#880c0c] hover:underline"
+                onClick={() => window.open(file.path, "_blank")}
+              >
+                Open File
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
+
               </div>
             )}
 
@@ -854,7 +865,10 @@ const PendingViewPage = () => {
               <>
                 <button
                   className="h-8 w-20 rounded-full bg-green-600 text-white hover:bg-green-700 font-medium shadow"
-                  onClick={() => initiateAction("Accepted")}
+                  onClick={() => {
+                    initiateAction("Accepted");
+                    setActiveTab("quotation");
+                  }}
                   disabled={updating}
                 >
                   Accept

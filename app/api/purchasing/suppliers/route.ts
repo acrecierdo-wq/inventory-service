@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
             action: "ADD",
             description: `Supplier "${newSupplier.supplierName}" was addded.`,
             actorId: user.id,
-            actorName: user.fullName || user.firstName || user.emailAddresses[0].emailAddress || "System",
+            actorName: user.username || "Purchasing",
             actorRole: role || "purchasing",
             module: "Purchasing - Suppliers",
             timestamp: now,

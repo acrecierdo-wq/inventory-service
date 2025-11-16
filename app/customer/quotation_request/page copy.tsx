@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 
-type StatusFilter = "" | "Pending" | "Accepted" | "Cancelled" | "CancelRequested" | "Rejected";
+type StatusFilter = "" | "Pending" | "Accepted" | "Cancelled";
 
 
 type QuotationRequest = {
@@ -21,24 +21,58 @@ type QuotationRequest = {
   message?: string;
   status: string;
   created_at: string;
-  files?: { path: string, publicId: string, filename: string }[];
+  files?: { path: string }[];
   reason?: string;
+    requester_name?: string;
+  requester_address?: string;
+  requester_contact?: string;
+  requester_email?: string; 
 };
 
 const statusColors: Record<string, string> = {
   Pending: "text-yellow-600 bg-yellow-100",
   Accepted: "text-green-700 bg-green-100",
-  Cancelled: "text-red-600 bg-red-100",
-  "CancelRequested": "text-orange-600 bg-orange-100",
+  Cancelled: "text-red-600 bg--100",
   Rejected: "text-gray-600 bg-red-100",
 };
 
-// const cancellationReasons = [
-//   "Change of plans",
-//   "Budget constraints",
-//   "Project no longer needed",
-//   "Other",
-// ];
+const cancellationReasons = [
+  "Change of plans",
+  "Budget constraints",
+  "Project no longer needed",
+  "Other",
+];
+
+// Toast Component
+// type ToastProps = {
+//   message: string;
+//   type?: "success" | "error" | "info";
+//   onClose: () => void;
+// };
+
+// const Toast = ({ message, type = "success", onClose }: ToastProps) => {
+//   const colors = {
+//     success: "bg-green-600 text-white",
+//     error: "bg-red-600 text-white",
+//     info: "bg-blue-600 text-white",
+//   };
+
+//   useEffect(() => {
+//     const timer = setTimeout(onClose, 4000);
+//     return () => clearTimeout(timer);
+//   }, [onClose]);
+
+//   return (
+//     <div
+//       className={`fixed top-10 left-1/2 transform -translate-x-1/2 px-8 py-6 rounded-2xl shadow-2xl flex items-center gap-5 animate-slide-in ${colors[type]} z-50 max-w-2xl text-xl`}
+//     >
+//       <span>{message}</span>
+//       <button onClick={onClose} className="text-white text-2xl hover:opacity-70">
+//         ✕
+//       </button>
+//     </div>
+//   );
+// };
 
 const QuotationRequestPage = () => {
   const [requests, setRequests] = useState<QuotationRequest[]>([]);
@@ -50,12 +84,14 @@ const QuotationRequestPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [, setShowCancelModal] = useState(false);
-  //const [cancelReason, setCancelReason] = useState("");
-  const [, setCancelRequestId] = useState<number | null>(null);
-  const [modalFileId, setModalFileId] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelRequestId, setCancelRequestId] = useState<number | null>(null);
 
   const [deleteRequestId, setDeleteRequestId] = useState<number | null>(null);
+
+  //const [toastMessage, setToastMessage] = useState("");
+  //const [toastType, setToastType] = useState<"success" | "error" | "info">("success");
 
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -68,6 +104,9 @@ const QuotationRequestPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
+
+  //const [profileComplete, setProfileComplete] = useState(false);
+  
   const searchParams = useSearchParams();
 const initialStatus = searchParams.get("status") as
   | "Pending"
@@ -113,6 +152,12 @@ useEffect(() => {
   }
   setFilteredRequests(filtered);
 }, [requests, statusFilter]);
+  
+
+  // const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+  //   setToastMessage(message);
+  //   setToastType(type);
+  // };
 
   const router = useRouter();
  const handleNewRequest = async () => {
@@ -216,6 +261,14 @@ useEffect(() => {
 
     setFilteredRequests(updated);
   }, [requests, statusFilter, searchQuery, sortNewestFirst]);
+
+  // const toggleDropdown = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
+  //   const rect = e.currentTarget.getBoundingClientRect();
+  //   setDropdownPosition({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+  //   setOpenDropdownId(openDropdownId === id ? null : id);
+  //   // setShowFilterDropdown(false);
+  //   // setShowSortDropdown(false);
+  // };
   const toggleDropdown = (event: React.MouseEvent, id: number) => {
     if (openDropdownId === id) {
       setOpenDropdownId(null);
@@ -289,51 +342,51 @@ useEffect(() => {
   }
 };
 
-// const confirmCancelRequest = async () => {
-//   if (!cancelReason || cancelRequestId === null) return;
+const confirmCancelRequest = async () => {
+  if (!cancelReason || cancelRequestId === null) return;
 
-//   try {
-//     // Find the request
-//     const req = requests.find(r => r.id === cancelRequestId);
-//     if (!req) return;
+  try {
+    // Find the request
+    const req = requests.find(r => r.id === cancelRequestId);
+    if (!req) return;
 
-//     // Determine new status
-//     const newStatus = req.status === "Pending" ? "Cancelled" : "CancelRequested";
+    // Determine new status
+    const newStatus = req.status === "Pending" ? "Cancelled" : "CancelRequested";
 
-//     const res = await fetch("/api/customer/q_request", {
-//       method: "PUT",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ id: cancelRequestId, status: newStatus }),
-//     });
+    const res = await fetch("/api/customer/q_request", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: cancelRequestId, status: newStatus }),
+    });
 
-//     const data = await res.json();
+    const data = await res.json();
 
-//     if (res.ok) {
-//       setRequests((prev) =>
-//         prev.map((r) =>
-//           r.id === cancelRequestId ? { ...r, status: newStatus } : r
-//         )
-//       );
-//       if (selectedRequest?.id === cancelRequestId) {
-//         setSelectedRequest({ ...selectedRequest, status: newStatus });
-//       }
-//       toast.success(
-//         req.status === "Pending"
-//           ? "Request has been successfully cancelled!"
-//           : "Cancellation request sent successfully!"
-//       );
-//     } else {
-//       toast.error(data.error || "Failed to cancel request. Please try again.");
-//     }
-//   } catch (err) {
-//     console.error(err);
-//     toast.error("Failed to cancel request due to a network or server error.");
-//   }
+    if (res.ok) {
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === cancelRequestId ? { ...r, status: newStatus } : r
+        )
+      );
+      if (selectedRequest?.id === cancelRequestId) {
+        setSelectedRequest({ ...selectedRequest, status: newStatus });
+      }
+      toast.success(
+        req.status === "Pending"
+          ? "Request has been successfully cancelled!"
+          : "Cancellation request sent successfully!"
+      );
+    } else {
+      toast.error(data.error || "Failed to cancel request. Please try again.");
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to cancel request due to a network or server error.");
+  }
 
-//   setShowCancelModal(false);
-//   setCancelReason("");
-//   setCancelRequestId(null);
-// };
+  setShowCancelModal(false);
+  setCancelReason("");
+  setCancelRequestId(null);
+};
 
   const confirmDeleteRequest = async () => {
     if (deleteRequestId === null) return;
@@ -362,7 +415,7 @@ useEffect(() => {
   };
 
   const closeDetailsPanel = () => setSelectedRequest(null);
-  const closeModal = () => { setModalImage(null); setModalFileId(null); };
+  const closeModal = () => setModalImage(null);
 
   const totalPages = Math.ceil(filteredRequests.length / recordsPerPage);
   const paginatedRequests = filteredRequests.slice(
@@ -379,7 +432,7 @@ useEffect(() => {
   };
 
   return (
-      <main className="bg-[url('/customer_p&s(1).jpg')] bg-cover bg-center h-screen w-full overflow-y-auto flex flex-col relative">
+      <main className="h-screen w-full bg-[#ffedce] flex flex-col relative">
         <CustomerHeader />
 
         {/* Header & Controls */}
@@ -536,7 +589,7 @@ useEffect(() => {
               {/* Action Dropdown */}
               <span className="relative flex items-center justify-center">
                 <button
-                  className="hover:bg-gray-100 px-1 py-1 rounded-full flex items-center justify-center cursor-pointer"
+                  className="hover:bg-gray-100 px-1 py-1 rounded-full flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleDropdown(e, req.id);
@@ -613,6 +666,26 @@ useEffect(() => {
       <h2 className="text-center font-bold text-2xl">Request for Quotation Details</h2>
       <div className="border-b border-gray-200 mt-4"></div>
       <div className="space-y-4 overflow-y-auto flex-1 pr-3 scrollbar-hidden mt-2">
+        {/* Customer Info */}
+        {/* <div className="bg-gray-50 p-5 rounded-xl shadow-inner space-y-2">
+          <h3 className="font-semibold text-xl mb-2 text-[#5a2347]">Customer Information</h3>
+          <p>
+            <span className="font-semibold">Name: </span>
+            {selectedRequest.requester_name || "-"}
+          </p>
+          <p>
+            <span className="font-semibold">Address: </span>
+            {selectedRequest.requester_address || "-"}
+          </p>
+          <p>
+            <span className="font-semibold">Contact: </span>
+            {selectedRequest.requester_contact || "-"}
+          </p>
+          <p>
+            <span className="font-semibold">Email: </span>
+            {selectedRequest.requester_email || "-"}
+          </p>
+        </div> */}
 
         {/* Display Request ID */}
         {/* <p><strong>Request #:</strong> {selectedRequest.id}</p> */}
@@ -636,101 +709,122 @@ useEffect(() => {
         <p><strong>Requested at:</strong><span className="italic"> {format(new Date(selectedRequest.created_at), "MMM d, yyy | hh:mm a")}</span></p>
 
         {/* Attachments */}
-{selectedRequest.files && selectedRequest.files.length > 0 && (
-  <div>
-    <strong>Attachments:</strong>
-    <div className="mt-3 ml-4 flex flex-wrap gap-4">
-      {selectedRequest.files.map((file, index) => {
-        const ext = file.path.split(".").pop()?.toLowerCase();
-        const isImage = ["jpg", "jpeg", "png", "gif"].includes(ext || "");
+        {selectedRequest.files && selectedRequest.files.length > 0 && (
+          <div>
+            <strong>Attachments:</strong>
+            <div className="mt-3 ml-4 flex flex-wrap gap-4">
+              {selectedRequest.files.map((file, index) => {
+                const ext = file.path.split(".").pop()?.toLowerCase();
+                const isImage = ["jpg", "jpeg", "png", "gif"].includes(ext || "");
 
-        return (
-          <div
-            key={index}
-            className="w-full p-2 border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:shadow-lg hover:scale-105 transition-transform duration-200 bg-gray-50"
-            onClick={(e) => {
-              e.preventDefault();
-              setModalImage(file.path);
-              setModalFileId(file.publicId);
-            }}
-          >
-            {isImage ? (
-              <Image
-                src={file.path}
-                alt={`Attachment ${index + 1}`}
-                width={100}
-                height={100}
-                className="object-cover w-50 h-20 rounded-md mb-2"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <div className="w-20 h-20 flex items-center justify-center rounded-md bg-gray-200 mb-2">
-                <span className="text-gray-700 font-bold text-2xl">📁</span>
-              </div>
-            )}
-            <span className="text-center text-sm break-all">
-              {file.path.split("/").pop()}
-            </span>
+                return (
+                  <div
+                    key={index}
+                    className="w-full p-2 border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:shadow-lg hover:scale-105 transition-transform duration-200 bg-gray-50"
+                    onClick={() =>
+                      isImage ? setModalImage(file.path) : window.open(file.path, "_blank")
+                    }
+                  >
+                    {isImage ? (
+                      <Image
+                        src={file.path}
+                        alt={`Attachment ${index + 1}`}
+                        width={100}
+                        height={100}
+                        className="object-cover w-50 h-20 rounded-md mb-2"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 flex items-center justify-center rounded-md bg-red-100 mb-2">
+                        <span className="text-red-600 font-bold text-2xl">
+                          {ext === "pdf" ? "📄" : "📁"}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-center text-sm break-all">
+                      {file.path.split("/").pop()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        );
-      })}
-    </div>
-  </div>
-)}
+        )}
       </div>
     </div>
   </div>
 )}
 
-{/* Image / File Modal */}
+{/* Image Modal */}
 {modalImage && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-60" onClick={closeModal}>
-    <div className="relative max-w-6xl max-h-[95%] w-full p-4" onClick={(e) => e.stopPropagation()}>
-      <button className="absolute top-3 right-3 text-white p-2 hover:bg-red-300 rounded-full z-10 cursor-pointer" onClick={closeModal}>
+  <div
+    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-60"
+    onClick={closeModal}
+  >
+    <div className="relative max-w-6xl max-h-[95%] w-full">
+      <button
+        className="absolute top-3 right-3 text-white p-2 hover:bg-gray-700 rounded-full z-10"
+        onClick={closeModal}
+      >
         <X size={28} />
       </button>
-
-      {["jpg", "jpeg", "png", "gif"].some(ext => modalImage.endsWith(ext)) ? (
-        <Image src={modalImage} alt="Full-size attachment" width={1600} height={1600} className="object-contain max-h-[95vh] w-auto mx-auto" />
-      ) : (
-        <div className="inset-0 bg-black/40 p-6 rounded-xl flex flex-col items-center justify-center">
-          <div className="text-5xl mb-4">📎</div>
-          <p className="text-white mb-4 text-center">Preview not supported for this file type.</p>
-          <p className="mb-2 text-sm font-medium break-all text-center text-white">{modalImage.split("/").pop()}</p>
-
-          {modalFileId && (
-  <button
-    onClick={async () => {
-      try {
-        const res = await fetch(`/api/download/${encodeURIComponent(modalFileId)}`);
-        if (!res.ok) throw new Error("Failed to download file");
-
-        const blob = await res.blob();
-        const link = document.createElement("a");
-        link.href = window.URL.createObjectURL(blob);
-        link.download = modalImage.split("/").pop() || "file";
-        link.click();
-
-        // Clean up memory
-        window.URL.revokeObjectURL(link.href);
-      } catch (err) {
-        console.error(err);
-        alert("Failed to download file");
-      }
-    }}
-    className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-  >
-    Download File
-  </button>
-)}
-
-
-        </div>
-      )}
+      <Image
+        src={modalImage}
+        alt="Full-size attachment"
+        width={1600}
+        height={1600}
+        className="object-contain max-h-[95vh] w-auto"
+      />
     </div>
   </div>
 )}
 
+{/* Cancel Modal */}
+{showCancelModal && (
+  <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+    <div className="bg-white border shadow-2xl rounded-xl w-96 p-8 relative pointer-events-auto">
+      <button
+        className="absolute top-3 right-3 p-2 hover:bg-gray-200 rounded-full"
+        onClick={() => setShowCancelModal(false)}
+      >
+        <X size={24} />
+      </button>
+      <h2 className="text-2xl font-bold mb-4 text-[#173f63]">Cancel Request</h2>
+      <p className="mb-4 text-lg">Select a reason for cancelling this request:</p>
+
+      <div className="flex flex-wrap gap-3 mb-6">
+        {cancellationReasons.map((reason) => (
+          <button
+            key={reason}
+            className={`px-4 py-2 rounded-full border text-base ${
+              cancelReason === reason
+                ? "bg-red-600 text-white border-red-600"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+            }`}
+            onClick={() => setCancelReason(reason)}
+          >
+            {reason}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <button
+          className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-base"
+          onClick={() => setShowCancelModal(false)}
+        >
+          Close
+        </button>
+        <button
+          className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 text-base"
+          disabled={!cancelReason}
+          onClick={confirmCancelRequest}
+        >
+          Confirm Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         {/* Delete Confirmation Modal */}
         {deleteRequestId !== null && (
           <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
@@ -761,22 +855,30 @@ useEffect(() => {
           </div>
         )}
 
+        {/* Toast Notification */}
+        {/* {toastMessage && (
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            onClose={() => setToastMessage("")}
+          />
+        )} */}
       {/* Pagination */}
-      <div className="absolute bottom-0 left-0 w-full bg-transparent py-3 flex justify-center items-center gap-2 z-50">
+      <div className="absolute bottom-0 left-0 w-full bg-[#ffedce] py-3 flex justify-center items-center gap-2 z-50">
         <button
           onClick={handlePrevPage}
           disabled={currentPage === 1}
           className={`h-8 w-15 rounded-md ${
             currentPage === 1
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f]"
           }`}
         >
           Prev
         </button>
 
         <span className="text-[#5a4632] text-sm">
-          <strong>Page {currentPage} of {totalPages}</strong>
+          Page {currentPage} of {totalPages}
         </span>
 
         <button
@@ -785,7 +887,7 @@ useEffect(() => {
           className={`h-8 w-15 rounded-md ${
             currentPage === totalPages
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f]"
           }`}
         >
           Next

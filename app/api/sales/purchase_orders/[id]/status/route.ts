@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
             action: status.toLowerCase(),
             description: `Purchase Order ${updatedPO.poNumber} was ${status.toLowerCase()} by ${user.fullName || user.firstName || user.emailAddresses[0].emailAddress}.`,
             actorId: user.id,
-            actorName: user.fullName || user.firstName || user.emailAddresses[0].emailAddress || "System",
+            actorName: user.username || "Sales",
             actorRole: role || "sales",
             module: "Sales - Purchase Orders",
             timestamp: new Date(),

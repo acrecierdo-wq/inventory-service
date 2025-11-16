@@ -84,6 +84,7 @@ type Customer = {
   id: string;
   companyName: string;
   contactPerson: string;
+  tinNumber: string;
   email: string;
   phone: string;
   address: string;
@@ -114,8 +115,20 @@ async function uploadCadFile(file: File) {
   });
 
   if (!res.ok) throw new Error("Upload failed");
-  return res.json();
-};
+
+  const data = await res.json();
+
+  if (!data.secure_url) throw new Error("No URL returned from Cloudinary");
+
+  // Return an object compatible with PreviewFile
+  return {
+    success: true,
+    file: {
+      name: file.name,
+      filePath: data.secure_url, // Cloudinary URL
+    },
+  };
+}
 
 export default function QuotationForm({
   requestId,
@@ -205,24 +218,6 @@ export default function QuotationForm({
     }
   }, [initialCadSketch]);
 
-  //  useEffect(() => {
-  //   async function fetchRequest() {
-  //     try {
-  //       const res = await fetch(`/api/sales/customer_request/${requestId}`);
-  //       if (!res.ok) throw new Error("Failed to fetch request");
-  //       const data = await res.json();
-
-  //       if (data.customer) setCustomer (data.customer);
-  //       if (data.project_name) setProject (data.project_name);
-  //       if (data.mode) setMode (data.mode);
-        
-  //     } catch (err) {
-  //       console.error(err);
-  //     }
-  //   }
-
-  //   fetchRequest();
-  // }, [requestId]);
   useEffect(() => {
     async function fetchRequest() {
       try {
@@ -236,6 +231,7 @@ export default function QuotationForm({
             id: c.id,
             companyName: c.companyName || c.company_name || "",
             contactPerson: c.contactPerson || c.contact_person || "",
+            tinNumber: c.tinNumber || c.tin_number || "",
             email: c.email || "",
             phone: c.phone || "",
             address: c.address || "",
@@ -468,16 +464,22 @@ export default function QuotationForm({
                 return;
               }
               try {
-                const uploadResult = await uploadCadFile(e.target.files[0]);
-                if (uploadResult.success) {
-                  
-                  setCadSketchFile([ { id: Date.now(), name: uploadResult.file.name, filePath: uploadResult.file.filePath }, ]);
-                } else {
-                  toast.error("Upload failed: " + uploadResult.error);
-                }
-              } catch {
-                toast.error("Upload failed");
+              const uploadResult = await uploadCadFile(file);
+              if (uploadResult.success) {
+                setCadSketchFile([
+                  {
+                    id: Date.now(),
+                    name: uploadResult.file.name,
+                    filePath: uploadResult.file.filePath,
+                  },
+                ]);
+                toast.success("File uploaded successfully!");
               }
+            } catch (err) {
+              console.error("CAD upload failed:", err);
+              toast.error("Upload failed: " + (err instanceof Error ? err.message : ""));
+            }
+
             }
           }}
           disabled={isSent}
@@ -547,7 +549,7 @@ export default function QuotationForm({
         if (uploadResult.success) {
           uploadedFilePath = uploadResult.file.filePath;
         } else {
-          toast.error("Failed to uplaod file: " + uploadResult.error);
+          toast.error("Failed to uplaod file");
           setIsLoading(false);
           return;
         }
@@ -574,11 +576,11 @@ export default function QuotationForm({
       f instanceof File
         ? {
           fileName: f.name,
-          filePath: `/uploads/${f.name}`,
+          filePath: f.filePath,
         }
       : {
           fileName: f.name,
-          filePath: f.filePath || `/uploads/${f.name}`,
+          filePath: f.filePath,
       });
 
       const isUuid = (value: unknown): value is string =>
@@ -688,7 +690,7 @@ export default function QuotationForm({
       if (uploadResult.success) {
         uploadedFilePath = uploadResult.file.filePath;
       } else {
-        toast.error("Failed to upload file: " + uploadResult.error);
+        toast.error("Failed to upload file: ");
         setIsLoading(false);
         return;
       }
@@ -711,10 +713,10 @@ export default function QuotationForm({
       })),
     }));
 
-    const attachedFiles = cadSketchFile.map((f) =>
-      f instanceof File
-        ? { fileName: f.name, filePath: `/uploads/${f.name}` }
-        : { fileName: f.name, filePath: f.filePath || `/uploads/${f.name}` }
+    const attachedFiles = cadSketchFile.map((f) => ({
+      fileName: f.name,
+      filePath: f.filePath
+    })
     );
 
     // ✅ Detect if this is a restored draft (UUID check)
@@ -861,7 +863,7 @@ export default function QuotationForm({
           {/* <p><span className="font-medium text-[#880c0c]">Email:</span> {customer.email}</p> */}
           <p><span className="font-medium text-[#880c0c]">Address:</span> {customer.address}</p>
           <p><span className="font-medium text-[#880c0c]">Phone:</span> {customer.phone}</p>
-          <p><span className="font-medium text-[#880c0c]">TIN:</span> </p>
+          <p><span className="font-medium text-[#880c0c]">TIN:</span> {customer.tinNumber}</p>
           <p><span className="font-medium text-[#880c0c]">Contact Person:</span> {customer.contactPerson}</p>
         </div>
       ) : (

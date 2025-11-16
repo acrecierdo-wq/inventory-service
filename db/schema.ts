@@ -258,7 +258,10 @@ export const quotation_requests = pgTable("quotation_requests", {
 export const quotation_request_files = pgTable("quotation_request_files", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   request_id: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
+  publicId: text("public_id").notNull(),
+  filename: text("filename").notNull(),
   path: text("path").notNull(),
+  resource_type: text("resource_type").default("auto"),
   uploaded_at: timestamp("uploaded_at").defaultNow(),
 });
 
