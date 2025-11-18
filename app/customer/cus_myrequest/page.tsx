@@ -174,7 +174,7 @@ if (searchQuery.trim()) {
 
   return (
     
-      <main className="relative bg-[#ffedce] h-full w-full mb-20">
+      <main className="bg-[url('/customer_p&s(1).jpg')] bg-cover bg-center h-full w-full overflow-y-auto flex flex-col relative">
         <CustomerHeader />
 
         {/* Controls */}
@@ -306,7 +306,7 @@ if (searchQuery.trim()) {
         {/* Orders */}
         <div className="px-10 space-y-6 mb-2">
           {paginatedRequests.length === 0 ? (
-            <p className="text-gray-600">No requests found.</p>
+            <p className="text-gray-600 italic">No requests found.</p>
           ) : (
             paginatedRequests.map((req) => (
               <div

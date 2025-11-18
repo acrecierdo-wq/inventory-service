@@ -243,7 +243,7 @@ const SPendingCustomerRequestPage = () => {
               <span className="relative flex items-center justify-center">
                 {/* Action Dropdown */}
                 <button
-                  className="hover:bg-[#fcd0d0] px-1 py-1 rounded-full flex items-center justify-center"
+                  className="hover:bg-[#fcd0d0] px-1 py-1 rounded-full flex items-center justify-center cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleDropdown(e, req.id);

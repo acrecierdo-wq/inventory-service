@@ -4,10 +4,17 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { PreviewFile, QuotationItem, Customer } from "@/app/sales/types/quotation";
+import { QuotationItem, Customer } from "@/app/sales/types/quotation";
 import Image from "next/image"; 
 
 // Types
+interface QuotationFile {
+  id: string;
+  fileName: string;
+  filePath: string;
+  uploadedAt?: string;
+  base64?: string;
+};
 
 type PreviewDocumentProps = {
   items: QuotationItem[];
@@ -20,7 +27,8 @@ type PreviewDocumentProps = {
   projectName?: string;
   vat: number;
   markup: number;
-  cadSketchFile: PreviewFile[];
+  //cadSketchFile: PreviewFile[];
+  attachedFiles: QuotationFile[]; 
   revisionLabel: string;
   baseQuotationId: number;
   customer: Customer | null;
@@ -35,15 +43,16 @@ type PreviewDocumentProps = {
 };
 
 /** Helper */
-function getFileName(f: PreviewFile) {
-  return f instanceof File ? f.name : f.name;
+// For QuotationFile (from DB or uploaded)
+function getFileName(f: QuotationFile | File) {
+  return f instanceof File ? f.name : f.fileName;
 }
 
-function getFilePath(f: PreviewFile) {
-  return f instanceof File
-    ? URL.createObjectURL(f)
-    : f.filePath;
+function getFilePath(f: QuotationFile | File) {
+  if (f instanceof File) return URL.createObjectURL(f);
+  return f.filePath; // For QuotationFile or PreviewFile
 }
+
 
 function formatField(label: string, rawValue: string) {
   if (!rawValue?.trim()) return "N/A";
@@ -88,7 +97,7 @@ function formatField(label: string, rawValue: string) {
   switch (label) {
     case "Delivery":
       if (/day|week|month/.test(unitPart)) {
-        return `${numberPart} working ${formattedUnit} upon receipt of P.O.`;
+        return `${numberPart} ${formattedUnit} upon receipt of P.O.`;
       }
       return value;
 
@@ -162,7 +171,9 @@ export function PreviewDocument({
   vat,
   markup,
   projectName,
-  cadSketchFile,
+  attachedFiles,
+  //cadSketchFile,
+  //otherFiles,
   //requestId,
   isSent,
   quotation,
@@ -342,17 +353,93 @@ export function PreviewDocument({
       </section>
       
         <h2 className="font-semibold mt-1">Additional Notes:</h2>
-          <div className="border rounded-md p-3 bg-gray-50 mt-1">
+          <div className="border rounded-md p-3 bg-gray-50 mt-1 ">
             <p className="text-sm text-gray-700 whitespace-pre-wrap">
               {quotationNotes || "No additional notes provided for this quotation."}
             </p>
           </div>
+          <div className="mt-2 border-b border-gray-300"></div>
 
 {/* CAD Sketches */}
 <div className="mt-4">
-    <h4 className="font-semibold text-gray-800 mb-2">CAD Sketch</h4>
-  {cadSketchFile && cadSketchFile.length > 0 ? (
-    cadSketchFile.map((file, idx) => {
+    <h4 className="font-semibold text-gray-800 mb-2">Attachments</h4>
+    {attachedFiles && attachedFiles.length > 0 ? (
+    attachedFiles.map((file, idx) => {
+      const name = getFileName(file);
+      const url = getFilePath(file);
+
+      const size = file instanceof File ? file.size : 0;
+      const isTooLarge = size > 10 * 1024 * 1024;
+
+      const isImage = /\.(png|jpeg|jpg)$/i.test(name);
+      const isPDF = /\.pdf$/i.test(name);
+      const isDoc = /\.(doc|docx|xls|xlsx)$/i.test(name);
+
+      return (
+        <div key={idx} className="mb-3">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            {name}
+          </a>
+
+          {isTooLarge && (
+            <p className="text-red-600 text-sm mt-1">
+              ⚠️ File is too large to preview (&gt;{(size / 1024 / 1024).toFixed(1)}MB).  
+              Please download instead.
+            </p>
+          )}
+
+          {!isTooLarge && (
+            <>
+            {isImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={url}
+              alt={name}
+              className="mt-2 max-h-48 border rounded-lg"
+            />
+          )}
+
+          {isPDF && (
+            <iframe
+              src={url}
+              className="mt-2 w-full h-64 border rounded-lg"
+            />
+          )}
+
+          {isDoc && (
+            <p className="text-gray-600 mt-2 text-sm">
+              Preview not supported.{" "}
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
+                Download {name}
+                  </a>
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      );
+    })
+  ) : (
+    // ✅ This shows if no cadSketch file
+    <p className="text-gray-500 italic">No uploaded file/s.</p>
+  )}
+</div>
+
+{/* Other file/s */}
+{/* <div className="mt-4">
+    <h4 className="font-semibold text-gray-800 mb-2">Other File/s</h4>
+  {otherFiles && otherFiles.length > 0 ? (
+    otherFiles.map((file, idx) => {
       const name = getFileName(file);
       const url = getFilePath(file);
 
@@ -421,7 +508,7 @@ export function PreviewDocument({
     // ✅ This shows if no cadSketch file
     <p className="text-gray-500 italic">No uploaded file.</p>
   )}
-</div>
+</div> */}
 
 
         {/* Action Buttons */}
@@ -431,14 +518,14 @@ export function PreviewDocument({
       <button
         type="button"
         onClick={onBack}
-        className="px-6 py-2 rounded-lg transition bg-gray-200 text-gray-800 hover:bg-gray-300"
+        className="px-6 py-2 rounded-lg transition bg-gray-200 text-gray-800 hover:bg-gray-300 cursor-pointer"
       >
         Back
       </button>
       <button
         type="button"
         onClick={onSend}
-        className="px-6 py-2 rounded-lg transition bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        className="px-6 py-2 rounded-lg transition bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 cursor-pointer"
       >
         Send Quotation
       </button>

@@ -388,6 +388,7 @@ export default function AddPurchaseOrder() {
   // PO header fields
   const [terms, setTerms] = useState("");
   const [deliveryMode, setDeliveryMode] = useState("mode");
+  const [otherDeliveryMode, setOtherDeliveryMode] = useState("");
   const [projectName, setProjectName] = useState("");
   const [remarks, setRemarks] = useState("");
   const [preparedBy, setPreparedBy] = useState("");
@@ -671,9 +672,9 @@ export default function AddPurchaseOrder() {
             <input 
               type="text"
               placeholder="Please specify other delivery mode"
-              className="mt-2 border border-[#d2bda7] p-2 rounded w-full"
-              value={deliveryMode}
-              onChange={(e) => setDeliveryMode(e.target.value)}
+              className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100 mt-2"
+              value={otherDeliveryMode}
+              onChange={(e) => setOtherDeliveryMode(e.target.value)}
             />
           )}
           </div>

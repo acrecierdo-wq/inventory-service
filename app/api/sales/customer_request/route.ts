@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
         companyName: customer_profile.companyName,
         contactPerson: customer_profile.contactPerson,
         clientCode: customer_profile.clientCode,
+        tinNumber: customer_profile.tinNumber,
         email: customer_profile.email,
         phone: customer_profile.phone,
         address: customer_profile.address,
@@ -70,6 +71,7 @@ export async function GET(req: NextRequest) {
               email: r.email,
               phone: r.phone,
               address: r.address,
+              tinNumber: r.tinNumber,
             }
           : null,
         files: relatedFiles,

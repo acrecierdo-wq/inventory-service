@@ -435,6 +435,7 @@ type CustomerProfile = {
   email: string;
   phone: string;
   address: string;
+  tinNumber: string;
 };
 
 type QuotationRequest = {
@@ -605,7 +606,7 @@ const PendingViewPage = () => {
         <div className="px-5 py-4">
           <div className="flex gap-6 border-b border-gray-300 mb-6">
             <button
-              className={`pb-2 font-semibold text-md ${
+              className={`pb-2 font-semibold text-md cursor-pointer ${
                 activeTab === "request" ? "text-[#880c0c] border-b-2 border-[#880c0c]" : "text-gray-400 hover:text-[#880c0c9b]"
               }`}
               onClick={() => setActiveTab("request")}
@@ -613,7 +614,7 @@ const PendingViewPage = () => {
               Request Details
             </button>
             <button
-              className={`pb-2 font-semibold text-md ${
+              className={`pb-2 font-semibold text-md cursor-pointer ${
                 activeTab === "quotation" ? "text-[#880c0c] border-b-2 border-[#880c0c]" : "text-gray-400 hover:text-[#880c0c9b]"
               }`}
               onClick={() => setActiveTab("quotation")}
@@ -621,7 +622,7 @@ const PendingViewPage = () => {
               Quotation Form
             </button>
             <button
-              className={`pb-2 font-semibold text-md ${
+              className={`pb-2 font-semibold text-md cursor-pointer ${
                 activeTab === "drafts" ? "text-[#880c0c] border-b-2 border-[#880c0c]" : "text-gray-400 hover:text-[#880c0c9b]"
               }`}
               onClick={() => setActiveTab("drafts")}
@@ -822,23 +823,24 @@ const PendingViewPage = () => {
   warranty: draft.warranty || "",
   validity: draft.validity || "",
   status: "restoring",
-  cadSketchFile:
-    draft.cadSketchFile?.length
-      ? draft.cadSketchFile
-      : draft.files?.map((f) => ({
-          id: f.id ?? Date.now(),
-          name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
-          filePath: f.filePath,
-        })) ||
-        (draft.cadSketch
-          ? [
-              {
-                id: Date.now(),
-                name: draft.cadSketch.split("/").pop() || "uploaded_file",
-                filePath: draft.cadSketch,
-              },
-            ]
-          : []),
+  attachedFiles: draft.attachedFiles || [],
+  // cadSketchFile:
+  //   draft.cadSketchFile?.length
+  //     ? draft.cadSketchFile
+  //     : draft.files?.map((f) => ({
+  //         id: f.id ?? Date.now(),
+  //         name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
+  //         filePath: f.filePath,
+  //       })) ||
+  //       (draft.cadSketch
+  //         ? [
+  //             {
+  //               id: Date.now(),
+  //               name: draft.cadSketch.split("/").pop() || "uploaded_file",
+  //               filePath: draft.cadSketch,
+  //             },
+  //           ]
+  //         : []),
 }]);
 
 
@@ -864,7 +866,7 @@ const PendingViewPage = () => {
             {request.status === "Pending" && (
               <>
                 <button
-                  className="h-8 w-20 rounded-full bg-green-600 text-white hover:bg-green-700 font-medium shadow"
+                  className="h-8 w-20 rounded-full bg-green-600 text-white hover:bg-green-700 font-medium shadow cursor-pointer"
                   onClick={() => {
                     initiateAction("Accepted");
                     setActiveTab("quotation");
@@ -874,7 +876,7 @@ const PendingViewPage = () => {
                   Accept
                 </button>
                 <button
-                  className="h-8 w-20 rounded-full bg-red-600 text-white hover:bg-red-700 font-medium shadow"
+                  className="h-8 w-20 rounded-full bg-red-600 text-white hover:bg-red-700 font-medium shadow cursor-pointer"
                   onClick={() => initiateAction("Rejected")}
                   disabled={updating}
                 >
@@ -913,7 +915,7 @@ const PendingViewPage = () => {
             </p>
             <div className="flex justify-center gap-4">
               <button
-                className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400"
+                className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 cursor-pointer"
                 onClick={() => setShowFloatingValidation(false)}
               >
                 Cancel
@@ -921,8 +923,8 @@ const PendingViewPage = () => {
               <button
                 className={`px-4 py-2 rounded-lg text-white ${
                   actionType === "Accepted" || actionType === "Cancelled"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
+                    ? "bg-green-600 hover:bg-green-700 cursor-pointer"
+                    : "bg-red-600 hover:bg-red-700 cursor-pointer"
                 }`}
                 onClick={confirmAction}
               >

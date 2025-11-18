@@ -170,7 +170,7 @@ export default function CreateUserPage() {
             value={contactNumber}
             onChange={(e) => setContactNumber(e.target.value)}
           />
-
+ 
           <Select onValueChange={setRole} value={role}>
             <SelectTrigger className="border p-2 w-full rounded hover:bg-gray-100">
               <SelectValue placeholder="Select a role" />

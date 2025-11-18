@@ -139,7 +139,15 @@ export async function GET(req: NextRequest) {
         data: {
           ...request,
           files: markFiles(files),
-          customer,
+          customer: {
+            id: customer.id,
+            companyName: customer.companyName,
+            conatactPerson: customer.contactPerson,
+            email: customer.email,
+            phone: customer.phone,
+            address: customer.address,
+            tinNumber: customer.tinNumber,
+          },
         },
       });
     } else {
@@ -159,7 +167,15 @@ export async function GET(req: NextRequest) {
           return {
             ...req,
             files: markFiles(files),
-            customer,
+            customer: {
+              id: customer.id,
+              companyName: customer.companyName,
+              conatactPerson: customer.contactPerson,
+              email: customer.email,
+              phone: customer.phone,
+              address: customer.address,
+              tinNumber: customer.tinNumber,
+            },
           };
         })
       );

@@ -1,6 +1,6 @@
 // db/schema.ts
 
-import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid, numeric, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid, numeric } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const audit_logs = pgTable("audit_logs", {
@@ -197,7 +197,29 @@ export const personnelAccounts = pgTable("personnel_accounts", {
   role: varchar("role", { length: 50 }).notNull(),
   status: varchar("status", { enum: ["Active", "Inactive"]}).default("Active"),
   createdAt: timestamp("created_at").defaultNow(),
-}); 
+});
+
+{/* Personnels */}
+export const personnels = pgTable("personnels", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  personnelName: varchar("personnel_name", { length: 255 }).notNull(),
+  department: varchar("department", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+});
+
+{/* Clients */}
+export const clients = pgTable("clients", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  clientName: varchar("client_name", { length: 255 }).notNull(),
+  contact: varchar("contact", { length: 255 }).notNull(),
+  address: varchar("address", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+});
 
 {/* Item replenishments */}
 
@@ -310,14 +332,21 @@ export const quotations = pgTable("quotations", {
   requestId: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
 
   quotationSeq: serial("quotation_seq").notNull().unique(),
-
   quotationNumber: varchar("quotation_number", { length: 50 }).unique(),
   
   revisionNumber: integer("revision_number").default(0),
   baseQuotationId: integer("base_quotation_id"),
 
   projectName: varchar("project_name", { length: 255 }),
-  mode: varchar("mode", { length: 50 }),
+
+  deliveryType: varchar("delivery_type", { length: 20 }),
+
+  deliveryDeadline: timestamp("delivery_deadline"),
+
+  porgressStatus: varchar("progess_status", { length: 30 })
+    .$type<"in_progress" | "ready_for_pickup" | "out_for_delivery" | "completed" | "none">()
+    .default("none"),
+  
   status: varchar("status", { length: 20 })
     .notNull()
     .$type<
@@ -330,10 +359,12 @@ export const quotations = pgTable("quotations", {
       | "expired"
     >()
     .default("draft"),
+
   payment: varchar("payment", { length: 50 }).notNull(),
   validity: varchar("validity").notNull(),
   delivery: varchar("delivery", { length: 100 }),
   warranty: varchar("warranty", { length: 50 }).notNull(),
+  
   quotationNotes: text("quotation_notes"),
   cadSketch: varchar("cad_sketch", { length: 255 }),
 

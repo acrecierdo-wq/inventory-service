@@ -3,7 +3,7 @@
 
 import QuotationForm from "../quotationform";
 import { PreviewDocument } from "../components/quotationcomponents/PreviewDocument";
-import { SavedQuotation, PreviewFile } from "@/app/sales/types/quotation";
+import { SavedQuotation } from "@/app/sales/types/quotation";
 import { Draft } from "./QuotationDraftsSection";
 import { useState, useEffect, useCallback } from "react";
 
@@ -29,7 +29,7 @@ export function QuotationFormSection({
   setQuotationForms,
 }: Props) {
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
-  const [, setCadSketchFile] = useState<PreviewFile[]>([]);
+  //const [, setCadSketchFile] = useState<PreviewFile[]>([]);
 
   const [hasSentQuotation, setHasSentQuotation] = useState(false);
 
@@ -117,6 +117,7 @@ useEffect(() => {
       warranty: "",
       validity: "",
       status: "draft",
+      attachedFiles: [],
       isNew: true,
     };
 
@@ -136,29 +137,31 @@ const handleRestoreDraft = useCallback(
     }
 
     // 🔧 Normalize CAD files
-    const restoredCadFiles =
-      draft.cadSketchFile?.length
-        ? draft.cadSketchFile
-        : draft.files?.map((f) => ({
-            id: f.id,
-            name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
-            filePath: f.filePath,
-          })) ||
-          (draft.cadSketch
-            ? [
-                {
-                  id: Date.now(),
-                  name: draft.cadSketch.split("/").pop() || "uploaded_file",
-                  filePath: draft.cadSketch,
-                },
-              ]
-            : []);
+    // const restoredCadFiles =
+    //   draft.cadSketchFile?.length
+    //     ? draft.cadSketchFile
+    //     : draft.files?.map((f) => ({
+    //         id: f.id,
+    //         name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
+    //         filePath: f.filePath,
+    //       })) ||
+    //       (draft.cadSketch
+    //         ? [
+    //             {
+    //               id: Date.now(),
+    //               name: draft.cadSketch.split("/").pop() || "uploaded_file",
+    //               filePath: draft.cadSketch,
+    //             },
+    //           ]
+    //         : []);
 
     // ✅ Step 1: Send update to backend (status = restoring)
     const restorePayload = {
-      ...draft,
-      status: "restoring",
-    };
+  ...draft,
+  status: "restoring",
+  attachedFiles: draft.attachedFiles || [],
+};
+
     console.log("📤 Sending restore payload:", restorePayload);
 
     try {
@@ -207,10 +210,12 @@ const handleRestoreDraft = useCallback(
       warranty: draft.warranty || "",
       validity: draft.validity || "",
       status: "restoring",
-      cadSketchFile: restoredCadFiles as PreviewFile[],
+      attachedFiles: draft.attachedFiles || [],
+      //cadSketchFile: restoredCadFiles as PreviewFile[],
     };
 
-    setCadSketchFile(restoredCadFiles as PreviewFile[]);
+    //setCadSketchFile(restoredCadFiles as PreviewFile[]);
+    
     setQuotationForms([restoredForm]);
     setActiveDraftId(draft.id);
     sessionStorage.setItem("activeRestoringDraftId", draft.id);
@@ -306,7 +311,7 @@ const handleRestoreDraft = useCallback(
       console.log("%[EVENT] quotation-sent caught in QuotationFormSection - resetting form state & showing preview only", "color: limegreen; font-weight: bold;");
 
       setActiveDraftId(null);
-      setCadSketchFile([]);
+      //setCadSketchFile([]);
 
       setQuotationForms((prev) =>
         prev.map((f) => ({ ...f, status: "sent" })));
@@ -464,7 +469,8 @@ useEffect(() => {
                     initialDelivery={form.delivery}
                     initialWarranty={form.warranty}
                     initialValidity={form.validity}
-                    initialCadSketch={form.cadSketchFile}
+                    initialAttachedFiles={form.attachedFiles ?? []}
+                    //initialCadSketch={form.cadSketchFile}
                     setActiveDraftId={setActiveDraftId}
                     onSavedDraft={(draft) => 
                       handleDraftSaved(form.id, 
@@ -484,7 +490,9 @@ useEffect(() => {
                     validity={form.validity ?? ""}
                     quotationNotes={form.quotationNotes ?? ""}
                     requestId={form.requestId ?? requestId}
-                    cadSketchFile={form.cadSketchFile ?? []}
+                    //cadSketchFile={form.cadSketchFile ?? []}
+                    //otherFiles={form.otherFiles ?? []}
+                    attachedFiles={form.attachedFiles ?? []}
                     revisionLabel={form.revisionLabel ?? ""}
                     baseQuotationId={Number(form.baseQuotationId ?? 0)}
                     customer={form.customer ?? null}

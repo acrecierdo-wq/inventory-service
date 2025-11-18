@@ -1,5 +1,4 @@
 // app/api/sales/quotations/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/drizzle";
 import {
@@ -9,37 +8,79 @@ import {
   quotationFiles,
   quotation_requests,
   customer_profile,
+  audit_logs,
 } from "@/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, } from "drizzle-orm";
 import { validateQuotation, DraftInput, SentInput } from "@/lib/quotationSchema";
 import { z } from "zod";
+import { v2 as cloudinary } from "cloudinary";
+import { currentUser } from "@clerk/nextjs/server";
 
+// Cloudinary config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Utility: check quotations status for a request
 async function getQuotationStatusByRequestId(requestId: number) {
   const quotationsForRequest = await db.query.quotations.findMany({
     where: eq(quotations.requestId, requestId),
     columns: { id: true, status: true },
   });
-
   const hasSent = quotationsForRequest.some((q) => q.status === "sent");
   return { hasSent, quotations: quotationsForRequest };
 }
 
-// function normalizeUploadPath(filePath: string) {
-//   if (!filePath) return "";
-//   // remove leading /sales/uploads or duplicate /uploads/
-//   const stripped = filePath.replace(/^\/?(sales\/)?uploads\/+/, "");
-//   return `/uploads/${stripped}`;
-// }
+// Helper to upload any file to Cloudinary
+async function uploadToCloudinary(file: { base64?: string; filePath?: string; fileName: string }, folder = "quotations") {
+  try {
+    if (file.base64 && file.base64.startsWith("data:")) {
+      const upload = await cloudinary.uploader.upload(file.base64, {
+        folder,
+        public_id: `${Date.now()}_${file.fileName}`,
+        resource_type: "auto",
+        overwrite: false,
+      });
+      return upload.secure_url;
+    } else if (file.filePath) {
+      const upload = await cloudinary.uploader.upload(file.filePath, {
+        folder,
+        public_id: `${Date.now()}_${file.fileName}`,
+        resource_type: "auto",
+        overwrite: false,
+      });
+      return upload.secure_url;
+    } else {
+      throw new Error("No valid file to upload");
+    }
+  } catch (err) {
+    console.error("Cloudinary upload failed:", err);
+    return file.filePath || ""; // fallback: store original path
+  }
+}
 
+// Utility: convert deliveryDeadline string -> Date
+function parseDeliveryDeadline(val?: string | null): Date | null {
+  if (!val) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  return d;
+}
 
-// POST
+// Utility: safe string for numeric DB columns
+const safeString = (v: number | string | undefined | null, fallback = "0") =>
+  v === undefined || v === null ? fallback : String(v);
+
+// ---------------- POST ----------------
 export async function POST(req: NextRequest) {
   try {
     const json = await req.json();
     let data: DraftInput | SentInput;
 
+    // Validate input
     try {
-      console.log("STATUS:", json.status);
       data = validateQuotation(json);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -48,84 +89,74 @@ export async function POST(req: NextRequest) {
       throw err;
     }
 
-    // validate linked request and customer
-    const [request] = await db
-      .select()
-      .from(quotation_requests)
-      .where(eq(quotation_requests.id, data.requestId));
+    // Get current user
+    const user = await currentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!request)
-      return NextResponse.json({ success: false, error: "Invalid requestId" }, { status: 400 });
+    const role = user.publicMetadata?.role;
+    if (role !== "sales" && role !== "admin") {
+      return NextResponse.json({ error: "Forbidden: insufficient access." }, { status: 403 });
+    }
 
-    const [customer] = await db
-      .select()
-      .from(customer_profile)
-      .where(eq(customer_profile.id, request.customer_id));
+    let quotationId = "";
 
-    if (!customer?.clientCode)
-      return NextResponse.json({ success: false, error: "Missing client code in customer profile." }, { status: 400 });
+    // Validate linked request & customer
+    const [request] = await db.select().from(quotation_requests).where(eq(quotation_requests.id, data.requestId));
+    if (!request) return NextResponse.json({ success: false, error: "Invalid requestId" }, { status: 400 });
 
-    console.log("POST - create or update quotation (draft or sent)", data);
-
+    const [customer] = await db.select().from(customer_profile).where(eq(customer_profile.id, request.customer_id));
+    if (!customer?.clientCode) return NextResponse.json({ success: false, error: "Missing client code in customer profile." }, { status: 400 });
     const clientCode = customer.clientCode;
-    const quotationStatus: "draft" | "sent"  = data.status === "sent" ? "sent" : "draft";
-    
-    let quotationId: string;
 
-    // Case 1: revision creation (new revision from an existing sent quotation)
-    // If the payload has baseQuotationId, we clone and increment revision
+    const quotationStatus: "draft" | "sent" = data.status === "sent" ? "sent" : "draft";
+
+    // ---------------- Case 1: Revision ----------------
     if (data.baseQuotationId) {
-      const [baseQuotation] = await db
-        .select()
-        .from(quotations)
-        .where(eq(quotations.id, data.baseQuotationId));
+      const [baseQuotation] = await db.select().from(quotations).where(eq(quotations.id, data.baseQuotationId));
+      if (!baseQuotation) return NextResponse.json({ success: false, error: "Base quotation not found." }, { status: 404 });
 
-      if (!baseQuotation) {
-        return NextResponse.json({ success: false, error: "Base quotation not found for revision." }, { status: 404 });
-      }
-
-      // Determine next revision number (base + 1)
       const nextRevisionNumber = (baseQuotation.revisionNumber ?? 0) + 1;
 
-      // Create new quotation record (same quotationNumber, incremented revision)
-      const [newRevision] = await db
-        .insert(quotations)
-        .values({
-          requestId: baseQuotation.requestId,
-          projectName: data.projectName ?? baseQuotation.projectName,
-          mode: data.mode ?? baseQuotation.mode,
-          status: quotationStatus,
-          payment: data.payment ?? baseQuotation.payment,
-          delivery: data.delivery ?? baseQuotation.delivery,
-          validity: data.validity ?? baseQuotation.validity,
-          warranty: data.warranty ?? baseQuotation.warranty,
-          quotationNotes: data.quotationNotes ?? baseQuotation.quotationNotes,
-          cadSketch: data.cadSketch ?? baseQuotation.cadSketch,
-          vat: String(data.vat ?? baseQuotation.vat ?? 12),
-          markup: String(data.markup ?? baseQuotation.markup ?? 5),
-          quotationNumber: baseQuotation.quotationNumber, // same number
-          revisionNumber: nextRevisionNumber, // incremented
-        })
-        .returning({ id: quotations.id });
+      const [newRevision] = await db.insert(quotations).values({
+        requestId: baseQuotation.requestId,
+        projectName: data.projectName ?? baseQuotation.projectName,
+        status: quotationStatus,
+        payment: data.payment ?? baseQuotation.payment,
+        delivery: data.delivery ?? baseQuotation.delivery,
+        validity: data.validity ?? baseQuotation.validity,
+        warranty: data.warranty ?? baseQuotation.warranty,
+        quotationNotes: data.quotationNotes ?? baseQuotation.quotationNotes,
+        cadSketch: null,
+        vat: safeString(data.vat ?? baseQuotation.vat ?? 12),
+        markup: safeString(data.markup ?? baseQuotation.markup ?? 5),
+        quotationNumber: baseQuotation.quotationNumber,
+        revisionNumber: nextRevisionNumber,
+        deliveryType: data.deliveryType ?? baseQuotation.deliveryType ?? null,
+        deliveryDeadline: parseDeliveryDeadline(data.deliveryDeadline?.toString() ?? baseQuotation.deliveryDeadline?.toString()) ?? null,
+      }).returning({ id: quotations.id });
 
       quotationId = newRevision.id;
 
-      // Insert cloned items and materials
+      // Upload cadSketch
+      if (data.cadSketch) {
+        const cadUrl = await uploadToCloudinary({ base64: data.cadSketch, fileName: `cad_${Date.now()}` }, "quotations/cad_sketch");
+        await db.update(quotations).set({ cadSketch: cadUrl }).where(eq(quotations.id, quotationId));
+      } else if (baseQuotation.cadSketch) {
+        await db.update(quotations).set({ cadSketch: baseQuotation.cadSketch }).where(eq(quotations.id, quotationId));
+      }
+
+      // Insert items & materials
       if (Array.isArray(data.items)) {
         for (const item of data.items) {
-          const totalPrice = Number(item.quantity || 0) * Number(item.unitPrice || 0);
-
-          const [newItem] = await db
-            .insert(quotationItems)
-            .values({
-              quotationId,
-              itemName: item.itemName ?? "(Untitled Item)",
-              scopeOfWork: item.scopeOfWork ?? "(To be defined)",
-              quantity: item.quantity ?? 0,
-              unitPrice: String(item.unitPrice ?? 0),
-              totalPrice: totalPrice.toFixed(2),
-            })
-            .returning({ id: quotationItems.id });
+          const totalPrice = Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0);
+          const [newItem] = await db.insert(quotationItems).values({
+            quotationId,
+            itemName: item.itemName ?? "(Untitled Item)",
+            scopeOfWork: item.scopeOfWork ?? "(To be defined)",
+            quantity: item.quantity ?? 0,
+            unitPrice: safeString(item.unitPrice ?? 0),
+            totalPrice: safeString(totalPrice.toFixed(2)),
+          }).returning({ id: quotationItems.id });
 
           if (item.materials?.length) {
             for (const mat of item.materials) {
@@ -140,17 +171,31 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Insert files if any
-      if (Array.isArray(data.attachedFiles) && data.attachedFiles.length > 0) {
-        await db.insert(quotationFiles).values(
-          data.attachedFiles.map((f) => ({
+      // Upload attached files
+      if (Array.isArray(data.attachedFiles)) {
+        for (const file of data.attachedFiles) {
+          const uploadedFilePath = await uploadToCloudinary(file);
+          await db.insert(quotationFiles).values({
             quotationId,
-            fileName: f.fileName,
-            filePath: f.filePath,
+            fileName: file.fileName,
+            filePath: uploadedFilePath,
             uploadedAt: new Date(),
-          }))
-        );
+          });
+        }
       }
+
+      // Audit log
+      await db.insert(audit_logs).values({
+        entity: "Quotation",
+        entityId: quotationId,
+        action: "REVISION",
+        description: `Created revision ${nextRevisionNumber} for quotation ${baseQuotation.quotationNumber} (request ${data.requestId})`,
+        actorId: user.id,
+        actorName: user.username || "Sales",
+        actorRole: role || "Sales",
+        timestamp: new Date(),
+        module: "Sales / Quotation",
+      });
 
       const refreshed = await db.query.quotations.findFirst({
         where: eq(quotations.id, quotationId),
@@ -167,90 +212,119 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Case 2: update existing (handle both draft -> draft and draft -> sent)
-    else if (data.id) {
+    // ---------------- Case 2: Update existing ----------------
+    if (data.id) {
       quotationId = data.id;
-    
-      await db
-        .update(quotations)
-        .set({
-          projectName: data.projectName ?? "",
-          mode: data.mode ?? "",
-          status: quotationStatus,
-          payment: data.payment ?? "",
-          delivery: data.delivery ?? "",
-          validity: data.validity ?? "",
-          warranty: data.warranty ?? "",
-          quotationNotes: data.quotationNotes ?? "",
-          cadSketch: data.cadSketch ?? null,
-          vat: String(data.vat ?? 12),
-          markup: String(data.markup ?? 5),
-          updatedAt: new Date(),
-        })
-        .where(eq(quotations.id, quotationId));
 
-      // clear and reinsert items/materials/files
+      // Update quotation
+      await db.update(quotations).set({
+        projectName: data.projectName ?? "",
+        status: quotationStatus,
+        payment: data.payment ?? "",
+        delivery: data.delivery ?? "",
+        validity: data.validity ?? "",
+        warranty: data.warranty ?? "",
+        quotationNotes: data.quotationNotes ?? "",
+        cadSketch: null,
+        vat: safeString(data.vat ?? 12),
+        markup: safeString(data.markup ?? 5),
+        updatedAt: new Date(),
+        deliveryType: data.deliveryType ?? null,
+        deliveryDeadline: parseDeliveryDeadline(data.deliveryDeadline) ?? null,
+      }).where(eq(quotations.id, quotationId));
+
+      // Upload cadSketch
+      if (data.cadSketch) {
+        const cadUrl = await uploadToCloudinary({ base64: data.cadSketch, fileName: `cad_${Date.now()}` }, "quotations/cad_sketch");
+        await db.update(quotations).set({ cadSketch: cadUrl }).where(eq(quotations.id, quotationId));
+      }
+
+      // Delete old items/materials/files
       await db.delete(quotationMaterials).where(
         inArray(
           quotationMaterials.quotationItemId,
-          db
-            .select({ id: quotationItems.id })
-            .from(quotationItems)
-            .where(eq(quotationItems.quotationId, quotationId))
+          db.select({ id: quotationItems.id }).from(quotationItems).where(eq(quotationItems.quotationId, quotationId))
         )
       );
       await db.delete(quotationItems).where(eq(quotationItems.quotationId, quotationId));
-      await db.delete(quotationFiles).where(eq(quotationFiles.quotationId, quotationId));
+      if (Array.isArray(data.attachedFiles) && data.attachedFiles.length > 0) {
+  // Only delete when user explicitly re-attaches files
+  await db.delete(quotationFiles).where(eq(quotationFiles.quotationId, quotationId));
+}
+
+      // Audit log
+      await db.insert(audit_logs).values({
+        entity: "Quotation",
+        entityId: quotationId,
+        action: data.status === "sent" ? "SENT" : "UPDATED",
+        description: data.status === "sent"
+          ? `Sent quotation for request ${data.requestId}`
+          : `Updated quotation (draft) for request ${data.requestId}`,
+        actorId: user.id,
+        actorName: user.username || "Sales",
+        actorRole: role || "Sales",
+        timestamp: new Date(),
+        module: "Sales / Quotation",
+      });
     }
 
-    // Case 3: Create new quotation (first time save)
-    else {
-      const [newQuotation] = await db
-        .insert(quotations)
-        .values({
-          requestId: data.requestId,
-          projectName: data.projectName ?? "",
-          mode: data.mode ?? "",
-          status: quotationStatus,
-          payment: data.payment ?? "",
-          delivery: data.delivery ?? "",
-          validity: data.validity ?? "",
-          warranty: data.warranty ?? "",
-          quotationNotes: data.quotationNotes ?? "",
-          cadSketch: data.cadSketch ?? null,
-          vat: String(data.vat ?? 12),
-          markup: String(data.markup ?? 5),
-          revisionNumber: 0,
-        })
-        .returning({ id: quotations.id, quotationSeq: quotations.quotationSeq });
+    // ---------------- Case 3: Create new ----------------
+    if (!data.id && !data.baseQuotationId) {
+      const [newQuotation] = await db.insert(quotations).values({
+        requestId: data.requestId,
+        projectName: data.projectName ?? "",
+        status: quotationStatus,
+        payment: data.payment ?? "",
+        delivery: data.delivery ?? "",
+        validity: data.validity ?? "",
+        warranty: data.warranty ?? "",
+        quotationNotes: data.quotationNotes ?? "",
+        cadSketch: null,
+        vat: safeString(data.vat ?? 12),
+        markup: safeString(data.markup ?? 5),
+        revisionNumber: 0,
+        deliveryType: data.deliveryType ?? null,
+        deliveryDeadline: parseDeliveryDeadline(data.deliveryDeadline) ?? null,
+      }).returning({ id: quotations.id, quotationSeq: quotations.quotationSeq });
 
       quotationId = newQuotation.id;
 
-      const paddedSeq = String(newQuotation.quotationSeq).padStart(8, "0");
-      const formattedNumber = `CTIC-${clientCode}-${paddedSeq}`;
+      // Set formatted quotation number
+      const formattedNumber = `CTIC-${clientCode}-${String(newQuotation.quotationSeq).padStart(8, "0")}`;
+      await db.update(quotations).set({ quotationNumber: formattedNumber }).where(eq(quotations.id, quotationId));
 
-      await db
-        .update(quotations)
-        .set({ quotationNumber: formattedNumber })
-        .where(eq(quotations.id, quotationId));
+      // Upload cadSketch
+      if (data.cadSketch) {
+        const cadUrl = await uploadToCloudinary({ base64: data.cadSketch, fileName: `cad_${Date.now()}` }, "quotations/cad_sketch");
+        await db.update(quotations).set({ cadSketch: cadUrl }).where(eq(quotations.id, quotationId));
+      }
+
+      // Audit log
+      await db.insert(audit_logs).values({
+        entity: "Quotation",
+        entityId: quotationId,
+        action: "CREATE",
+        description: `Created quotation ${formattedNumber} for request ${data.requestId}`,
+        actorId: user.id,
+        actorName: user.username || "Sales",
+        actorRole: role || "Sales",
+        timestamp: new Date(),
+        module: "Sales / Quotation",
+      });
     }
 
-    // Insert items and materials
+    // ---------------- Insert items & materials ----------------
     if (Array.isArray(data.items)) {
       for (const item of data.items) {
-        const totalPrice = Number(item.quantity || 0) * Number(item.unitPrice || 0);
-
-        const [newItem] = await db
-          .insert(quotationItems)
-          .values({
-            quotationId,
-            itemName: item.itemName ?? "(Untitled Item)",
-            scopeOfWork: item.scopeOfWork ?? "(To be defined)",
-            quantity: item.quantity ?? 0,
-            unitPrice: String(item.unitPrice ?? 0),
-            totalPrice: totalPrice.toFixed(2),
-          })
-          .returning({ id: quotationItems.id });
+        const totalPrice = Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0);
+        const [newItem] = await db.insert(quotationItems).values({
+          quotationId,
+          itemName: item.itemName ?? "(Untitled Item)",
+          scopeOfWork: item.scopeOfWork ?? "(To be defined)",
+          quantity: item.quantity ?? 0,
+          unitPrice: safeString(item.unitPrice ?? 0),
+          totalPrice: safeString(totalPrice.toFixed(2)),
+        }).returning({ id: quotationItems.id });
 
         if (item.materials?.length) {
           for (const mat of item.materials) {
@@ -265,84 +339,55 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (Array.isArray(data.attachedFiles) && data.attachedFiles.length > 0) {
-      await db.insert(quotationFiles).values(
-        data.attachedFiles.map((f) => ({
+    // ---------------- Upload attached files ----------------
+    if (Array.isArray(data.attachedFiles)) {
+      for (const file of data.attachedFiles) {
+        const uploadedFilePath = await uploadToCloudinary(file);
+        await db.insert(quotationFiles).values({
           quotationId,
-          fileName: f.fileName,
-          filePath: f.filePath,
+          fileName: file.fileName,
+          filePath: uploadedFilePath,
           uploadedAt: new Date(),
-        }))
-      );
+        });
+      }
     }
 
+    // Fetch final quotation
     const refreshed = await db.query.quotations.findFirst({
       where: eq(quotations.id, quotationId),
-      with: {
-        items: { with: { materials: true } },
-        files: true,
-        request: { with: { customer: true } },
-      },
+      with: { items: { with: { materials: true } }, files: true, request: { with: { customer: true } } },
     });
-
-    if (!refreshed) throw new Error("Failed to fetch saved quotation.");
-
-    const cadSketchFile =
-      refreshed.files?.length > 0
-        ? refreshed.files.map((f) => ({
-            id: f.id,
-            name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
-            filePath: f.filePath.startsWith("/uploads/")
-              ? f.filePath
-              : `/uploads/${f.filePath.replace(/^\/+/, "")}`,
-            //filePath: normalizeUploadPath(f.filePath),
-          }))
-        : refreshed.cadSketch
-        ? [
-            {
-              name: refreshed.cadSketch,
-              filePath: refreshed.cadSketch.startsWith("/uploads/")
-                ? refreshed.cadSketch
-                : `/uploads/${refreshed.cadSketch.replace(/^\/+/, "")}`,
-              //filePath: normalizeUploadPath(refreshed.cadSketch),
-            },
-          ]
-        : [];
 
     return NextResponse.json({
       success: true,
-      message: data.id
-        ? "Quotation updated successfully."
-        : "Quotation created successfully!",
+      message: data.id ? "Quotation updated successfully." : "Quotation created successfully!",
       data: {
         ...refreshed,
-        revisionLabel: `REVISION-${String(refreshed.revisionNumber ?? 0).padStart(2, "0")}`,
-        customer: refreshed.request?.customer ?? null,
-        cadSketchFile,
+        revisionLabel: `REVISION-${String(refreshed?.revisionNumber ?? 0).padStart(2, "0")}`,
+        customer: refreshed?.request?.customer ?? null,
       },
     });
-  } catch (error) {
-    console.error("Error saving quotation:", error);
-    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
+
+  } catch (err) {
+    console.error("Error saving quotation:", err);
+    return NextResponse.json({ success: false, error: (err as Error).message }, { status: 500 });
   }
 }
 
-
-// ✅ GET — Fetch quotations
+// ---------------- GET ----------------
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-  const requestId = searchParams.get("requestId");
-
   try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const requestId = searchParams.get("requestId");
 
+    // Check status shortcut
     if (searchParams.has("checkStatus") && requestId) {
       const result = await getQuotationStatusByRequestId(Number(requestId));
       return NextResponse.json({ success: true, ...result });
-  }
+    }
 
     const conditions = [];
-    //if (status) conditions.push(eq(quotations.status, status as typeof quotations.$inferSelect.status));
     if (status) {
       if (status === "draft") {
         conditions.push(inArray(quotations.status, ["draft", "restoring"]));
@@ -351,9 +396,7 @@ export async function GET(req: NextRequest) {
       }
     }
     if (requestId) conditions.push(eq(quotations.requestId, Number(requestId)));
-
-    const whereClause =
-      conditions.length > 1 ? and(...conditions) : conditions[0];
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
     const allQuotations = await db.query.quotations.findMany({
       where: whereClause,
@@ -364,58 +407,35 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    console.log(`[GET /api/sales/quotations] returning statuses:`, allQuotations.map(q => q.status));
-
-    //.filter(q => status === "draft" || q.status === "restoring");
-    const normalized = allQuotations.map((q) => {
-        const cadSketchFile =
-          q.files?.length > 0
-            ? q.files.map((f) => ({
-                id: f.id,
-                name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
-                filePath: f.filePath.startsWith("/uploads/")
-                  ? f.filePath
-                  : `/uploads/${f.filePath.replace(/^\/+/, "")}`,
-                // filePath: normalizeUploadPath(f.filePath),
-
-                // filePath: f.filePath
-                //   .replace(/^\/sales\/uploads\/+/, "/uploads/")
-                //   .replace(/^\/+/, "/uploads/"),
-              }))
-            : q.cadSketch
-            ? [
-                {
-                  name: q.cadSketch.split("/").pop() || "uploaded_file",
-                  filePath: q.cadSketch.startsWith("/uploads/")
-                    ? q.cadSketch
-                    : `/uploads/${q.cadSketch.replace(/^\/+/, "")}`,
-                  //filePath: normalizeUploadPath(q.cadSketch),
-                },
-              ]
-            : [];
-
-        const revisionLabel = `REVISION-${String(q.revisionNumber ?? 0).padStart(2, "0")}`;
-
-        const customer = q.request?.customer
-              ? {
-                companyName: q.request.customer.companyName,
-                contactPerson: q.request.customer.contactPerson,
-                email: q.request.customer.email,
-                address: q.request.customer.address,
-                phone: q.request.customer.phone,
-                clientCode: q.request.customer.clientCode,
-              }
-            : null;
-
-        return {
-          ...q,
-          cadSketchFile,
-          revisionLabel,
-          customer,
-          vat: Number(q.vat) || 12,
-          markup: Number(q.markup) || 5,
-        };
-      });
+    const normalized = allQuotations.map((q) => ({
+      ...q,
+      deliveryType: q.deliveryType ?? null,
+      deliveryDeadline: q.deliveryDeadline ?? null,
+      cadSketchFile:
+        q.files?.length > 0
+          ? q.files.map((f) => ({
+              id: f.id,
+              name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
+              filePath: f.filePath, // Already Cloudinary URL from POST
+            }))
+          : q.cadSketch
+          ? [{ name: q.cadSketch.split("/").pop() || "uploaded_file", filePath: q.cadSketch }]
+          : [],
+      revisionLabel: `REVISION-${String(q.revisionNumber ?? 0).padStart(2, "0")}`,
+      customer: q.request?.customer
+        ? {
+            companyName: q.request.customer.companyName,
+            contactPerson: q.request.customer.contactPerson,
+            email: q.request.customer.email,
+            address: q.request.customer.address,
+            phone: q.request.customer.phone,
+            clientCode: q.request.customer.clientCode,
+            tinNumber: q.request.customer.tinNumber,
+          }
+        : null,
+      vat: Number(q.vat) || 12,
+      markup: Number(q.markup) || 5,
+    }));
 
     return NextResponse.json({ success: true, quotations: normalized });
   } catch (err) {
@@ -424,460 +444,3 @@ export async function GET(req: NextRequest) {
   }
 }
 
-
-
-    // ✅ Fetch full quotation details
-    // const [result] = await db
-    //   .select({
-    //     id: quotations.id,
-    //     projectName: quotations.projectName,
-    //     mode: quotations.mode,
-    //     status: quotations.status,
-    //     payment: quotations.payment,
-    //     delivery: quotations.delivery,
-    //     validity: quotations.validity,
-    //     warranty: quotations.warranty,
-    //     quotationNotes: quotations.quotationNotes,
-    //     cadSketch: quotations.cadSketch,
-    //     revisionNumber: quotations.revisionNumber,
-    //     createdAt: quotations.createdAt,
-    //     quotationNumber: quotations.quotationNumber,
-    //     customerId: customer_profile.id,
-    //     companyName: customer_profile.companyName,
-    //     contactPerson: customer_profile.contactPerson,
-    //     clientCode: customer_profile.clientCode,
-    //   })
-    //   .from(quotations)
-    //   .leftJoin(quotation_requests, eq(quotation_requests.id, quotations.requestId))
-    //   .leftJoin(customer_profile, eq(customer_profile.id, quotation_requests.customer_id))
-    //   .where(eq(quotations.id, quotationId));
-
-    // if (!result) throw new Error("Failed to fetch saved quotation.");
-
-    // const normalized = {
-    //   ...result,
-    //   customer: {
-    //     id: result.customerId,
-    //     companyName: result.companyName,
-    //     contactPerson: result.contactPerson,
-    //     clientCode: result.clientCode,
-    //   },
-    //   revisionLabel: `REVISION-${String(result.revisionNumber ?? 0).padStart(2, "0")}`,
-    //   cadSketch: result.cadSketch
-    //     ? [
-    //         {
-    //           name: result.cadSketch,
-    //           filePath: result.cadSketch.startsWith("/uploads/")
-    //             ? result.cadSketch
-    //             : `/uploads/${result.cadSketch.replace(/^\/+/, "")}`,
-    //         },
-    //       ]
-    //     : [],
-    // };
-
-// app/api/sales/quotations/route.ts
-
-// import { NextRequest, NextResponse } from "next/server";
-// import { db } from "@/db/drizzle";
-// import {
-//   quotations,
-//   quotationItems,
-//   quotationMaterials,
-//   quotationFiles,
-//   quotation_requests,
-//   customer_profile,
-// } from "@/db/schema";
-// import { eq, and, inArray } from "drizzle-orm";
-// import { validateQuotation, DraftInput, SentInput } from "@/lib/quotationSchema";
-// import { z } from "zod";
-
-// async function getQuotationStatusByRequestId(requestId: number) {
-//   const quotationsForRequest = await db.query.quotations.findMany({
-//     where: eq(quotations.requestId, requestId),
-//     columns: { id: true, status: true },
-//   });
-
-//   const hasSent = quotationsForRequest.some((q) => q.status === "sent");
-//   return { hasSent, quotations: quotationsForRequest };
-// }
-
-// // POST
-// export async function POST(req: NextRequest) {
-//   try {
-//     const json = await req.json();
-//     let data: DraftInput | SentInput;
-
-//     try {
-//       console.log("STATUS:", json.status);
-//       data = validateQuotation(json);
-//     } catch (err) {
-//       if (err instanceof z.ZodError) {
-//         return NextResponse.json({ success: false, error: err.flatten().fieldErrors }, { status: 400 });
-//       }
-//       throw err;
-//     }
-
-//     // validate linked request and customer
-//     const [request] = await db
-//       .select()
-//       .from(quotation_requests)
-//       .where(eq(quotation_requests.id, data.requestId));
-
-//     if (!request)
-//       return NextResponse.json({ success: false, error: "Invalid requestId" }, { status: 400 });
-
-//     const [customer] = await db
-//       .select()
-//       .from(customer_profile)
-//       .where(eq(customer_profile.id, request.customer_id));
-
-//     if (!customer?.clientCode)
-//       return NextResponse.json({ success: false, error: "Missing client code in customer profile." }, { status: 400 });
-
-//     console.log("POST - create or update quotation (draft or sent)", data);
-
-//     const clientCode = customer.clientCode;
-//     const quotationStatus = data.status === "sent" ? "sent" : "draft";
-//     let quotationId: string;
-
-//     // Case 1: revision creation (new revision from an existing sent quotation)
-//     // If the payload has baseQuotationId, we clone and increment revision
-//     if (data.baseQuotationId) {
-//       const [baseQuotation] = await db
-//         .select()
-//         .from(quotations)
-//         .where(eq(quotations.id, data.baseQuotationId));
-
-//       if (!baseQuotation) {
-//         return NextResponse.json({ success: false, error: "Base quotation not found for revision." }, { status: 404 });
-//       }
-
-//       // Determine next revision number (base + 1)
-//       const nextRevisionNumber = (baseQuotation.revisionNumber ?? 0) + 1;
-
-//       // Create new quotation record (same quotationNumber, incremented revision)
-//       const [newRevision] = await db
-//         .insert(quotations)
-//         .values({
-//           requestId: baseQuotation.requestId,
-//           projectName: data.projectName ?? baseQuotation.projectName,
-//           mode: data.mode ?? baseQuotation.mode,
-//           status: quotationStatus,
-//           payment: data.payment ?? baseQuotation.payment,
-//           delivery: data.delivery ?? baseQuotation.delivery,
-//           validity: data.validity ?? baseQuotation.validity,
-//           warranty: data.warranty ?? baseQuotation.warranty,
-//           quotationNotes: data.quotationNotes ?? baseQuotation.quotationNotes,
-//           cadSketch: data.cadSketch ?? baseQuotation.cadSketch,
-//           vat: String(data.vat ?? baseQuotation.vat ?? 12),
-//           markup: String(data.markup ?? baseQuotation.markup ?? 5),
-//           quotationNumber: baseQuotation.quotationNumber, // same number
-//           revisionNumber: nextRevisionNumber, // incremented
-//         })
-//         .returning({ id: quotations.id });
-
-//       quotationId = newRevision.id;
-
-//       // Insert cloned items and materials
-//       if (Array.isArray(data.items)) {
-//         for (const item of data.items) {
-//           const totalPrice = Number(item.quantity || 0) * Number(item.unitPrice || 0);
-
-//           const [newItem] = await db
-//             .insert(quotationItems)
-//             .values({
-//               quotationId,
-//               itemName: item.itemName ?? "(Untitled Item)",
-//               scopeOfWork: item.scopeOfWork ?? "(To be defined)",
-//               quantity: item.quantity ?? 0,
-//               unitPrice: String(item.unitPrice ?? 0),
-//               totalPrice: totalPrice.toFixed(2),
-//             })
-//             .returning({ id: quotationItems.id });
-
-//           if (item.materials?.length) {
-//             for (const mat of item.materials) {
-//               await db.insert(quotationMaterials).values({
-//                 quotationItemId: newItem.id,
-//                 name: mat.name ?? "(Unnamed material)",
-//                 specification: mat.specification ?? "",
-//                 quantity: mat.quantity ?? 0,
-//               });
-//             }
-//           }
-//         }
-//       }
-
-//       // Insert files if any
-//       if (Array.isArray(data.attachedFiles) && data.attachedFiles.length > 0) {
-//         await db.insert(quotationFiles).values(
-//           data.attachedFiles.map((f) => ({
-//             quotationId,
-//             fileName: f.fileName,
-//             filePath: f.filePath,
-//             uploadedAt: new Date(),
-//           }))
-//         );
-//       }
-
-//       const refreshed = await db.query.quotations.findFirst({
-//         where: eq(quotations.id, quotationId),
-//         with: { items: { with: { materials: true } }, files: true },
-//       });
-
-//       return NextResponse.json({
-//         success: true,
-//         message: `Revision ${nextRevisionNumber} created successfully.`,
-//         data: {
-//           ...refreshed,
-//           revisionLabel: `REVISION-${String(nextRevisionNumber).padStart(2, "0")}`,
-//         },
-//       });
-//     }
-
-//     // Case 2: update existing (handle both draft -> draft and draft -> sent)
-//     else if (data.id) {
-//       quotationId = data.id;
-
-//       await db
-//         .update(quotations)
-//         .set({
-//           projectName: data.projectName ?? "",
-//           mode: data.mode ?? "",
-//           status: quotationStatus,
-//           payment: data.payment ?? "",
-//           delivery: data.delivery ?? "",
-//           validity: data.validity ?? "",
-//           warranty: data.warranty ?? "",
-//           quotationNotes: data.quotationNotes ?? "",
-//           cadSketch: data.cadSketch ?? null,
-//           vat: String(data.vat ?? 12),
-//           markup: String(data.markup ?? 5),
-//           updatedAt: new Date(),
-//         })
-//         .where(eq(quotations.id, quotationId));
-
-//       // clear and reinsert items/materials/files
-//       await db.delete(quotationMaterials).where(
-//         inArray(
-//           quotationMaterials.quotationItemId,
-//           db
-//             .select({ id: quotationItems.id })
-//             .from(quotationItems)
-//             .where(eq(quotationItems.quotationId, quotationId))
-//         )
-//       );
-//       await db.delete(quotationItems).where(eq(quotationItems.quotationId, quotationId));
-//       await db.delete(quotationFiles).where(eq(quotationFiles.quotationId, quotationId));
-//     }
-
-//     // Case 3: Create new quotation (first time save)
-//     else {
-//       const [newQuotation] = await db
-//         .insert(quotations)
-//         .values({
-//           requestId: data.requestId,
-//           projectName: data.projectName ?? "",
-//           mode: data.mode ?? "",
-//           status: quotationStatus,
-//           payment: data.payment ?? "",
-//           delivery: data.delivery ?? "",
-//           validity: data.validity ?? "",
-//           warranty: data.warranty ?? "",
-//           quotationNotes: data.quotationNotes ?? "",
-//           cadSketch: data.cadSketch ?? null,
-//           vat: String(data.vat ?? 12),
-//           markup: String(data.markup ?? 5),
-//           revisionNumber: 0,
-//         })
-//         .returning({ id: quotations.id, quotationSeq: quotations.quotationSeq });
-
-//       quotationId = newQuotation.id;
-
-//       const paddedSeq = String(newQuotation.quotationSeq).padStart(8, "0");
-//       const formattedNumber = `CTIC-${clientCode}-${paddedSeq}`;
-
-//       await db
-//         .update(quotations)
-//         .set({ quotationNumber: formattedNumber })
-//         .where(eq(quotations.id, quotationId));
-//     }
-
-//     // Insert items and materials
-//     if (Array.isArray(data.items)) {
-//       for (const item of data.items) {
-//         const totalPrice = Number(item.quantity || 0) * Number(item.unitPrice || 0);
-
-//         const [newItem] = await db
-//           .insert(quotationItems)
-//           .values({
-//             quotationId,
-//             itemName: item.itemName ?? "(Untitled Item)",
-//             scopeOfWork: item.scopeOfWork ?? "(To be defined)",
-//             quantity: item.quantity ?? 0,
-//             unitPrice: String(item.unitPrice ?? 0),
-//             totalPrice: totalPrice.toFixed(2),
-//           })
-//           .returning({ id: quotationItems.id });
-
-//         if (item.materials?.length) {
-//           for (const mat of item.materials) {
-//             await db.insert(quotationMaterials).values({
-//               quotationItemId: newItem.id,
-//               name: mat.name ?? "(Unnamed material)",
-//               specification: mat.specification ?? "",
-//               quantity: mat.quantity ?? 0,
-//             });
-//           }
-//         }
-//       }
-//     }
-
-//     if (Array.isArray(data.attachedFiles) && data.attachedFiles.length > 0) {
-//       await db.insert(quotationFiles).values(
-//         data.attachedFiles.map((f) => ({
-//           quotationId,
-//           fileName: f.fileName,
-//           filePath: f.filePath,
-//           uploadedAt: new Date(),
-//         }))
-//       );
-//     }
-
-//     const refreshed = await db.query.quotations.findFirst({
-//       where: eq(quotations.id, quotationId),
-//       with: {
-//         items: { with: { materials: true } },
-//         files: true,
-//         request: { with: { customer: true } },
-//       },
-//     });
-
-//     if (!refreshed) throw new Error("Failed to fetch saved quotation.");
-
-//     const cadSketchFile =
-//       refreshed.files?.length > 0
-//         ? refreshed.files.map((f) => ({
-//             id: f.id,
-//             name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
-//             filePath: f.filePath.startsWith("/uploads/")
-//               ? f.filePath
-//               : `/uploads/${f.filePath.replace(/^\/+/, "")}`,
-//             // filePath: f.filePath
-//             //   .replace(/^\/sales\/uploads\/+/, "/uploads/")
-//             //   .replace(/^\/+/, "/uploads/"),
-//           }))
-//         : refreshed.cadSketch
-//         ? [
-//             {
-//               name: refreshed.cadSketch,
-//               filePath: refreshed.cadSketch.startsWith("/uploads/")
-//                 ? refreshed.cadSketch
-//                 : `/uploads/${refreshed.cadSketch.replace(/^\/+/, "")}`,
-//             },
-//           ]
-//         : [];
-
-//     return NextResponse.json({
-//       success: true,
-//       message: data.id
-//         ? "Quotation updated successfully."
-//         : "Quotation created successfully!",
-//       data: {
-//         ...refreshed,
-//         revisionLabel: `REVISION-${String(refreshed.revisionNumber ?? 0).padStart(2, "0")}`,
-//         customer: refreshed.request?.customer ?? null,
-//         cadSketchFile,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error saving quotation:", error);
-//     return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
-//   }
-// }
-
-
-// // ✅ GET — Fetch quotations
-// export async function GET(req: NextRequest) {
-//   const { searchParams } = new URL(req.url);
-//   const status = searchParams.get("status");
-//   const requestId = searchParams.get("requestId");
-
-//   try {
-
-//     if (searchParams.has("checkStatus") && requestId) {
-//       const result = await getQuotationStatusByRequestId(Number(requestId));
-//       return NextResponse.json({ success: true, ...result });
-//   }
-
-//     const conditions = [];
-//     if (status) conditions.push(eq(quotations.status, status as typeof quotations.$inferSelect.status));
-//     if (requestId) conditions.push(eq(quotations.requestId, Number(requestId)));
-
-//     const whereClause =
-//       conditions.length > 1 ? and(...conditions) : conditions[0];
-
-//     const allQuotations = await db.query.quotations.findMany({
-//       where: whereClause,
-//       with: {
-//         items: { with: { materials: true } },
-//         files: true,
-//         request: { with: { customer: true } },
-//       },
-//     });
-
-//     const normalized = allQuotations
-//       .filter((q) => q.status !== "restoring")
-//       .map((q) => {
-//         const cadSketchFile =
-//           q.files?.length > 0
-//             ? q.files.map((f) => ({
-//                 id: f.id,
-//                 name: f.fileName || f.filePath.split("/").pop() || "uploaded_file",
-//                 filePath: f.filePath.startsWith("/uploads/")
-//                   ? f.filePath
-//                   : `/uploads/${f.filePath.replace(/^\/+/, "")}`,
-//                 // filePath: f.filePath
-//                 //   .replace(/^\/sales\/uploads\/+/, "/uploads/")
-//                 //   .replace(/^\/+/, "/uploads/"),
-//               }))
-//             : q.cadSketch
-//             ? [
-//                 {
-//                   name: q.cadSketch.split("/").pop() || "uploaded_file",
-//                   filePath: q.cadSketch.startsWith("/uploads/")
-//                     ? q.cadSketch
-//                     : `/uploads/${q.cadSketch.replace(/^\/+/, "")}`,
-//                 },
-//               ]
-//             : [];
-
-//         const revisionLabel = `REVISION-${String(q.revisionNumber ?? 0).padStart(2, "0")}`;
-
-//         const customer = q.request?.customer
-//               ? {
-//                 companyNmae: q.request.customer.companyName,
-//                 contactPerson: q.request.customer.contactPerson,
-//                 email: q.request.customer.email,
-//                 address: q.request.customer.address,
-//                 phone: q.request.customer.phone,
-//                 clientCode: q.request.customer.clientCode,
-//               }
-//             : null;
-
-//         return {
-//           ...q,
-//           cadSketchFile,
-//           revisionLabel,
-//           customer,
-//           vat: Number(q.vat) || 12,
-//           markup: Number(q.markup) || 5,
-//         };
-//       });
-
-//     return NextResponse.json({ success: true, quotations: normalized });
-//   } catch (err) {
-//     console.error("Error fetching quotations:", err);
-//     return NextResponse.json({ success: false, error: "Failed to fetch quotations." }, { status: 500 });
-//   }
-// }

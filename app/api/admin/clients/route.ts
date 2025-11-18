@@ -1,8 +1,8 @@
-// app/api/purchasing/suppliers/route.ts
+// app/api/admin/clients/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { db } from '@/db/drizzle';
 import { currentUser } from "@clerk/nextjs/server";
-import { suppliers, audit_logs } from '@/db/schema';
+import { clients, audit_logs } from '@/db/schema';
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const role = user.publicMetadata?.role;
-        if (role !== "purchasing" && role !== "admin") {
+        if ( role !== "admin" ) {
             return NextResponse.json({ error: "Forbidden: insufficient access." }, { status: 403 });
         }
 
@@ -23,26 +23,26 @@ export async function POST(req: NextRequest) {
             updatedAt: now,
         };
 
-        const [newSupplier] = await db
-        .insert(suppliers)
+        const [newClient] = await db
+        .insert(clients)
         .values(safeBody)
         .returning();
 
         await db.insert(audit_logs).values({
-            entity: "Supplier",
-            entityId: newSupplier.id?.toString(),
+            entity: "Clients",
+            entityId: newClient.id?.toString(),
             action: "ADD",
-            description: `Supplier "${newSupplier.supplierName}" was addded.`,
+            description: `Client "${newClient.clientName}" was addded.`,
             actorId: user.id,
-            actorName: user.username || "Purchasing",
-            actorRole: role || "Purchasing",
-            module: "Purchasing / Suppliers",
+            actorName: user.username || "Admin",
+            actorRole: role || "Admin",
+            module: "Admin / Clients",
             timestamp: now,
         })
-        return NextResponse.json(newSupplier);
+        return NextResponse.json(newClient);
     } catch (error) {
-        console.error("Error creating supplier:", error);
-        return NextResponse.json({ error: "Failed to create supplier." }, { status: 500 });
+        console.error("Error creating client:", error);
+        return NextResponse.json({ error: "Failed to create client." }, { status: 500 });
     }
 }
 
@@ -50,10 +50,10 @@ export async function GET() {
     try {
         const data = await db
         .select()
-        .from(suppliers);
+        .from(clients);
         return NextResponse.json(data);
     } catch (error) {
-        console.error("Errir fetching suppliers:", error);
-        return NextResponse.json({ error: "Failed to fetch suppliers." }, { status: 500 });
+        console.error("Error fetching clients:", error);
+        return NextResponse.json({ error: "Failed to fetch clients." }, { status: 500 });
     }
 }

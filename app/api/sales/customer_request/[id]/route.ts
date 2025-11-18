@@ -37,6 +37,7 @@ export async function GET(
         email: customer_profile.email,
         phone: customer_profile.phone,
         address: customer_profile.address,
+        tinNumber: customer_profile.tinNumber,
       })
       .from(quotation_requests)
       .leftJoin(customer_profile, eq(customer_profile.id, quotation_requests.customer_id))
@@ -72,6 +73,7 @@ export async function GET(
             email: row.email,
             phone: row.phone,
             address: row.address,
+            tinNumber: row.tinNumber,
           }
         : null,
       files: relatedFiles || [], // ✅ include files array

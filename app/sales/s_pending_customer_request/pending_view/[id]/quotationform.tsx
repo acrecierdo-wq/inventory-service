@@ -6,15 +6,23 @@
 import { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { UploadCloud, Trash2, } from "lucide-react";
 import { PreviewDocument } from "./components/quotationcomponents/PreviewDocument";
-import { PreviewFile } from "@/app/sales/types/quotation";
 import { toast } from "sonner";
 import { NumericInput } from "./components/NumericInput";
+
+interface QuotationFile {
+  id: string;
+  fileName: string;
+  filePath: string;
+  uploadedAt?: string;
+  base64?: string
+};
 
 type QuotationFormProps = {
   requestId: number;
   projectName?: string;
   customerId?: string;
   mode?: string;
+
   initialNotes?: string;
   initialItems?: QuotationItem[];
   initialVat?: number;
@@ -23,10 +31,13 @@ type QuotationFormProps = {
   initialDelivery?: string;
   initialWarranty?: string;
   initialValidity?: string;
-  initialCadSketch?: PreviewFile[];
+  initialAttachedFiles?: QuotationFile[];
+  //initialCadSketch?: PreviewFile[];
   baseQuotationId?: number; // pass this if creating a revision
   initialRevisionNumber?: number; // initial revision (0 = original)
   initialId?: string | null;
+  initialDeliveryType?: string;
+  initialDeliveryDeadline?: Date | null;
   onSaved?: (data: SavedQuotation) => void;
   onSavedDraft?: (data: SavedQuotation) => void;
   onSendQuotation: () => void;
@@ -74,10 +85,13 @@ type SavedQuotation = {
   delivery: string;
   warranty: string;
   quotation_notes?: string;
-  cadSketch?: [];
+  //cadSketch?: [];
+  attachedFiles?: QuotationFile[];
   vat?: number;
   markup?: number;
   customer?: Customer;
+  deliveryType?: string;
+  deliveryDeadline?: string | null;
 };
 
 type Customer = {
@@ -103,9 +117,7 @@ function toNumber(v: string | number | undefined | null) {
   const n = Number(String(v).trim());
   return Number.isFinite(n) ? n : 0;
 }
-
-console.log("📥 Upload route hit");
-async function uploadCadFile(file: File) {
+async function uploadFileToCloudinary(file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -115,19 +127,28 @@ async function uploadCadFile(file: File) {
   });
 
   if (!res.ok) throw new Error("Upload failed");
-
   const data = await res.json();
+  if (!data.success || !data.file?.filePath) {
+    throw new Error("No URL returned from Cloudinary")
+  }
 
-  if (!data.secure_url) throw new Error("No URL returned from Cloudinary");
-
-  // Return an object compatible with PreviewFile
   return {
     success: true,
     file: {
       name: file.name,
-      filePath: data.secure_url, // Cloudinary URL
+      filePath: data.file.filePath, // Cloudinary URL
+      publicId: data.file.publicId,
     },
   };
+}
+
+console.log("📥 Upload route hit");
+// async function uploadCadSketch(file: File) {
+//   return uploadFileToCloudinary(file);
+// }
+
+async function uploadAttachedFiles(file: File) {
+  return uploadFileToCloudinary(file);
 }
 
 export default function QuotationForm({
@@ -142,9 +163,12 @@ export default function QuotationForm({
   initialDelivery,
   initialWarranty,
   initialValidity,
-  initialCadSketch,
+  //initialCadSketch,
+  initialAttachedFiles,
   baseQuotationId,
   initialId,
+  initialDeliveryType,
+  initialDeliveryDeadline,
   onSaved,
   onSavedDraft,
   //customerId, //
@@ -180,13 +204,15 @@ export default function QuotationForm({
   const [quotationNotes, setQuotationNotes] = useState(initialNotes || "");
   const [vat, setVat] = useState<number>(initialVat ?? 12);
   const [markup, setMarkup] = useState<number>(initialMarkup ?? 5);
-  const [cadSketchFile, setCadSketchFile] = useState<PreviewFile[]>([]);
+  //const [cadSketchFile, setCadSketchFile] = useState<PreviewFile[]>(initialCadSketch ||[]);
+  const [attachedFiles, setAttachedFiles] = useState<QuotationFile[]>(initialAttachedFiles ||[]);
   const [showPreview, setShowPreview] = useState(false);
 
+  const [deliveryType, setDeliveryType] = useState<string>(initialDeliveryType || "");
+  const [deliveryDeadline, setDeliveryDeadline] = useState<Date | null>(initialDeliveryDeadline || null)
+
   const [revisionLabel, setRevisionLabel] = useState<string>("-");
-
   const [hasSubmitted, setHasSubmitted] = useState(false);
-
   const [fieldErrors, setFieldErrors] = useState<{
     payment?: string;
     delivery?: string;
@@ -205,18 +231,21 @@ export default function QuotationForm({
     if (initialValidity) setValidity(initialValidity);
     if (initialDelivery) setDelivery(initialDelivery);
     if (initialWarranty) setWarranty(initialWarranty);
-    if (initialCadSketch) setCadSketchFile(initialCadSketch);
+    if (initialAttachedFiles) setAttachedFiles(initialAttachedFiles);
+    //if (initialCadSketch) setCadSketchFile(initialCadSketch);
     if (initialNotes) setQuotationNotes(initialNotes);
     if (initialVat !== undefined) setVat(initialVat);
     if (initialMarkup !== undefined) setMarkup(initialMarkup);
-  }, [initialItems, initialPayment, initialValidity, initialDelivery, initialWarranty, initialCadSketch, initialNotes, initialVat, initialMarkup]);
+    if (initialDeliveryType) setDeliveryType(initialDeliveryType);
+    if (initialDeliveryDeadline) setDeliveryDeadline(initialDeliveryDeadline);
+  }, [initialItems, initialPayment, initialValidity, initialDelivery, initialWarranty, initialAttachedFiles, initialNotes, initialVat, initialMarkup, initialDeliveryType, initialDeliveryDeadline]);
 
-  useEffect(() => {
-    if (initialCadSketch && initialCadSketch.length > 0) {
-      console.log("Restoring CAD file from draft:", initialCadSketch);
-      setCadSketchFile(initialCadSketch);
-    }
-  }, [initialCadSketch]);
+  // useEffect(() => {
+  //   if (initialCadSketch && initialCadSketch.length > 0) {
+  //     console.log("Restoring CAD file from draft:", initialCadSketch);
+  //     setCadSketchFile(initialCadSketch);
+  //   }
+  // }, [initialCadSketch]);
 
   useEffect(() => {
     async function fetchRequest() {
@@ -239,12 +268,10 @@ export default function QuotationForm({
         }
         if (data.project_name) setProject (data.project_name);
         if (data.mode) setMode (data.mode);
-        
       } catch (err) {
         console.error(err);
       }
     }
-
     fetchRequest();
   }, [requestId]);
 
@@ -447,283 +474,220 @@ export default function QuotationForm({
 
   // === CAD Upload UI ===
   
-  const renderCadUpload = () => (
-    <div className="border border-[#ffb7b7] p-4 rounded-lg shadow-sm bg-white">
-      <h3 className="block font-bold text-lg text-[#880c0c] border-b pb-2 border-[#ffb7b7] mb-2">Upload CAD Sketch</h3>
-      <div className="flex items-center gap-4">
-        <input 
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.dwg"
-          onChange={async (e) => {
-            if (e.target.files && e.target.files[0]) {
-              const file = e.target.files[0];
-              const MAX_FILE_SIZE = 10* 1024 * 1024;
+  // const renderCadUpload = () => (
+  //   <div className="border border-[#ffb7b7] p-4 rounded-lg shadow-sm bg-white w-full">
+  //     <h3 className="block font-bold text-lg text-[#880c0c] border-b pb-2 border-[#ffb7b7] mb-2">Upload CAD Sketch</h3>
+  //     <div className="flex items-center gap-4">
+  //       <input 
+  //         type="file"
+  //         accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.dwg"
+  //         onChange={async (e) => {
+  //           if (e.target.files && e.target.files[0]) {
+  //             const file = e.target.files[0];
+  //             const MAX_FILE_SIZE = 10* 1024 * 1024;
 
-              if (file.size > MAX_FILE_SIZE) {
-                toast.error(`File "${file.name}" is too large. Max is 10MB.`);
-                return;
-              }
-              try {
-              const uploadResult = await uploadCadFile(file);
-              if (uploadResult.success) {
-                setCadSketchFile([
-                  {
-                    id: Date.now(),
-                    name: uploadResult.file.name,
-                    filePath: uploadResult.file.filePath,
-                  },
-                ]);
-                toast.success("File uploaded successfully!");
-              }
-            } catch (err) {
-              console.error("CAD upload failed:", err);
-              toast.error("Upload failed: " + (err instanceof Error ? err.message : ""));
-            }
+  //             if (file.size > MAX_FILE_SIZE) {
+  //               toast.error(`File "${file.name}" is too large. Max is 10MB.`);
+  //               return;
+  //             }
+  //             try {
+  //             const uploadResult = await uploadCadSketch(file);
+  //             if (uploadResult.success) {
+  //               setCadSketchFile([
+  //                 {
+  //                   id: Date.now(),
+  //                   name: uploadResult.file.name,
+  //                   filePath: uploadResult.file.filePath,
+  //                 },
+  //               ]);
+  //               toast.success("File uploaded successfully!");
+  //             }
+  //           } catch (err) {
+  //             console.error("CAD upload failed:", err);
+  //             toast.error("Upload failed: " + (err instanceof Error ? err.message : ""));
+  //           }
 
+  //           }
+  //         }}
+  //         disabled={isSent}
+  //         className="hidden"
+  //         id="cad-upload"
+  //       />
+  //       <label
+  //         htmlFor="cad-upload"
+  //         className="px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition flex item-center gap-2"
+  //       >
+  //         <UploadCloud size={18} />Upload File
+  //       </label>
+  //       {cadSketchFile.length > 0 && (
+  //         <ul className="text-sm text-gray-700">
+  //           {cadSketchFile.map((f, i) => (
+  //             <li key={i} className="flex items-center gap-2">
+  //               <a
+  //                 href={f.filePath}
+  //                 target="_blank"
+  //                 rel="noopener noreferrer"
+  //                 className="text-blue-600 hover:underline"
+  //               >
+  //                 {f.name}
+  //               </a>
+  //               {!isSent && (
+  //                 <button
+  //                 type="button"
+  //                 onClick={() => setCadSketchFile(cadSketchFile.filter((_, idx) => idx !== i))}
+  //                 className="text-red-600 hover:text-red-800"
+  //               >
+  //                 ✕
+  //               </button>
+  //               )}
+  //             </li>
+  //           ))}
+  //         </ul>
+  //       )}
+  //     </div>
+  //     <p className="text-xs text-gray-500 mt-2">
+  //       Allowed types: PDF, JPG, PNG, DOC, XLS, DWG — Max size: 10MB - 1 File Only
+  //     </p>
+  //   </div>
+  // );
+
+//type QuotationFilePreview = QuotationFile | File;
+
+const renderAttachmentsUpload = () => (
+  <div className="border border-[#ffb7b7] p-4 rounded-lg shadow-sm bg-white w-full">
+    <h3 className="block font-bold text-lg text-[#880c0c] border-b pb-2 border-[#ffb7b7] mb-2">
+      Upload Attachment/s
+    </h3>
+
+    <div className="flex items-center gap-4">
+      <input
+        type="file"
+        accept=".jpg,.jpeg,.png"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+
+          const MAX_FILE_SIZE = 10 * 1024 * 1024;
+          const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+
+          if (!allowedTypes.includes(file.type)) {
+            toast.error(`File "${file.name}" is not a supported image type (JPG/JPEG/PNG).`);
+            return;
+          }
+
+          if (file.size > MAX_FILE_SIZE) {
+            toast.error(`File "${file.name}" is too large. Max is 10MB.`);
+            return;
+          }
+
+          try {
+            const uploadResult = await uploadAttachedFiles(file);
+            if (uploadResult.success) {
+              // push the record returned by upload (filePath already Cloudinary/public URL)
+              setAttachedFiles((prev) => [
+                ...prev,
+                {
+                  id: Date.now().toString(),
+                  fileName: uploadResult.file.name,
+                  filePath: uploadResult.file.filePath,
+                  uploadedAt: new Date().toISOString(),
+                },
+              ]);
+              toast.success("File uploaded successfully!");
             }
-          }}
-          disabled={isSent}
-          className="hidden"
-          id="cad-upload"
-        />
-        <label
-          htmlFor="cad-upload"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition flex item-center gap-2"
-        >
-          <UploadCloud size={18} />Upload File
-        </label>
-        {cadSketchFile.length > 0 && (
-          <ul className="text-sm text-gray-700">
-            {cadSketchFile.map((f, i) => (
-              <li key={i} className="flex items-center gap-2">
-                <a
-                  href={f.filePath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {f.name}
-                </a>
-                {!isSent && (
-                  <button
+          } catch (err) {
+            console.error("Other file upload failed:", err);
+            toast.error("Upload failed: " + (err instanceof Error ? err.message : ""));
+          } finally {
+            // clear input value so same file can be reselected if needed
+            if (e.target) (e.target as HTMLInputElement).value = "";
+          }
+        }}
+        disabled={isSent}
+        className="hidden"
+        id="attachment-upload"
+      />
+
+      <label
+        htmlFor="attachment-upload"
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition flex items-center gap-2"
+      >
+        <UploadCloud size={18} /> Upload File
+      </label>
+
+      {attachedFiles.length > 0 && (
+        <ul className="text-sm text-gray-700">
+          {attachedFiles.map((f) => (
+            <li key={f.id} className="flex items-center gap-2">
+              <a
+                href={f.filePath}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                {f.fileName}
+              </a>
+              {!isSent && (
+                <button
                   type="button"
-                  onClick={() => setCadSketchFile(cadSketchFile.filter((_, idx) => idx !== i))}
-                  className="text-red-600 hover:text-red-800"
+                  onClick={() =>
+                    setAttachedFiles((prev) => prev.filter((file) => file.id !== f.id))
+                  }
+                  className="text-red-600 hover:text-red-800 cursor-pointer"
                 >
                   ✕
                 </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <p className="text-xs text-gray-500 mt-2">
-        Allowed types: PDF, JPG, PNG, DOC, XLS, DWG — Max size: 10MB
-      </p>
-      {fieldErrors.cadSketch && <p className="text-red-600 text-sm mt-2">{fieldErrors.cadSketch}</p>}
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
-  );
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    <p className="text-xs text-gray-500 mt-2">
+      Allowed types: JPG, PNG, JPEG — Max size: 10MB
+    </p>
+  </div>
+);
 
-  const handleSave = async (status: "draft" | "sent" | "restoring") => {
-    // only require validation when saving as final (sent)
-    if (status === "sent" && !validateAllFields()) {
-      toast.error("Please fill in all required fields before saving.");
-      return;
-    }
+  //const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-    setIsLoading(true);
-
-    try {
-      let uploadedFilePath: string | null = null;
-
-      if (cadSketchFile.length > 0 && cadSketchFile[0] instanceof File) {
-        if (cadSketchFile[0].size > MAX_FILE_SIZE) {
-          toast.error("File too large. Maximum is 10MB.");
-          setIsLoading(false);
-          return;
-        }
-        const uploadResult = await uploadCadFile(cadSketchFile[0]);
-        if (uploadResult.success) {
-          uploadedFilePath = uploadResult.file.filePath;
-        } else {
-          toast.error("Failed to uplaod file");
-          setIsLoading(false);
-          return;
-        }
-      } else if (cadSketchFile.length > 0) {
-        const first = cadSketchFile[0];
-        if (!(first instanceof File)) {
-          uploadedFilePath = first.filePath || null;
-        }
-      }
-
-      const itemsForSave = items.map((it) => ({
-        itemName: it.itemName,
-        scopeOfWork: it.scopeOfWork,
-        quantity: toNumber(it.quantity),
-        unitPrice: toNumber(it.unitPrice),
-        materials: (it.materials || []).map((m) => ({
-          name: m.name,
-          specification: m.specification,
-          quantity: toNumber(m.quantity),
-        })),
-      }));
-
-      const attachedFiles = cadSketchFile.map((f) => 
-      f instanceof File
-        ? {
-          fileName: f.name,
-          filePath: f.filePath,
-        }
-      : {
-          fileName: f.name,
-          filePath: f.filePath,
-      });
-
-      const isUuid = (value: unknown): value is string =>
-        typeof value === "string" &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value as string);
-    
-      const isRestoredDraft = initialId && /^[0-9a-fA-F-]{36}$/.test(initialId);
-      
-    const payLoad = {
-        id: isRestoredDraft ? initialId : undefined,
-        requestId,
-        baseQuotationId: isUuid(baseId) ? baseId : undefined,
-        projectName: projectName || "",
-        mode: mode || "",
-        payment,
-        validity,
-        delivery,
-        warranty,
-        quotationNotes,
-        cadSketch: uploadedFilePath,
-        vat: Number(vat) || 12,
-        markup: Number(markup) || 5,
-        attachedFiles,
-        items: itemsForSave,
-        status,
-      };
-
-      console.log("Saving quotation payload:", payLoad);
-
-      const isRestoringToDraft = status === "draft" && isRestoredDraft;
-      const url = isRestoringToDraft
-        ? `/api/sales/quotations/${initialId}`
-        : "/api/sales/quotations";
-      const method = isRestoringToDraft ? "PUT" : "POST";
-
-      console.log("Saving draft:", { method, url, id: payLoad.id });
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payLoad),
-      });
-
-      const result = await res.json();
-
-      if (res.ok && result.success) {
-        // normalize possible shapes from api
-        const savedQuotation = result.data;
-
-        setQuotationNumber(savedQuotation?.quotationNumber || "");
-        setRevisionLabel(savedQuotation?.revisionLabel || "");
-
-        toast.success(
-          status === "draft"
-            ? isRestoredDraft
-              ? "Restored draft saved again."
-              : "Draft saved successfully."
-            : "Quotation saved successfully!"
-        );
-        
-        if (status === "draft" && sessionStorage.getItem("activeRestoreDraftId")) {
-          sessionStorage.removeItem("activeRestoringDraftId");
-        }
-
-        if (status === "draft") {
-          onSavedDraft?.({
-            ...savedQuotation,
-            vat: savedQuotation?.vat ?? 12,
-            markup: savedQuotation?.markup ?? 5,
-            items: savedQuotation?.items ?? [],
-          });
-
-          window.dispatchEvent(new CustomEvent("drafts-unlocked"));
-          window.dispatchEvent(new CustomEvent("drafts-updated"));
-        } else {
-          onSaved?.(savedQuotation);
-        }
-      } else {
-        toast.error(`Failed to save quotation: ${result.error || "Unknown error"}`);
-      }
-    } catch (err) {
-      console.error("Error saving quotation:", err);
-      toast.error("Error saving quotation. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSend = async () => {
-  setHasSubmitted(true);
-
-  if (!validateAllFields()) return;
+const handleSave = async (status: "draft" | "sent" | "restoring") => {
+  if (status === "sent" && !validateAllFields()) {
+    toast.error("Please fill in all required fields before saving.");
+    return;
+  }
 
   setIsLoading(true);
 
   try {
-    let uploadedFilePath: string | null = null;
-
-    // Upload file if needed
-    if (cadSketchFile.length > 0 && cadSketchFile[0] instanceof File) {
-      if (cadSketchFile[0].size > MAX_FILE_SIZE) {
-        toast.error("File too large. Max size is 10MB.");
-        setIsLoading(false);
-        return;
-      }
-      const uploadResult = await uploadCadFile(cadSketchFile[0]);
-      if (uploadResult.success) {
-        uploadedFilePath = uploadResult.file.filePath;
-      } else {
-        toast.error("Failed to upload file: ");
-        setIsLoading(false);
-        return;
-      }
-    } else if (cadSketchFile.length > 0) {
-      const first = cadSketchFile[0];
-      if (!(first instanceof File)) {
-        uploadedFilePath = first.filePath || null;
-      }
-    }
-
-    const itemsForSend = items.map((it) => ({
+    // --- Build items ---
+    const itemsForSave = items.map(it => ({
       itemName: it.itemName,
       scopeOfWork: it.scopeOfWork,
-      quantity: toNumber(it.quantity),
-      unitPrice: toNumber(it.unitPrice),
-      materials: it.materials.map((m) => ({
+      quantity: Number(it.quantity),
+      unitPrice: Number(it.unitPrice),
+      materials: (it.materials || []).map(m => ({
         name: m.name,
         specification: m.specification,
-        quantity: toNumber(m.quantity),
+        quantity: Number(m.quantity),
       })),
     }));
 
-    const attachedFiles = cadSketchFile.map((f) => ({
-      fileName: f.name,
-      filePath: f.filePath
-    })
-    );
+    // --- Build attached files for backend ---
+    const attachedFilesPayload = attachedFiles
+      .filter(f => f.filePath)
+      .map(f => ({
+        fileName: f.fileName,
+        filePath: f.filePath,
+        base64: f.base64, // include if uploading a new file
+      }));
 
-    // ✅ Detect if this is a restored draft (UUID check)
-    const isRestoredDraft =
-      initialId && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(initialId);
+    const isRestoredDraft = initialId &&
+      /^[0-9a-fA-F-]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(initialId);
 
-    const payLoad = {
+    // --- Quotation Payload ---
+    const quotationPayload = {
       id: isRestoredDraft ? initialId : undefined,
       requestId,
       baseQuotationId: baseId ?? undefined,
@@ -734,45 +698,141 @@ export default function QuotationForm({
       delivery,
       warranty,
       quotationNotes,
-      cadSketch: uploadedFilePath,
       vat: Number(vat) || 12,
       markup: Number(markup) || 5,
-      attachedFiles,
-      status: "sent",
-      items: itemsForSend,
+      items: itemsForSave,
+      attachedFiles: attachedFilesPayload,
+      deliveryType,
+      deliveryDeadline: deliveryDeadline?.toISOString() ?? null,
+      status,
     };
 
-    // ✅ Use PUT when restoring, POST otherwise
+    const method = isRestoredDraft ? "PUT" : "POST";
     const url = isRestoredDraft
       ? `/api/sales/quotations/${initialId}`
       : "/api/sales/quotations";
 
-    const method = isRestoredDraft ? "PUT" : "POST";
-
-    console.log(`Sending quotation via ${method}:`, payLoad);
-
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payLoad),
+      body: JSON.stringify(quotationPayload),
     });
 
     const result = await res.json();
 
-    if (res.ok && result.success) {
-      toast.success("Quotation sent successfully!");
-      window.dispatchEvent(new CustomEvent("quotation-sent"));
-
-      setIsSent(true);
-      setQuotationNumber(result.data.quotationNumber);
-      setRevisionLabel(result.data.revisionLabel);
-      setCustomer((prev) => prev ?? result.data.customer ?? prev);
-      setSavedQuotation(result.data);
-
-      onSaved?.(result.data);
-    } else {
-      toast.error(`Failed to send quotation: ${result.error || "Unknown error"}`);
+    if (!res.ok || !result.success) {
+      toast.error(`Failed to save quotation: ${result.error || "Unknown error"}`);
+      setIsLoading(false);
+      return;
     }
+
+    const savedQuotation = result.data;
+
+    // Update state with returned attached files to keep preview
+    setAttachedFiles(savedQuotation.attachedFiles || []);
+
+    toast.success(
+      status === "draft"
+        ? isRestoredDraft ? "Restored draft saved again." : "Draft saved successfully."
+        : "Quotation saved successfully!"
+    );
+
+    onSavedDraft?.(savedQuotation);
+    onSaved?.(savedQuotation);
+
+  } catch (err) {
+    console.error("Error saving quotation:", err);
+    toast.error("Error saving quotation. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+const handleSend = async () => {
+  setHasSubmitted(true);
+  if (!validateAllFields()) return;
+
+  setIsLoading(true);
+
+  try {
+    // --- Build items ---
+    const itemsForSend = items.map(it => ({
+      itemName: it.itemName,
+      scopeOfWork: it.scopeOfWork,
+      quantity: Number(it.quantity),
+      unitPrice: Number(it.unitPrice),
+      materials: (it.materials || []).map(m => ({
+        name: m.name,
+        specification: m.specification,
+        quantity: Number(m.quantity),
+      })),
+    }));
+
+    // --- Build attached files for backend ---
+    const attachedFilesPayload = attachedFiles
+      .filter(f => f.filePath)
+      .map(f => ({
+        fileName: f.fileName,
+        filePath: f.filePath,
+        base64: f.base64,
+      }));
+
+    const isRestoredDraft = initialId &&
+      /^[0-9a-fA-F-]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(initialId);
+
+    // --- Final payload ---
+    const quotationPayload = {
+      id: isRestoredDraft ? initialId : undefined,
+      requestId,
+      baseQuotationId: baseId ?? undefined,
+      projectName: projectName || "",
+      payment,
+      validity,
+      delivery,
+      warranty,
+      quotationNotes,
+      vat: Number(vat) || 12,
+      markup: Number(markup) || 5,
+      items: itemsForSend,
+      attachedFiles: attachedFilesPayload,
+      deliveryType,
+      deliveryDeadline: deliveryDeadline?.toISOString() ?? null,
+      status: "sent",
+    };
+
+    const method = isRestoredDraft ? "PUT" : "POST";
+    const url = isRestoredDraft
+      ? `/api/sales/quotations/${initialId}`
+      : "/api/sales/quotations";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(quotationPayload),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      toast.error(`Failed to send quotation: ${result.error || "Unknown error"}`);
+      return;
+    }
+
+    const sentQuotation = result.data;
+
+    // Update state with returned attached files to keep preview
+    setAttachedFiles(sentQuotation.attachedFiles || []);
+
+    toast.success("Quotation sent successfully!");
+    setIsSent(true);
+    setQuotationNumber(sentQuotation.quotationNumber);
+    setRevisionLabel(sentQuotation.revisionLabel);
+    setSavedQuotation(sentQuotation);
+
+    window.dispatchEvent(new CustomEvent("quotation-sent"));
+    onSaved?.(sentQuotation);
+
   } catch (err) {
     console.error("Error sending quotation:", err);
     toast.error("Error sending quotation. Please try again.");
@@ -780,7 +840,6 @@ export default function QuotationForm({
     setIsLoading(false);
   }
 };
-
 
   // If preview requested, pass itemsWithTotals to PreviewDocument (so totalPrice is defined)
   if (showPreview) {
@@ -792,29 +851,7 @@ export default function QuotationForm({
 });
     const itemsForPreview = buildItemsWithTotals();
     return (
-      
-      // <PreviewDocument
-      //   items={itemsForPreview}
-      //   payment={payment}
-      //   delivery={delivery}
-      //   warranty={warranty}
-      //   validity={validity}
-      //   quotationNotes={quotationNotes}
-      //   requestId={requestId}
-      //   projectName={projectName}
-      //   vat={vat}
-      //   markup={markup}
-      //   cadSketchFile={cadSketchFile}
-      //   //revisionLabel={revisionLabel}
-      //   revisionLabel={revisionLabel || String(savedQuotation?.revisionLabel ?? "REV_00")}
-      //   baseQuotationId={baseId ?? requestId}
-      //   quotationNumber={quotationNumber}
-      //   //customer={customer}
-      //   customer={customer || savedQuotation?.customer || null}
-      //   onBack={() => setShowPreview(false)}
-      //   onSend={handleSend}
-      //   isSent={isSent}
-      //   quotation={{ createdAt: new Date().toISOString() }}
+     
       <PreviewDocument
         items={itemsForPreview}
         payment={payment || ""}
@@ -826,7 +863,9 @@ export default function QuotationForm({
         projectName={projectName || ""}
         vat={vat || 0}
         markup={markup || 0}
-        cadSketchFile={cadSketchFile || []}
+        attachedFiles={attachedFiles || []}
+        //cadSketchFile={cadSketchFile || []}
+        //otherFiles={otherFiles || []}
         revisionLabel={(
           revisionLabel ||
           (savedQuotation?.revisionLabel
@@ -863,7 +902,7 @@ export default function QuotationForm({
           {/* <p><span className="font-medium text-[#880c0c]">Email:</span> {customer.email}</p> */}
           <p><span className="font-medium text-[#880c0c]">Address:</span> {customer.address}</p>
           <p><span className="font-medium text-[#880c0c]">Phone:</span> {customer.phone}</p>
-          <p><span className="font-medium text-[#880c0c]">TIN:</span> {customer.tinNumber}</p>
+          <p><span className="font-medium text-[#880c0c]">TIN:</span> {customer.tinNumber || "-"}</p>
           <p><span className="font-medium text-[#880c0c]">Contact Person:</span> {customer.contactPerson}</p>
         </div>
       ) : (
@@ -880,14 +919,25 @@ export default function QuotationForm({
         <p><span className="font-medium text-[#880c0c]">Base Quotation ID:</span> {baseId ?? requestId}</p>
         <p><span className="font-medium text-[#880c0c]">Request ID:</span> {requestId}</p>
         <p><span className="font-medium text-[#880c0c]">Project Name:</span> <span className="uppercase">{projectName || "Not provided"}</span></p>
-        <p><span className="font-medium text-[#880c0c]">Mode:</span> {mode || "Not provided"}</p>
+        <p>
+        <label className="font-medium text-[#880c0c]">Mode: </label>
+        <input
+        type="text"
+        value={mode}
+        readOnly
+        onChange={(e) => setDeliveryType(e.target.value)}
+        />
+        </p>
       </div>
     </div>
   </div>
 </div>
 
-      {/* CAD Upload */} 
-      {renderCadUpload()}
+      <section className="flex flex-row gap-2">
+        {/* CAD Upload */} 
+      {/* {renderCadUpload()} */}
+      {renderAttachmentsUpload()}
+      </section>
 
       {/* Add Item */}
       <div className="flex justify-end">
@@ -1216,7 +1266,7 @@ export default function QuotationForm({
     }}
     disabled={isLoading}
     className={`px-6 py-2 rounded-lg transition ${
-      isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-700 text-white hover:bg-blue-800"
+      isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-700 text-white hover:bg-blue-800 cursor-pointer"
     }`}
   >
     Done
@@ -1227,7 +1277,7 @@ export default function QuotationForm({
     onClick={() => handleSave("draft")}
     disabled={isLoading}
     className={`px-6 py-2 rounded-lg transition ${
-      isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-white text-gray-500 hover:bg-gray-100"
+      isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-white text-gray-500 hover:bg-gray-100 cursor-pointer"
     }`}
   >
     {isLoading ? "Saving..." : "Save as Draft"}

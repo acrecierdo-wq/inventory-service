@@ -171,6 +171,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
         phone: customer.phone,
         address: customer.address,
         clientCode: customer.clientCode,
+        tinNumber: customer.tinNumber,
       },
     });
   } catch (err) {
@@ -314,6 +315,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         phone: customer.phone,
         address: customer.address,
         clientCode: customer.clientCode,
+        tinNumber: customer.tinNumber
       },
       success: true,
       //message: `Quotation ${status} successfully.`,

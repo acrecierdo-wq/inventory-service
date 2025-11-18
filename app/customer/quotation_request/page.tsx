@@ -639,7 +639,7 @@ useEffect(() => {
 {selectedRequest.files && selectedRequest.files.length > 0 && (
   <div>
     <strong>Attachments:</strong>
-    <div className="mt-3 ml-4 flex flex-wrap gap-4">
+    <div className="mt-3 ml-4 flex flex-wrap gap-4 mb-6">
       {selectedRequest.files.map((file, index) => {
         const ext = file.path.split(".").pop()?.toLowerCase();
         const isImage = ["jpg", "jpeg", "png", "gif"].includes(ext || "");

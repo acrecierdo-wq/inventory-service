@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomerHeader } from "@/components/header-customer";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -62,12 +63,13 @@ const Modal = ({
 };
 
 const NewRequest = () => {
-  const [projectName, setProjectName] = useState("");
-  const [mode, setMode] = useState("");
+  const [projectName, setProjectName] = useState(""); 
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [mode, setMode] = useState("Mode");
+  const [otherMode, setOtherMode] = useState("");
 
   // ✅ include email in profile
   const [profile, setProfile] = useState<{ companyName: string; contactPerson: string; address: string; phone: string; } | null>(null);
@@ -338,18 +340,27 @@ const NewRequest = () => {
 
               {/* Mode */}
               <div>
-                <label className="block font-semibold mb-2">Mode</label>
-                <select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value)}
-                  className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100"
-                >
-                  <option value="" disabled>
-                    Select Mode
-                  </option>
-                  <option value="Pick-up">Pick-up</option>
-                  <option value="Delivery">Delivery</option>
-                </select>
+            <Select onValueChange={setMode} value={mode}>
+            <SelectTrigger className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100">
+              <SelectValue placeholder="Select a mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Mode" className="cursor-pointer">Select mode</SelectItem>
+              <SelectItem value="Deliver" className="cursor-pointer">Deliver</SelectItem>
+              <SelectItem value="Pickup" className="cursor-pointer">Pickup</SelectItem>
+              <SelectItem value="Other" className="cursor-pointer">Other</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {mode === "Other" && (
+            <input 
+              type="text"
+              placeholder="Please specify other delivery mode"
+              className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100 mt-2"
+              value={otherMode}
+              onChange={(e) => setOtherMode(e.target.value)}
+            />
+          )}
               </div>
 
               {/* Message */}
@@ -377,7 +388,7 @@ const NewRequest = () => {
       onDragLeave={handleDragLeave}
       htmlFor="upload-file"
       className={`h-20 border-2 border-dashed rounded-xl cursor-pointer flex flex-col justify-center items-center transition ${
-        dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50"
+        dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-100"
       }`}
     >
       <input id="upload-file" type="file" multiple name="files" className="hidden" onChange={handleFileChange} />
@@ -385,7 +396,7 @@ const NewRequest = () => {
       <p className="text-base text-gray-600 mt-2">Drag & drop files here, or click to upload</p>
     </label>
     <p className="text-xs text-gray-500 mt-2">
-      Allowed types: PDF, JPG, PNG, DOC, XLS, DWG — Max size: 10MB
+      Allowed types: PDF, JPG, PNG, DOC, XLS — Max size: 10MB
     </p>
   </div>
 

@@ -42,7 +42,7 @@ export type SavedQuotation = {
   warranty: string;
   validity: string;
   //cadSketch?: string | null;
-  files?: { id: number; path: string }[],
+  attachedFiles?: QuotationFile[],
   cadSketchFile?: PreviewFile[];
   revisionLabel?: string;
   revisionNumber?: number;
@@ -67,3 +67,9 @@ export type PreviewFile = {
   url?: string;
 };
 
+interface QuotationFile {
+  id: string;
+  fileName: string;
+  filePath: string;
+  uploadedAt?: string;
+};

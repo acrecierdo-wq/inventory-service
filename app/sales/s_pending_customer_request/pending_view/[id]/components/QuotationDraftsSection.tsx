@@ -177,7 +177,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { QuotationItem, PreviewFile } from "@/app/sales/types/quotation";
+import { QuotationItem } from "@/app/sales/types/quotation";
 
 export type Draft = {
   id: string;
@@ -194,13 +194,21 @@ export type Draft = {
   vat?: number;
   markup?: number;
   status?: "draft" | "restoring" | "sent" | string;
-  cadSketch?: string | null;
-  cadSketchFile?: PreviewFile[];
-  files?: {
-    id?: string;
-    fileName: string;
-    filePath: string;
-  }[],
+  attachedFiles?: QuotationFile[];
+  // cadSketch?: string | null;
+  // cadSketchFile?: PreviewFile[];
+  // files?: {
+  //   id?: string;
+  //   fileName: string;
+  //   filePath: string;
+  // }[],
+};
+
+interface QuotationFile {
+  id: string;
+  fileName: string;
+  filePath: string;
+  uploadedAt?: string;
 };
 
 type Props = {
@@ -249,66 +257,77 @@ export function QuotationDraftsSection({
     }
   };
 
-  const handleRestore = async (draft: Draft) => {
-     console.log("%c[handleRestoreDraft] CALLED", "color: red; font-weight: bold;", draft);
-   // console.log("Restoring draft:", draft);
+const handleRestore = useCallback(
+  async (draft: Draft) => {
+    console.log("%c[handleRestoreDraft] CALLED", "color: red; font-weight: bold;", draft);
 
-    // prevent restoring if a quotation already sent
+    // Prevent restoring if a quotation has already been sent
     if (hasSentQuotation) {
       toast.warning("You cannot restore drafts after a quotation has been sent.");
       return;
     }
 
+    // Prevent restoring if another draft is being restored
     if (locked || restoringDraftId) {
       toast.warning("Another draft is already being restored.");
       return;
     }
 
     try {
-      // mark draft as restoring in backend so it doesn't show up in fetch drafts
-      await fetch(`/api/sales/quotations/${draft.id}`, {
+      // Step 1: Update backend status to 'restoring' and include files
+      const restorePayload = {
+        requestId: draft.requestId,
+        status: "restoring",
+        attachedFiles: draft.attachedFiles ?? [],
+        //cadSketch: (draft as string).cadSketch ?? null, // Add cadSketch if present
+      };
+
+      const res = await fetch(`/api/sales/quotations/${draft.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId: draft.requestId,
-          status: "restoring",
-        }),
+        body: JSON.stringify(restorePayload),
       });
 
-      const res = await fetch(`/api/sales/quotations/${draft.id}`);
+      if (!res.ok) {
+        console.error("❌ Failed to mark draft as restoring:", res.status);
+        toast.error("Failed to restore draft. Please try again.");
+        return;
+      }
+
       const data = await res.json();
 
-      // const result = await response.json();
+      if (!data.success) {
+        toast.error("Failed to fetch restored draft from server.");
+        return;
+      }
 
-      // if (!response.ok) {
-      //   console.error("Restore failed:", result);
-      //   toast.error(`Failed to restore draft: ${result.error?.requestId || result.error || "Unknown error"}`);
-      //   return;
-      // }
+      // Step 2: Update local state with full restored draft
+      const restoredForm: Draft = {
+        ...draft, // local draft info
+        ...data.data, // server updated info (status = restoring + full files)
+      };
 
-      // setLocked(true);
-      // setRestoringDraftId(draft.id);
-      if (data.success) {
-        onRestore?.({
-          ...draft,
-          ...data.data,
-        });
-        setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+      setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
+      onRestore?.(restoredForm);
 
-      //window.dispatchEvent(new CustomEvent("drafts-locked"));
-      window.dispatchEvent(new CustomEvent("drafts-updated", { detail: { removedDraftId: draft.id }, })); 
+      sessionStorage.setItem("activeRestoringDraftId", draft.id);
+
+      // Dispatch events to lock UI and notify updates
+      window.dispatchEvent(new CustomEvent("drafts-locked"));
+      window.dispatchEvent(
+        new CustomEvent("drafts-updated", { detail: { removedDraftId: draft.id } })
+      );
 
       toast.success("Draft restored successfully!");
-      } else {
-        toast.error("Failed to load draft data.");
-      }
+      console.log("✅ [handleRestoreDraft] Finished restoring draft:", draft.id);
     } catch (err) {
-      console.error("Failed to restore draft:", err);
+      console.error("🔥 Error restoring draft:", err);
       toast.error("Failed to restore draft. Please try again.");
-      // setLocked(false);
-      // setRestoringDraftId(null);
     }
-  };
+  },
+  [locked, restoringDraftId, hasSentQuotation, onRestore]
+);
+
 
   useEffect(() => {
     const handleDraftsUpdated = () => {

@@ -103,6 +103,16 @@ export const SideBarAdmin = ({className}: Props) => {
                 href="/admin/audit_trails" 
                 iconSrc="/tray.svg"
                 />
+                <SidebarItem 
+                label="Personnels" 
+                href="/admin/personnels" 
+                iconSrc="/tray.svg"
+                />
+                <SidebarItem 
+                label="Clients" 
+                href="/admin/clients" 
+                iconSrc="/tray.svg"
+                />
             </div>
             {/* <div className="pb-5 flex justify-center">
                 <ClerkLoading>
