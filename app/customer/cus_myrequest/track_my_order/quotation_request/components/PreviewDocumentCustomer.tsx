@@ -715,12 +715,12 @@ const [actionTimestamp, setActionTimestamp] = useState<string | null>(
             >
               Approve
             </button>
-            <button
+            {/* <button
               onClick={() => handleCustomerActionInternal("revision_requested")}
               className="px-6 py-2 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 cursor-pointer"
             >
               Request Revision
-            </button>
+            </button> */}
             <button
               onClick={() => handleCustomerActionInternal("rejected")}
               className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer"
