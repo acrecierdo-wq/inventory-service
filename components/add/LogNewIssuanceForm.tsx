@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/header";
 import DRModal from "@/app/warehouse/issuance_log/dr_modal";
 import { toast } from "sonner";
@@ -12,6 +12,10 @@ import { DraftIssuance, FormItem } from "@/app/warehouse/issuance_log/types/issu
 import { useUser } from "@clerk/nextjs";
 
 type Selection = { id: string | number; name: string };
+
+type Issuance = {
+  id: string;
+}
 
 type Combination = {
   itemId: number;
@@ -31,7 +35,7 @@ interface Props {
 
 const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
-  const [issuanceRef, setIssuanceRef] = useState<string | null>(null);
+  const [issuance, setIssuance] = useState<Issuance>({ id: "" });
   const [clientName, setClientName] = useState(draftData?.clientName || "");
   const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
   const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
@@ -41,6 +45,9 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const [drInfo, setDrInfo] = useState<{ drNumber: string; saveAsDraft: boolean } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   const [items, setItems] = useState<FormItem[]>(() => 
     draftData?.items.map((i) => ({
@@ -219,6 +226,167 @@ useEffect(() => {
       setSelectedUnit(null);
     }
   }, [selectedSize, selectedVariant, selectedUnit, availableSizes, availableVariants, availableUnits]);
+
+// Attempts direct unsigned Cloudinary upload first, otherwise falls back to POST /api/cloudinary/upload
+async function uploadToCloudinary(file: File) {
+  // Try unsigned upload using client-side preset (fast, no server roundtrip)
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const unsignedPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+  if (cloudName && unsignedPreset) {
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", unsignedPreset);
+
+    const res = await fetch(url, { method: "POST", body: fd });
+    if (!res.ok) throw new Error("Cloudinary upload failed (unsigned)");
+    const json = await res.json();
+    return json.secure_url as string;
+  }
+
+  // Fallback: your server side upload endpoint - implement if you already have one.
+  // It should accept FormData with `file` and return { url: string }
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/cloudinary/upload", { method: "POST", body: fd });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error("Server upload failed: " + txt);
+    }
+    const json = await res.json();
+    if (!json.url) throw new Error("Server upload response missing url");
+    return json.url as string;
+  } catch (err) {
+    throw err;
+  }
+}
+
+// Core OCR flow: upload -> call /api/ocr -> apply results to UI
+async function handleOCRFile(file: File) {
+  setIsScanning(true);
+  try {
+    // 1) upload to Cloudinary
+    const cloudinaryUrl = await uploadToCloudinary(file);
+
+    // 2) call your OCR API route
+    const ocrRes = await fetch("/api/ocr", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: cloudinaryUrl }),
+    });
+
+    if (!ocrRes.ok) {
+      const err = await ocrRes.json().catch(() => null);
+      throw new Error(err?.error || "OCR request failed");
+    }
+
+    const ocrJson = await ocrRes.json();
+
+    // ocrJson.fields expected shape:
+    // { itemName, quantity, unit, size, variant, description }
+    const fields = ocrJson.fields || {};
+    const extractedName = fields.itemName || fields.description || "";
+    const extractedSize = fields.size || null;
+    const extractedVariant = fields.variant || null;
+    const extractedUnit = fields.unit || null;
+    const extractedQty = fields.quantity ? String(fields.quantity) : "";
+
+    // 3) try to auto-select item by calling your autocomplete endpoint
+    // Your AutoComplete component expects selection object { id, name }
+    let matchedSelection: Selection | null = null;
+    if (extractedName) {
+      try {
+        // If your autocomplete endpoint returns an array of suggestions, use the first match.
+        const q = encodeURIComponent(extractedName);
+        const acRes = await fetch(`/api/autocomplete/item-name?query=${q}`);
+        if (acRes.ok) {
+          const acJson = await acRes.json();
+          // If your endpoint returns different shape, adapt this check.
+          if (Array.isArray(acJson) && acJson.length > 0) {
+            const first = acJson[0];
+            matchedSelection = { id: first.id ?? first.value ?? first.key ?? first.name, name: first.name ?? first.value ?? first.key ?? extractedName };
+          }
+        }
+      } catch (e) {
+        console.warn("autocomplete lookup failed", e);
+      }
+    }
+
+    // 4) If matchedSelection found, setSelectedItem which triggers fetching combinations (existing useEffect)
+    if (matchedSelection) {
+      setSelectedItem(matchedSelection);
+
+      // Wait for combinations to load by explicitly fetching inventory-options (so we can set size/variant/unit)
+      try {
+        const combRes = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(matchedSelection.name)}`);
+        if (combRes.ok) {
+          const combos: Combination[] = await combRes.json();
+          setCombinations(Array.isArray(combos) ? combos : []);
+
+          // Try to pick size/variant/unit from combos using extracted tokens
+          if (extractedSize) {
+            const s = combos.find(c => c.sizeName && c.sizeName.toUpperCase().includes(String(extractedSize).toUpperCase()));
+            if (s) setSelectedSize({ id: String(s.sizeId), name: s.sizeName! });
+          }
+
+          if (extractedVariant) {
+            const v = combos.find(c => c.variantName && c.variantName.toUpperCase().includes(String(extractedVariant).toUpperCase()));
+            if (v) setSelectedVariant({ id: String(v.variantId), name: v.variantName! });
+          }
+
+          if (extractedUnit) {
+            const u = combos.find(c => c.unitName && c.unitName.toUpperCase().includes(String(extractedUnit).toUpperCase()));
+            if (u) setSelectedUnit({ id: String(u.unitId), name: u.unitName! });
+          }
+
+          // If size or variant not auto-picked above, attempt to auto-select single options (keeps current UX logic)
+          // (Your existing auto-select effect will pick single options if available)
+        }
+      } catch (e) {
+        console.warn("Failed to fetch combos after OCR:", e);
+      }
+    } else if (extractedName) {
+      // If no match returned from autocomplete, set the AutoComplete value to the raw text so user can review
+      setSelectedItem({ id: extractedName, name: extractedName });
+      // Also attempt to load combos by description (may return nothing)
+      try {
+        const combRes = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(extractedName)}`);
+        if (combRes.ok) {
+          const combos: Combination[] = await combRes.json();
+          setCombinations(Array.isArray(combos) ? combos : []);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch combos for raw description:", e);
+      }
+    }
+
+    // 5) Set quantity
+    if (extractedQty) setQuantity(String(extractedQty));
+
+    // 6) show quick success
+    toast.success("OCR scanned. Please review selections and add the item.");
+  } catch (err: any) {
+    console.error("OCR flow error:", err);
+    toast.error(err?.message || "OCR scan failed. Please try again.");
+  } finally {
+    setIsScanning(false);
+  }
+}
+
+// Triggered by hidden file input
+function triggerFileInput() {
+  fileInputRef.current?.click();
+}
+
+async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  await handleOCRFile(file);
+  // reset input so same file can be selected again if needed
+  e.currentTarget.value = "";
+}
 
   // Add item: consult item-find (which resolves correct item id) then push to list
   const handleAddItem = async () => {
@@ -420,7 +588,7 @@ useEffect(() => {
       const result = await res.json();
 
       if (result.issuanceRef) {
-    setIssuanceRef(result.issuanceRef);
+    setIssuance(result.issuance);
   }
 
       if (result.warning && result.warning.length > 0) {
@@ -474,7 +642,7 @@ useEffect(() => {
 }, [user]);
 
 
-  const MAX_QUANTITY = 9999;
+  //const MAX_QUANTITY = 9999;
 
   const sanitizeToDigits = (input: string) => {
     const digits = input.replace(/\D+/g, "");
@@ -492,7 +660,7 @@ useEffect(() => {
         <section className="p-10 max-w-4xl mx-auto">
           <div className="flex flex-row justify-between">
             {/* <h1 className="text-3xl font-bold text-[#173f63] mb-2">Log Item Issuance</h1> */}
-            <p className="text-md font-bold text-[#173f63]">Issuance Ref: {issuanceRef ?? "Draft"}</p>
+            <p className="text-md font-bold text-[#173f63]">Issuance Ref: {issuance.id}</p>
           </div>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
@@ -603,7 +771,7 @@ useEffect(() => {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     min={0}
-                    max={MAX_QUANTITY}
+                    //max={MAX_QUANTITY}
                     step={1}
                     value={quantity === "" ? "" : quantity}
                     onKeyDown={(e) => {
@@ -623,10 +791,11 @@ useEffect(() => {
                       if (parsed < 0) {
                         parsed = 0;
                         toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } else if (parsed > MAX_QUANTITY) {
-                        parsed = MAX_QUANTITY;
-                        toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
-                      }
+                      } 
+                      // else if (parsed > MAX_QUANTITY) {
+                      //   parsed = MAX_QUANTITY;
+                      //   toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
+                      // }
                       setQuantity(String(parsed));
                     }}
                     onChange={(e) => {
@@ -653,10 +822,11 @@ useEffect(() => {
                       if (parsed < 0) {
                         parsed = 0;
                         toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } else if (parsed > MAX_QUANTITY) {
-                        parsed = MAX_QUANTITY;
-                        toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
-                      }
+                      } 
+                      // else if (parsed > MAX_QUANTITY) {
+                      //   parsed = MAX_QUANTITY;
+                      //   toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
+                      // }
 
                       setQuantity(String(parsed));
                     }}
@@ -665,14 +835,34 @@ useEffect(() => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleAddItem}
-                disabled={isAdding}
-                className="mt-5 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
-              >
-                {isAdding ? "Adding..." : "Add Item"}
-              </button>
+              <div className="flex items-center gap-3 mt-5">
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  disabled={isAdding}
+                  className="bg-[#674d33] px-4 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium cursor-pointer"
+                >
+                  {isAdding ? "Adding..." : "Add Item"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={triggerFileInput}
+                  disabled={isScanning}
+                  className="bg-[#0b74ff] px-3 py-2 text-sm rounded text-white hover:bg-[#0966d6] cursor-pointer"
+                  title="Scan an item from a DR/SI/PO image"
+                >
+                  {isScanning ? "Scanning..." : "Scan via OCR"}
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onFileChange}
+                />
+              </div>
 
               {items.length > 0 && (
                 <div className="mt-4">
@@ -717,7 +907,7 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
               >
                 Cancel
               </button>
@@ -725,7 +915,7 @@ useEffect(() => {
                 type="button"
                 onClick={handleDone}
                 //disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
-                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700 cursor-pointer"
               >
                 Done
               </button>
@@ -780,13 +970,17 @@ useEffect(() => {
                   <button
                     onClick={() => {
                       setShowSummary(false);
-                      setShowDRModal(true);
+                      //setShowDRModal(true);
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
                   >
                     Cancel
                   </button>
-                  <button onClick={handleSaveIssuance} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
+                  <button 
+                  onClick={() => {
+                    handleSaveIssuance();
+                  }} 
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
                     Save
                   </button>
                 </div>

@@ -127,13 +127,13 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Upload to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload_stream(
-      { resource_type: "auto", folder: "purchase_orders" },
-      async (error, result) => {
-        if (error) throw error;
-        return result;
-      }
-    );
+    // const uploadResult = await cloudinary.uploader.upload_stream(
+    //   { resource_type: "auto", folder: "purchase_orders" },
+    //   async (error, result) => {
+    //     if (error) throw error;
+    //     return result;
+    //   }
+    // );
 
     // Cloudinary upload helper
     const streamUpload = (buffer: Buffer) => {

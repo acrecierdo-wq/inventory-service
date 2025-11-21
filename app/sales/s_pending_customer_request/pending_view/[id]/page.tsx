@@ -477,7 +477,7 @@ const PendingViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [showFloatingValidation, setShowFloatingValidation] = useState(false);
-  const [actionType, setActionType] = useState<"Accepted" | "Rejected" | "Cancelled" | null>(null);
+  const [actionType, setActionType] = useState<"Accepted" | "Rejected" | "Cancelled" | null>(null); 
   const [activeTab, setActiveTab] = useState<"request" | "quotation" | "drafts">("request");
   const [quotationForms, setQuotationForms] = useState<SavedQuotation[]>([]);
   

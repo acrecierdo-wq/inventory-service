@@ -210,8 +210,7 @@ const NewRequest = () => {
 
   const isSubmitDisabled =
     projectName.trim() === "" ||
-    mode === "" ||
-    files.length === 0
+    mode === ""
 
   // Submit handler
   const handleSubmit = async () => {
@@ -328,7 +327,7 @@ const NewRequest = () => {
 
               {/* Project Name */}
               <div>
-                <label className="block font-semibold mb-2">Project Name</label>
+                <label className="block font-semibold mb-2">Project Name <span className="text-red-500"> *</span></label>
                 <input
                   type="text"
                   value={projectName}
@@ -340,6 +339,7 @@ const NewRequest = () => {
 
               {/* Mode */}
               <div>
+            <label className="block font-semibold mb-2">Mode of Delivery <span className="text-red-500"> *</span></label>
             <Select onValueChange={setMode} value={mode}>
             <SelectTrigger className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100">
               <SelectValue placeholder="Select a mode" />

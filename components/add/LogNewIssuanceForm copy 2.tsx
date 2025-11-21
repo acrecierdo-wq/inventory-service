@@ -13,6 +13,10 @@ import { useUser } from "@clerk/nextjs";
 
 type Selection = { id: string | number; name: string };
 
+type Issuance = {
+  id: string;
+}
+
 type Combination = {
   itemId: number;
   sizeId: number | null;
@@ -23,8 +27,6 @@ type Combination = {
   unitName: string | null;
 };
 
-
-
 interface Props {
   draftData?: DraftIssuance;
   draftId?: string;
@@ -33,6 +35,7 @@ interface Props {
 
 const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
+  const [issuance, setIssuance] = useState<Issuance>({ id: "" });
   const [clientName, setClientName] = useState(draftData?.clientName || "");
   const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
   const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
@@ -271,6 +274,33 @@ useEffect(() => {
         return;
       }
 
+      const stockRes = await fetch(`/api/items/${found.id}`);
+      if (!stockRes.ok) {
+        toast.error("Failed to fetch stock for item.");
+        setIsAdding(false);
+        return;
+      }
+      const stockData = await stockRes.json();
+      const qty = Number(quantity);
+
+      // warn user before adding items
+      if (qty > stockData.stock) {
+        toast.warning(`⚠️ Understock:"${selectedItem.name}" currently has only ${stockData.stock} in stock. You are issuing ${qty}.`, { duration: 10000 });
+        setIsAdding(false);
+        setSelectedItem(null);
+        setSelectedSize(null);
+        setSelectedVariant(null);
+        setSelectedUnit(null);
+        setQuantity("");
+        return;
+      }
+      
+      if (stockData.stock - qty <= stockData.criticalLevel) {
+        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this issuance.`, { duration: 10000 });
+      } else if (stockData.stock - qty <= stockData.reorderLevel) {
+        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this issuance.`, { duration: 10000 });
+      } 
+
       const candidate: FormItem = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
@@ -304,7 +334,6 @@ useEffect(() => {
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
-      //setCombinations([]);
       setQuantity("");
     } catch (err) {
       console.error("Item-find error:", err);
@@ -377,6 +406,7 @@ useEffect(() => {
       if (!res.ok) {
         // Attempt to parse error JSON like you had
         let errorMessage = "Failed to process issuance.";
+
         try {
           const ct = res.headers.get("content-type") || "";
           if (ct.includes("application/json")) {
@@ -392,6 +422,10 @@ useEffect(() => {
       }
 
       const result = await res.json();
+
+      if (result.issuanceRef) {
+    setIssuance(result.issuance);
+  }
 
       if (result.warning && result.warning.length > 0) {
         result.warning.forEach((w: string, i: number) => {
@@ -436,12 +470,15 @@ useEffect(() => {
   }, [draftData]);
 
   useEffect(() => {
-        if (user) {
-          setIssuedBy(user.fullName || user.emailAddresses[0]?.emailAddress || "Warehouseman"); 
-        }
-      }, [user]);
+  if (user) {
+    setIssuedBy(
+      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
+    );
+  }
+}, [user]);
 
-  const MAX_QUANTITY = 9999;
+
+  //const MAX_QUANTITY = 9999;
 
   const sanitizeToDigits = (input: string) => {
     const digits = input.replace(/\D+/g, "");
@@ -450,12 +487,17 @@ useEffect(() => {
     return Number.isNaN(parsed) ? "" : parsed;
   };
 
+  
+
   return (
     <WarehousemanClientComponent>
-      <main className="bg-[#ffedce] w-full">
+      <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Issuance</h1>
+          <div className="flex flex-row justify-between">
+            {/* <h1 className="text-3xl font-bold text-[#173f63] mb-2">Log Item Issuance</h1> */}
+            <p className="text-md font-bold text-[#173f63]">Issuance Ref: {issuance.id}</p>
+          </div>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
             {/* Client Name */}
@@ -565,7 +607,7 @@ useEffect(() => {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     min={0}
-                    max={MAX_QUANTITY}
+                    //max={MAX_QUANTITY}
                     step={1}
                     value={quantity === "" ? "" : quantity}
                     onKeyDown={(e) => {
@@ -585,10 +627,11 @@ useEffect(() => {
                       if (parsed < 0) {
                         parsed = 0;
                         toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } else if (parsed > MAX_QUANTITY) {
-                        parsed = MAX_QUANTITY;
-                        toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
-                      }
+                      } 
+                      // else if (parsed > MAX_QUANTITY) {
+                      //   parsed = MAX_QUANTITY;
+                      //   toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
+                      // }
                       setQuantity(String(parsed));
                     }}
                     onChange={(e) => {
@@ -615,10 +658,11 @@ useEffect(() => {
                       if (parsed < 0) {
                         parsed = 0;
                         toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } else if (parsed > MAX_QUANTITY) {
-                        parsed = MAX_QUANTITY;
-                        toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
-                      }
+                      } 
+                      // else if (parsed > MAX_QUANTITY) {
+                      //   parsed = MAX_QUANTITY;
+                      //   toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
+                      // }
 
                       setQuantity(String(parsed));
                     }}
@@ -631,7 +675,7 @@ useEffect(() => {
                 type="button"
                 onClick={handleAddItem}
                 disabled={isAdding}
-                className="mt-5 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
+                className="mt-5 bg-[#674d33] px-4 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium cursor-pointer"
               >
                 {isAdding ? "Adding..." : "Add Item"}
               </button>
@@ -679,7 +723,7 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
               >
                 Cancel
               </button>
@@ -687,7 +731,7 @@ useEffect(() => {
                 type="button"
                 onClick={handleDone}
                 //disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
-                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700 cursor-pointer"
               >
                 Done
               </button>
@@ -713,6 +757,7 @@ useEffect(() => {
                 <p className="mb-2 text-sm text-gray-700">Client: {clientName}</p>
                 <p className="mb-2 text-sm text-gray-700">Dispatcher: {dispatcherName}</p>
                 <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drNumber || "Draft"}</p>
+                <p className="mb-2 text-sm text-gray-700">Customer PO Number: {customerPoNumber}</p>
 
                 <table className="w-full mt-4 text-sm border">
                   <thead className="bg-[#f5e6d3] text-[#482b0e]">
@@ -741,13 +786,17 @@ useEffect(() => {
                   <button
                     onClick={() => {
                       setShowSummary(false);
-                      setShowDRModal(true);
+                      //setShowDRModal(true);
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
                   >
                     Cancel
                   </button>
-                  <button onClick={handleSaveIssuance} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
+                  <button 
+                  onClick={() => {
+                    handleSaveIssuance();
+                  }} 
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
                     Save
                   </button>
                 </div>
