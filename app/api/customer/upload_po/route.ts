@@ -8,7 +8,7 @@
 // import fs from "fs";
 // import path from "path";
 
-// const uploadDir = path.join(process.cwd(), "public/uploads/po"); 
+// const uploadDir = path.join(process.cwd(), "public/uploads/po");
 
 // export async function POST(req: NextRequest) {
 //   try {
@@ -75,8 +75,8 @@
 //       timestamp: new Date(),
 //     });
 
-//     return NextResponse.json({ 
-//       success: true, 
+//     return NextResponse.json({
+//       success: true,
 //       message: "Purchase Order uploaded successfully.",
 //       poId: newPO.id,
 //     });
@@ -92,6 +92,7 @@ import { purchase_orders, audit_logs, customer_profile } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { v2 as cloudinary } from "cloudinary";
+import { UploadApiResponse } from "cloudinary";
 
 // ✅ Configure Cloudinary
 cloudinary.config({
@@ -104,7 +105,8 @@ export async function POST(req: NextRequest) {
   try {
     // Authenticate user
     const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     // Get form data
     const formData = await req.formData();
@@ -113,7 +115,10 @@ export async function POST(req: NextRequest) {
     const poNumber = formData.get("poNumber")?.toString();
 
     if (!file || !quotationId || !poNumber) {
-      return NextResponse.json({ error: "Missing file or quotation ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing file or quotation ID" },
+        { status: 400 }
+      );
     }
 
     // Get customer info
@@ -121,7 +126,11 @@ export async function POST(req: NextRequest) {
       where: eq(customer_profile.clerkId, userId),
     });
 
-    if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+    if (!customer)
+      return NextResponse.json(
+        { error: "Customer not found" },
+        { status: 404 }
+      );
 
     // Convert File to Buffer
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -137,12 +146,14 @@ export async function POST(req: NextRequest) {
 
     // Cloudinary upload helper
     const streamUpload = (buffer: Buffer) => {
-      return new Promise<any>((resolve, reject) => {
+      return new Promise<UploadApiResponse>((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           { resource_type: "auto", folder: "purchase_orders" },
           (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
+            if (error) return reject(error);
+            if (!result)
+              return reject(new Error("No result returned from Cloudinary"));
+            resolve(result);
           }
         );
         stream.end(buffer);
@@ -189,6 +200,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("PO Upload Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
