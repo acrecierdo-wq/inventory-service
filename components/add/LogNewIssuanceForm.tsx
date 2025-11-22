@@ -1,5 +1,3 @@
-// app/components/add/LogNewIssuanceForm.tsx
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -8,15 +6,24 @@ import DRModal from "@/app/warehouse/issuance_log/dr_modal";
 import { toast } from "sonner";
 import AutoComplete from "../autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
-import { DraftIssuance, FormItem } from "@/app/warehouse/issuance_log/types/issuance";
+import {
+  DraftIssuance,
+  FormItem,
+} from "@/app/warehouse/issuance_log/types/issuance";
 import { useUser } from "@clerk/nextjs";
+import OCRModeModal from "@/components/modals/OCRModeModal";
+import WebcamCaptureModal from "@/components/modals/WebcamCaptureModal";
+import { Trash2, Plus, AlertTriangle, CheckCircle } from "lucide-react";
 
+// Type definitions for selections (dropdowns)
 type Selection = { id: string | number; name: string };
 
+// Basic issuance structure
 type Issuance = {
   id: string;
-}
+};
 
+// Combination of item attributes (size, variant, unit) available in inventory
 type Combination = {
   itemId: number;
   sizeId: number | null;
@@ -27,486 +34,716 @@ type Combination = {
   unitName: string | null;
 };
 
+// Represents a single row in the item input form
+type InputRow = {
+  id: string;
+  selectedItem: Selection | null;
+  selectedSize: Selection | null;
+  selectedVariant: Selection | null;
+  selectedUnit: Selection | null;
+  quantity: string;
+  combinations: Combination[]; // Available combinations for the selected item
+  availableStock: number | null; // Current stock available for this item configuration
+  isLoadingStock: boolean; // Loading state for stock fetch
+};
+
+// Component props - supports draft editing
 interface Props {
   draftData?: DraftIssuance;
   draftId?: string;
   onSaveSuccess?: () => void;
-};
+}
 
+/**
+ * NewIssuancePage Component
+ *
+ * Main form for creating warehouse issuances (outgoing items).
+ * Features:
+ * - Manual item selection with autocomplete
+ * - OCR scanning (webcam or file upload) to auto-populate form
+ * - Real-time stock validation
+ * - Draft saving capability
+ * - Multi-item support with dynamic rows
+ */
 const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
+
+  // Issuance header information
   const [issuance, setIssuance] = useState<Issuance>({ id: "" });
   const [clientName, setClientName] = useState(draftData?.clientName || "");
-  const [dispatcherName, setDispatcherName] = useState(draftData?.dispatcherName || "");
-  const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber ||"");
-  const [prfNumber, setPrfNumber] = useState(draftData?.prfNumber ||"");
-  const [issuedBy, setIssuedBy] = useState(draftData?.issuedBy ||"");
+  const [dispatcherName, setDispatcherName] = useState(
+    draftData?.dispatcherName || ""
+  );
+  const [customerPoNumber, setCustomerPoNumber] = useState(
+    draftData?.customerPoNumber || ""
+  );
+  const [prfNumber, setPrfNumber] = useState(draftData?.prfNumber || "");
+  const [issuedBy, setIssuedBy] = useState(draftData?.issuedBy || "");
+
+  // Modal states
   const [showDRModal, setShowDRModal] = useState(false);
-  const [drInfo, setDrInfo] = useState<{ drNumber: string; saveAsDraft: boolean } | null>(null);
+  const [drInfo, setDrInfo] = useState<{
+    drNumber: string;
+    saveAsDraft: boolean;
+  } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
+  // OCR-related states
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [showOCRModeModal, setShowOCRModeModal] = useState(false);
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
 
-  const [items, setItems] = useState<FormItem[]>(() => 
-    draftData?.items.map((i) => ({
-      itemId: String(i.itemId),
-      sizeId: i.sizeId !== null ? String(i.sizeId) : null,
-      variantId: i.variantId !== null ? String(i.variantId) : null,
-      unitId: i.unitId !== null ? String(i.unitId) : null,
-      quantity: i.quantity,
-      itemName: i.itemName,
-      sizeName: i.sizeName,
-      variantName: i.variantName,
-      unitName: i.unitName,
-    })) || []
+  // Dynamic input rows for adding items (before they're officially added to the list)
+  const [inputRows, setInputRows] = useState<InputRow[]>([
+    {
+      id: crypto.randomUUID(),
+      selectedItem: null,
+      selectedSize: null,
+      selectedVariant: null,
+      selectedUnit: null,
+      quantity: "",
+      combinations: [],
+      availableStock: null,
+      isLoadingStock: false,
+    },
+  ]);
+
+  // Final list of items that will be included in the issuance
+  const [items, setItems] = useState<FormItem[]>(
+    () =>
+      draftData?.items.map((i) => ({
+        itemId: String(i.itemId),
+        sizeId: i.sizeId !== null ? String(i.sizeId) : null,
+        variantId: i.variantId !== null ? String(i.variantId) : null,
+        unitId: i.unitId !== null ? String(i.unitId) : null,
+        quantity: i.quantity,
+        itemName: i.itemName,
+        sizeName: i.sizeName,
+        variantName: i.variantName,
+        unitName: i.unitName,
+      })) || []
   );
 
-  const [newItem, setNewItem] = useState<FormItem>({
-      itemId: "",
-      sizeId: null,
-      variantId: null,
-      unitId: null,
-      quantity: 0,
-      itemName: "",
-      sizeName: null,
-      variantName: null,
-      unitName: null,
-    });
-  
-  console.log("New items:", newItem);
+  // === OCR HANDLERS ===
 
-  // UI selections
-  const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
-  const [selectedSize, setSelectedSize] = useState<Selection | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<Selection | null>(null);
-  const [selectedUnit, setSelectedUnit] = useState<Selection | null>(null);
-  const [quantity, setQuantity] = useState<string>("");
+  /**
+   * Opens the modal to choose between webcam or file upload for OCR
+   */
+  const handleScanClick = () => {
+    setShowOCRModeModal(true);
+  };
 
-  // raw row-level combos returned by API
-  const [combinations, setCombinations] = useState<Combination[]>([]);
+  /**
+   * User chose webcam option - open webcam modal
+   */
+  const handleSelectWebcam = () => {
+    setShowWebcamModal(true);
+  };
 
-  // Derived option arrays (unique and filtered)
-  const availableSizes = Array.from(
-    new Map(
-      combinations
-        .filter((c) => c.sizeId != null && c.sizeName)
-        .map((c) => [String(c.sizeId), { id: String(c.sizeId), name: c.sizeName! }])
-    ).values()
-  );
+  /**
+   * User chose file upload - trigger hidden file input
+   */
+  const handleSelectUpload = () => {
+    fileInputRef.current?.click();
+  };
 
-  const availableVariants = Array.from(
-    new Map(
-      combinations
-        .filter((c) => (!selectedSize || c.sizeId === Number(selectedSize.id)) && c.variantId != null && c.variantName)
-        .map((c) => [String(c.variantId), { id: String(c.variantId), name: c.variantName! }])
-    ).values()
-  );
+  /**
+   * Handles the captured image from webcam
+   */
+  const handleWebcamCapture = (file: File) => {
+    handleOCRFile(file);
+  };
 
-  const availableUnits = Array.from(
-    new Map(
-      combinations
-        .filter((c) => {
-          // units must match selected size and selected variant (if provided)
-          if (selectedSize && selectedVariant) {
-            return c.sizeId === Number(selectedSize.id) && c.variantId === Number(selectedVariant.id) && c.unitId != null && c.unitName;
-          }
-          // if variant isn't chosen yet (but size is), show units for size across variants
-          if (selectedSize && !selectedVariant) {
-            return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
-          }
-          // otherwise show all units (fallback)
-          return c.unitId != null && c.unitName;
-        })
-        .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
-    ).values()
-  );
+  /**
+   * Handles file selection from file input
+   */
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleOCRFile(file);
+    }
+    // Reset input so same file can be selected again if needed
+    e.target.value = "";
+  };
 
-  // debug-like object similar to previous UI
-useEffect(() => {
-    setNewItem((prev) => ({
-      ...prev,
-      itemId: selectedItem ? String(selectedItem.id) : "",
-      itemName: selectedItem?.name || "",
-      sizeId: selectedSize ? String(selectedSize.id) : null,
-      sizeName: selectedSize?.name || null,
-      variantId: selectedVariant ? String(selectedVariant.id) : null,
-      variantName: selectedVariant?.name || null,
-      unitId: selectedUnit ? String(selectedUnit.id) : null,
-      unitName: selectedUnit?.name || null,
-      quantity: Number(quantity) || 0,
-    }));
-  }, [selectedItem, selectedSize, selectedVariant, selectedUnit, quantity]);
+  /**
+   * Uploads an image file to Cloudinary CDN
+   * Required because OCR.space API needs a publicly accessible URL
+   */
+  async function uploadToCloudinary(file: File) {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const unsignedPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-  // When an item is selected (from item-name autocomplete), fetch row-level combos
-  useEffect(() => {
-    if (!selectedItem) {
-      setCombinations([]);
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-      return;
+    if (cloudName && unsignedPreset) {
+      const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", unsignedPreset);
+
+      const res = await fetch(url, { method: "POST", body: fd });
+      if (!res.ok) throw new Error("Cloudinary upload failed");
+      const json = await res.json();
+      return json.secure_url as string;
     }
 
-    const fetchOptions = async () => {
-      try {
-        // pass itemName so API aggregates across all itemIds that share the same name
-        const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(String(selectedItem.name))}`);
-        if (!res.ok) {
-          console.warn("inventory-options returned non-ok status");
-          setCombinations([]);
-          return;
-        }
-        const data: Combination[] = await res.json();
-        setCombinations(Array.isArray(data) ? data : []);
-      } catch {
-        console.error("Failed to fetch inventory options:");
-        setCombinations([]);
+    throw new Error("Cloudinary config missing");
+  }
+
+  /**
+   * Main OCR processing function
+   * Steps:
+   * 1. Upload image to Cloudinary
+   * 2. Send Cloudinary URL to our OCR API
+   * 3. Extract fields from OCR response
+   * 4. Auto-populate form fields (client name, PO number)
+   * 5. Create input rows for each detected item
+   * 6. Fetch stock levels for all items
+   */
+  async function handleOCRFile(file: File) {
+    setIsScanning(true);
+    try {
+      // Step 1: Upload image to get a public URL
+      const cloudinaryUrl = await uploadToCloudinary(file);
+      console.log("☁️ Uploaded to Cloudinary:", cloudinaryUrl);
+
+      // Step 2: Send URL to our OCR API endpoint
+      const ocrRes = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: cloudinaryUrl }),
+      });
+
+      if (!ocrRes.ok) {
+        const err = await ocrRes.json().catch(() => null);
+        throw new Error(err?.error || "OCR request failed");
       }
-      // reset dependent selections when item changes
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
+
+      // Step 3: Parse the extracted fields from OCR
+      const ocrJson = await ocrRes.json();
+      const fields = ocrJson.fields || {};
+
+      // Step 4: Auto-populate header fields if detected
+      if (fields.clientName) {
+        setClientName(fields.clientName);
+      }
+
+      if (fields.customerPoNumber) {
+        setCustomerPoNumber(fields.customerPoNumber);
+      }
+
+      // Step 5: Create input rows for each detected item
+      if (Array.isArray(fields.items) && fields.items.length > 0) {
+        const newRows: InputRow[] = [];
+
+        // Process each extracted item and create a pre-filled input row
+        for (const extractedItem of fields.items) {
+          const row = await createInputRowFromOCR(extractedItem);
+          newRows.push(row);
+        }
+
+        // Replace current input rows with OCR results
+        setInputRows(newRows);
+
+        // Step 6: Fetch stock levels for all items after a brief delay
+        // (allows state to update first)
+        setTimeout(() => {
+          newRows.forEach((row) => {
+            if (row.selectedItem) {
+              fetchStockForRow(row.id);
+            }
+          });
+        }, 100);
+
+        toast.success(
+          `✅ Scanned ${fields.items.length} item(s). Review and add to list.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.info("No items extracted from the receipt.");
+      }
+    } catch (err) {
+      console.error("❌ OCR error:", err);
+      toast.error((err as Error)?.message || "OCR scan failed.");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  /**
+   * Creates a pre-filled input row from OCR-extracted item data
+   * Steps:
+   * 1. Look up item name using autocomplete API
+   * 2. Fetch available combinations (size/variant/unit) for the item
+   * 3. Match extracted size/unit with available options
+   *
+   * @param extractedItem - Raw item data from OCR (name, quantity, unit, size, description)
+   * @returns InputRow with as much data pre-filled as possible
+   */
+  async function createInputRowFromOCR(extractedItem: {
+    itemName: string | null;
+    quantity: number | null;
+    unit: string | null;
+    size: string | null;
+    description: string;
+  }): Promise<InputRow> {
+    const { itemName, quantity, unit, size } = extractedItem;
+
+    // Start with an empty row
+    const row: InputRow = {
+      id: crypto.randomUUID(),
+      selectedItem: null,
+      selectedSize: null,
+      selectedVariant: null,
+      selectedUnit: null,
+      quantity: quantity ? String(quantity) : "",
+      combinations: [],
+      availableStock: null,
+      isLoadingStock: false,
     };
 
-    fetchOptions();
-  }, [selectedItem]);
+    // If no item name was extracted, return empty row
+    if (!itemName) return row;
 
-  useEffect(() => {
-      console.log("Available Sizes:", availableSizes);
-      console.log("Available Variants:", availableVariants);
-      console.log("Available Units:", availableUnits);
-  }, [availableSizes, availableVariants, availableUnits]);
+    try {
+      // Step 1: Search for the item using autocomplete to get the exact item ID
+      const acRes = await fetch(
+        `/api/autocomplete/item-name?query=${encodeURIComponent(itemName)}`
+      );
+      if (!acRes.ok) return row;
 
-  useEffect(() => {
-    setSelectedVariant(null);
-    setSelectedUnit(null);
-  }, [selectedSize]);
+      const acJson = await acRes.json();
+      if (!Array.isArray(acJson) || acJson.length === 0) return row;
 
-  useEffect(() => {
-    setSelectedUnit(null);
-  }, [selectedVariant])
+      // Get the first (best) match
+      const first = acJson[0];
+      const itemId =
+        typeof first === "string" ? first : first.id || first.value || itemName;
+      const itemNameResolved =
+        typeof first === "string"
+          ? first
+          : first.name || first.label || itemName;
 
-  // Auto-select single options where useful and keep selections valid
-  useEffect(() => {
-    if (!selectedItem) {
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-      return;
-    }
+      // Set the selected item
+      row.selectedItem = { id: itemId, name: itemNameResolved };
 
-    if (availableSizes.length === 1 && !selectedSize) {
-      setSelectedSize(availableSizes[0]);
-    }
+      // Step 2: Fetch available combinations for this item
+      const combRes = await fetch(
+        `/api/inventory-options?itemName=${encodeURIComponent(
+          itemNameResolved
+        )}`
+      );
+      if (combRes.ok) {
+        const combos = await combRes.json();
+        row.combinations = Array.isArray(combos) ? combos : [];
 
-    if(selectedSize && availableVariants.length === 1 && !selectedVariant) {
-      setSelectedVariant(availableVariants[0]);
-    }
-
-    if (selectedSize && selectedVariant && availableUnits.length === 1 && !selectedUnit) {
-      setSelectedUnit(availableUnits[0]);
-    }
-  }, [selectedItem, availableSizes, availableVariants, availableUnits, selectedSize, selectedVariant, selectedUnit]);
-
-  useEffect(() => {
-    if (selectedSize && !availableSizes.some((s) => String(s.id) === String(selectedSize.id))) {
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-    }
-
-    if (selectedVariant && !availableVariants.some((v) => String(v.id) === String(selectedVariant.id))) {
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-    }
-
-    if (selectedUnit && !availableUnits.some((u) => String(u.id) === String(selectedUnit.id))) {
-      setSelectedUnit(null);
-    }
-  }, [selectedSize, selectedVariant, selectedUnit, availableSizes, availableVariants, availableUnits]);
-
-// Attempts direct unsigned Cloudinary upload first, otherwise falls back to POST /api/cloudinary/upload
-async function uploadToCloudinary(file: File) {
-  // Try unsigned upload using client-side preset (fast, no server roundtrip)
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const unsignedPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-  if (cloudName && unsignedPreset) {
-    const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", unsignedPreset);
-
-    const res = await fetch(url, { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Cloudinary upload failed (unsigned)");
-    const json = await res.json();
-    return json.secure_url as string;
-  }
-
-  // Fallback: your server side upload endpoint - implement if you already have one.
-  // It should accept FormData with `file` and return { url: string }
-  try {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/cloudinary/upload", { method: "POST", body: fd });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error("Server upload failed: " + txt);
-    }
-    const json = await res.json();
-    if (!json.url) throw new Error("Server upload response missing url");
-    return json.url as string;
-  } catch (err) {
-    throw err;
-  }
-}
-
-// Core OCR flow: upload -> call /api/ocr -> apply results to UI
-async function handleOCRFile(file: File) {
-  setIsScanning(true);
-  try {
-    // 1) upload to Cloudinary
-    const cloudinaryUrl = await uploadToCloudinary(file);
-
-    // 2) call your OCR API route
-    const ocrRes = await fetch("/api/ocr", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageUrl: cloudinaryUrl }),
-    });
-
-    if (!ocrRes.ok) {
-      const err = await ocrRes.json().catch(() => null);
-      throw new Error(err?.error || "OCR request failed");
-    }
-
-    const ocrJson = await ocrRes.json();
-
-    // ocrJson.fields expected shape:
-    // { itemName, quantity, unit, size, variant, description }
-    const fields = ocrJson.fields || {};
-    const extractedName = fields.itemName || fields.description || "";
-    const extractedSize = fields.size || null;
-    const extractedVariant = fields.variant || null;
-    const extractedUnit = fields.unit || null;
-    const extractedQty = fields.quantity ? String(fields.quantity) : "";
-
-    // 3) try to auto-select item by calling your autocomplete endpoint
-    // Your AutoComplete component expects selection object { id, name }
-    let matchedSelection: Selection | null = null;
-    if (extractedName) {
-      try {
-        // If your autocomplete endpoint returns an array of suggestions, use the first match.
-        const q = encodeURIComponent(extractedName);
-        const acRes = await fetch(`/api/autocomplete/item-name?query=${q}`);
-        if (acRes.ok) {
-          const acJson = await acRes.json();
-          // If your endpoint returns different shape, adapt this check.
-          if (Array.isArray(acJson) && acJson.length > 0) {
-            const first = acJson[0];
-            matchedSelection = { id: first.id ?? first.value ?? first.key ?? first.name, name: first.name ?? first.value ?? first.key ?? extractedName };
+        // Step 3a: Try to match the extracted size with available sizes
+        if (size && Array.isArray(combos)) {
+          const sizeMatch = combos.find(
+            (c: Combination) =>
+              c.sizeName &&
+              c.sizeName.toUpperCase().includes(size.toUpperCase())
+          );
+          if (sizeMatch && sizeMatch.sizeId) {
+            row.selectedSize = {
+              id: String(sizeMatch.sizeId),
+              name: sizeMatch.sizeName!,
+            };
           }
         }
-      } catch (e) {
-        console.warn("autocomplete lookup failed", e);
+
+        // Step 3b: Try to match the extracted unit with available units
+        if (unit && Array.isArray(combos)) {
+          const unitMatch = combos.find(
+            (c: Combination) =>
+              c.unitName &&
+              c.unitName.toUpperCase().includes(unit.toUpperCase())
+          );
+          if (unitMatch && unitMatch.unitId) {
+            row.selectedUnit = {
+              id: String(unitMatch.unitId),
+              name: unitMatch.unitName!,
+            };
+          }
+        }
       }
+    } catch (err) {
+      console.error("❌ Error creating row:", err);
     }
 
-    // 4) If matchedSelection found, setSelectedItem which triggers fetching combinations (existing useEffect)
-    if (matchedSelection) {
-      setSelectedItem(matchedSelection);
-
-      // Wait for combinations to load by explicitly fetching inventory-options (so we can set size/variant/unit)
-      try {
-        const combRes = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(matchedSelection.name)}`);
-        if (combRes.ok) {
-          const combos: Combination[] = await combRes.json();
-          setCombinations(Array.isArray(combos) ? combos : []);
-
-          // Try to pick size/variant/unit from combos using extracted tokens
-          if (extractedSize) {
-            const s = combos.find(c => c.sizeName && c.sizeName.toUpperCase().includes(String(extractedSize).toUpperCase()));
-            if (s) setSelectedSize({ id: String(s.sizeId), name: s.sizeName! });
-          }
-
-          if (extractedVariant) {
-            const v = combos.find(c => c.variantName && c.variantName.toUpperCase().includes(String(extractedVariant).toUpperCase()));
-            if (v) setSelectedVariant({ id: String(v.variantId), name: v.variantName! });
-          }
-
-          if (extractedUnit) {
-            const u = combos.find(c => c.unitName && c.unitName.toUpperCase().includes(String(extractedUnit).toUpperCase()));
-            if (u) setSelectedUnit({ id: String(u.unitId), name: u.unitName! });
-          }
-
-          // If size or variant not auto-picked above, attempt to auto-select single options (keeps current UX logic)
-          // (Your existing auto-select effect will pick single options if available)
-        }
-      } catch (e) {
-        console.warn("Failed to fetch combos after OCR:", e);
-      }
-    } else if (extractedName) {
-      // If no match returned from autocomplete, set the AutoComplete value to the raw text so user can review
-      setSelectedItem({ id: extractedName, name: extractedName });
-      // Also attempt to load combos by description (may return nothing)
-      try {
-        const combRes = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(extractedName)}`);
-        if (combRes.ok) {
-          const combos: Combination[] = await combRes.json();
-          setCombinations(Array.isArray(combos) ? combos : []);
-        }
-      } catch (e) {
-        console.warn("Failed to fetch combos for raw description:", e);
-      }
-    }
-
-    // 5) Set quantity
-    if (extractedQty) setQuantity(String(extractedQty));
-
-    // 6) show quick success
-    toast.success("OCR scanned. Please review selections and add the item.");
-  } catch (err: any) {
-    console.error("OCR flow error:", err);
-    toast.error(err?.message || "OCR scan failed. Please try again.");
-  } finally {
-    setIsScanning(false);
+    return row;
   }
-}
 
-// Triggered by hidden file input
-function triggerFileInput() {
-  fileInputRef.current?.click();
-}
+  /**
+   * Fetches the current available stock for a specific item configuration
+   * Uses the item name, size, variant, and unit to find the exact inventory record
+   */
+  const fetchStockForRow = async (rowId: string) => {
+    const row = inputRows.find((r) => r.id === rowId);
+    if (!row || !row.selectedItem) return;
 
-async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  await handleOCRFile(file);
-  // reset input so same file can be selected again if needed
-  e.currentTarget.value = "";
-}
+    // Show loading indicator
+    updateRow(rowId, "isLoadingStock", true);
 
-  // Add item: consult item-find (which resolves correct item id) then push to list
-  const handleAddItem = async () => {
-    if (isAdding) return;
-    setIsAdding(true);
+    try {
+      // Build query parameters from selected options
+      const params = new URLSearchParams({
+        itemName: row.selectedItem.name,
+        sizeId: row.selectedSize ? String(row.selectedSize.id) : "",
+        variantId: row.selectedVariant ? String(row.selectedVariant.id) : "",
+        unitId: row.selectedUnit ? String(row.selectedUnit.id) : "",
+      });
 
-    // Basic validations: require item, require size/variant/unit depending on options
-    if (!selectedItem) {
-      toast.error("Please select an item.");
-      setIsAdding(false);
+      // Find the exact inventory item
+      const res = await fetch(`/api/item-find?${params.toString()}`);
+      const found = await res.json();
+
+      // If found, fetch its current stock level
+      if (found && found.id) {
+        const stockRes = await fetch(`/api/items/${found.id}`);
+        if (stockRes.ok) {
+          const stockData = await stockRes.json();
+          updateRow(rowId, "availableStock", stockData.stock);
+          console.log(
+            `📦 Stock for ${row.selectedItem.name}: ${stockData.stock}`
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching stock:", err);
+    } finally {
+      // Hide loading indicator
+      updateRow(rowId, "isLoadingStock", false);
+    }
+  };
+
+  /**
+   * Adds a new empty row to the input form
+   */
+  const addEmptyRow = () => {
+    setInputRows((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        selectedItem: null,
+        selectedSize: null,
+        selectedVariant: null,
+        selectedUnit: null,
+        quantity: "",
+        combinations: [],
+        availableStock: null,
+        isLoadingStock: false,
+      },
+    ]);
+  };
+
+  /**
+   * Removes a row from the input form
+   * Prevents removing the last row (at least one must remain)
+   */
+  const removeRow = (rowId: string) => {
+    if (inputRows.length === 1) {
+      toast.error("Cannot remove the last row.");
       return;
     }
-    if (availableSizes.length > 0 && !selectedSize) {
-      toast.error("Please select a size.");
-      setIsAdding(false);
-      return;
-    }
-    if (availableVariants.length > 0 && !selectedVariant) {
-      toast.error("Please select a variant.");
-      setIsAdding(false);
-      return;
-    }
-    if (availableUnits.length > 0 && !selectedUnit) {
-      toast.error("Please select a unit.");
-      setIsAdding(false);
-      return;
-    }
-    if (!quantity || Number(quantity) <= 0 || isNaN(Number(quantity))) {
-      toast.error("Please enter a valid quantity.");
-      setIsAdding(false);
+    setInputRows((prev) => prev.filter((row) => row.id !== rowId));
+  };
+
+  /**
+   * Updates a specific field in a specific input row
+   * Generic helper function to avoid repetitive state updates
+   */
+  const updateRow = (
+    rowId: string,
+    field: keyof InputRow,
+    value: InputRow[keyof InputRow]
+  ) => {
+    setInputRows((prev) =>
+      prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row))
+    );
+  };
+
+  /**
+   * Handles item selection change in an input row
+   * Responsibilities:
+   * 1. Clear dependent fields (size, variant, unit, stock)
+   * 2. Fetch available combinations for the selected item
+   */
+  const handleItemChange = async (rowId: string, item: Selection | null) => {
+    // Update the selected item
+    updateRow(rowId, "selectedItem", item);
+
+    // Clear all dependent selections
+    updateRow(rowId, "selectedSize", null);
+    updateRow(rowId, "selectedVariant", null);
+    updateRow(rowId, "selectedUnit", null);
+    updateRow(rowId, "availableStock", null);
+
+    // If item was cleared, reset combinations
+    if (!item) {
+      updateRow(rowId, "combinations", []);
       return;
     }
 
     try {
-      const params = new URLSearchParams({
-        itemName: selectedItem.name,
-        sizeId: selectedSize ? String(selectedSize.id) : "",
-        variantId: selectedVariant ? String(selectedVariant.id) : "",
-        unitId: selectedUnit ? String(selectedUnit.id) : "",
-      });
-
-      // item-find should return the specific item id that matches the combination
-      const res = await fetch(`/api/item-find?${params.toString()}`);
-      const found = await res.json();
-
-      if (!found || !found.id) {
-        toast.error("Failed to find matching item in inventory.");
-        setIsAdding(false);
-        return;
-      }
-
-      const stockRes = await fetch(`/api/items/${found.id}`);
-      if (!stockRes.ok) {
-        toast.error("Failed to fetch stock for item.");
-        setIsAdding(false);
-        return;
-      }
-      const stockData = await stockRes.json();
-      const qty = Number(quantity);
-
-      // warn user before adding items
-      if (qty > stockData.stock) {
-        toast.warning(`⚠️ Understock:"${selectedItem.name}" currently has only ${stockData.stock} in stock. You are issuing ${qty}.`, { duration: 10000 });
-        setIsAdding(false);
-        setSelectedItem(null);
-        setSelectedSize(null);
-        setSelectedVariant(null);
-        setSelectedUnit(null);
-        setQuantity("");
-        return;
-      }
-      
-      if (stockData.stock - qty <= stockData.criticalLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this issuance.`, { duration: 10000 });
-      } else if (stockData.stock - qty <= stockData.reorderLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this issuance.`, { duration: 10000 });
-      } 
-
-      const candidate: FormItem = {
-        itemId: String(found.id),
-        sizeId: selectedSize ? String(selectedSize.id) : null,
-        variantId: selectedVariant ? String(selectedVariant.id) : null,
-        unitId: selectedUnit ? String(selectedUnit.id) : null,
-        quantity: Number(quantity),
-        itemName: selectedItem.name,
-        sizeName: selectedSize?.name || null,
-        variantName: selectedVariant?.name || null,
-        unitName: selectedUnit?.name || null,
-      };
-
-      const isDuplicate = items.some(
-        (i) =>
-          i.itemId === candidate.itemId &&
-          (i.sizeId || null) === (candidate.sizeId || null) &&
-          (i.variantId || null) === (candidate.variantId || null) &&
-          (i.unitId || null) === (candidate.unitId || null)
+      // Fetch available combinations (sizes, variants, units) for this item
+      const res = await fetch(
+        `/api/inventory-options?itemName=${encodeURIComponent(
+          String(item.name)
+        )}`
       );
-
-      if (isDuplicate) {
-        toast.error("This item with the selected options is already added.");
-        setIsAdding(false);
+      if (!res.ok) {
+        updateRow(rowId, "combinations", []);
         return;
       }
-
-      setItems((prev) => [...prev, candidate]);
-
-      // Reset selections for next entry
-      setSelectedItem(null);
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-      setQuantity("");
-    } catch (err) {
-      console.error("Item-find error:", err);
-      toast.error("Something went wrong while adding the item.");
-    } finally {
-      setIsAdding(false);
+      const data: Combination[] = await res.json();
+      updateRow(rowId, "combinations", Array.isArray(data) ? data : []);
+    } catch {
+      updateRow(rowId, "combinations", []);
     }
   };
 
+  /**
+   * Handles size selection change
+   * Triggers stock fetch because size affects inventory lookup
+   */
+  const handleSizeChange = async (rowId: string, size: Selection | null) => {
+    updateRow(rowId, "selectedSize", size);
+    updateRow(rowId, "availableStock", null);
+    await fetchStockForRow(rowId);
+  };
+
+  /**
+   * Handles unit selection change
+   * Triggers stock fetch because unit affects inventory lookup
+   */
+  const handleUnitChange = async (rowId: string, unit: Selection | null) => {
+    updateRow(rowId, "selectedUnit", unit);
+    updateRow(rowId, "availableStock", null);
+    await fetchStockForRow(rowId);
+  };
+
+  /**
+   * Validates and adds all input rows to the final items list
+   * NEW: All-or-nothing validation - if ANY item exceeds stock, NONE are added
+   *
+   * Validation includes:
+   * - Item must be selected
+   * - Size must be selected (if sizes exist)
+   * - Quantity must be valid
+   * - ALL items must have sufficient stock (strict validation)
+   */
+  const handleAddAllRows = async () => {
+    if (isAdding) return;
+    setIsAdding(true);
+
+    // **PHASE 1: VALIDATION PASS - Check ALL items before adding ANY**
+    const validatedRows: Array<{
+      row: InputRow;
+      itemId: string;
+      qty: number;
+    }> = [];
+    const validationErrors: string[] = [];
+
+    for (const row of inputRows) {
+      // Skip empty rows
+      if (!row.selectedItem) continue;
+
+      // Get available sizes for this item
+      const availableSizes = Array.from(
+        new Map(
+          row.combinations
+            .filter((c) => c.sizeId != null && c.sizeName)
+            .map((c) => [String(c.sizeId), c])
+        ).values()
+      );
+
+      // Validate size selection if sizes exist
+      if (availableSizes.length > 0 && !row.selectedSize) {
+        validationErrors.push(
+          `❌ "${row.selectedItem.name}": Please select a size.`
+        );
+        continue;
+      }
+
+      // Validate quantity
+      if (!row.quantity || Number(row.quantity) <= 0) {
+        validationErrors.push(
+          `❌ "${row.selectedItem.name}": Please enter a valid quantity.`
+        );
+        continue;
+      }
+
+      const qty = Number(row.quantity);
+
+      // **STRICT STOCK VALIDATION - This is the key change!**
+      if (row.availableStock === null) {
+        validationErrors.push(
+          `❌ "${row.selectedItem.name}": Stock information not loaded. Please wait or refresh.`
+        );
+        continue;
+      }
+
+      if (qty > row.availableStock) {
+        validationErrors.push(
+          `❌ "${row.selectedItem.name}": Requested ${qty} ${
+            row.selectedUnit?.name || ""
+          }, but only ${row.availableStock} available in stock.`
+        );
+        continue;
+      }
+
+      // Find the exact inventory item ID
+      try {
+        const params = new URLSearchParams({
+          itemName: row.selectedItem.name,
+          sizeId: row.selectedSize ? String(row.selectedSize.id) : "",
+          variantId: row.selectedVariant ? String(row.selectedVariant.id) : "",
+          unitId: row.selectedUnit ? String(row.selectedUnit.id) : "",
+        });
+
+        const res = await fetch(`/api/item-find?${params.toString()}`);
+        const found = await res.json();
+
+        if (!found || !found.id) {
+          validationErrors.push(
+            `❌ "${row.selectedItem.name}": Failed to find matching item in inventory.`
+          );
+          continue;
+        }
+
+        // Store validated row for later processing
+        validatedRows.push({
+          row,
+          itemId: String(found.id),
+          qty,
+        });
+      } catch (err) {
+        console.error("Error validating item:", err);
+        validationErrors.push(
+          `❌ "${row.selectedItem.name}": Error validating item.`
+        );
+      }
+    }
+
+    // **PHASE 2: CHECK VALIDATION RESULTS**
+    if (validationErrors.length > 0) {
+      // Show ALL validation errors at once
+      validationErrors.forEach((error, index) => {
+        setTimeout(() => {
+          toast.error(error, { duration: 6000 });
+        }, index * 500); // Stagger errors by 500ms for readability
+      });
+
+      // Show summary error
+      setTimeout(() => {
+        toast.error(
+          `⚠️ Cannot add items: ${validationErrors.length} item(s) failed validation. Please fix all issues before adding.`,
+          { duration: 8000 }
+        );
+      }, validationErrors.length * 500);
+
+      setIsAdding(false);
+      return; // **STOP HERE - Don't add ANY items**
+    }
+
+    // **PHASE 3: ALL VALIDATIONS PASSED - Add ALL items**
+    const newItems: FormItem[] = [];
+
+    for (const { row, itemId, qty } of validatedRows) {
+      const candidate: FormItem = {
+        itemId,
+        sizeId: row.selectedSize ? String(row.selectedSize.id) : null,
+        variantId: row.selectedVariant ? String(row.selectedVariant.id) : null,
+        unitId: row.selectedUnit ? String(row.selectedUnit.id) : null,
+        quantity: qty,
+        itemName: row.selectedItem!.name,
+        sizeName: row.selectedSize?.name || null,
+        variantName: row.selectedVariant?.name || null,
+        unitName: row.selectedUnit?.name || null,
+      };
+
+      newItems.push(candidate);
+    }
+
+    // Add all validated items at once
+    setItems((prev) => [...prev, ...newItems]);
+
+    // Show success message
+    toast.success(`✅ Added ${newItems.length} item(s) to list.`, {
+      duration: 5000,
+    });
+
+    // Reset input rows to single empty row
+    setInputRows([
+      {
+        id: crypto.randomUUID(),
+        selectedItem: null,
+        selectedSize: null,
+        selectedVariant: null,
+        selectedUnit: null,
+        quantity: "",
+        combinations: [],
+        availableStock: null,
+        isLoadingStock: false,
+      },
+    ]);
+
+    setIsAdding(false);
+  };
+
+  /**
+   * Extracts unique sizes from combinations array
+   * Returns array of {id, name} objects for autocomplete
+   */
+  const getAvailableSizes = (combinations: Combination[]) =>
+    Array.from(
+      new Map(
+        combinations
+          .filter((c) => c.sizeId != null && c.sizeName)
+          .map((c) => [
+            String(c.sizeId),
+            { id: String(c.sizeId), name: c.sizeName! },
+          ])
+      ).values()
+    );
+
+  /**
+   * Extracts unique units from combinations array
+   * Filters by selected size if one is chosen
+   * Returns array of {id, name} objects for autocomplete
+   */
+  const getAvailableUnits = (
+    combinations: Combination[],
+    selectedSize: Selection | null
+  ) =>
+    Array.from(
+      new Map(
+        combinations
+          .filter((c) => {
+            // If a size is selected, only show units for that size
+            if (selectedSize) {
+              return (
+                c.sizeId === Number(selectedSize.id) &&
+                c.unitId != null &&
+                c.unitName
+              );
+            }
+            // Otherwise, show all units
+            return c.unitId != null && c.unitName;
+          })
+          .map((c) => [
+            String(c.unitId),
+            { id: String(c.unitId), name: c.unitName! },
+          ])
+      ).values()
+    );
+
+  /**
+   * Validates form and opens DR number modal
+   * Checks that all required header fields and at least one item are present
+   */
   const handleDone = () => {
     if (!clientName) {
       toast.error("Please enter a client name.");
@@ -536,13 +773,27 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setShowDRModal(true);
   };
 
+  /**
+   * Saves the issuance to the database
+   * Can either create new issuance or update existing draft
+   * Handles both "issued" and "draft" statuses
+   */
   const handleSaveIssuance = async () => {
     if (!drInfo) return;
-    if (!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0) {
+
+    // Final validation
+    if (
+      !clientName ||
+      !dispatcherName ||
+      !customerPoNumber ||
+      !prfNumber ||
+      items.length === 0
+    ) {
       toast.error("Please fill in all the required fields.");
       return;
     }
 
+    // Build the request payload
     const payload = {
       clientName,
       dispatcherName,
@@ -561,25 +812,27 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     };
 
     try {
-      const res = await fetch(draftId ? `/api/issuances/${draftId}` : "/api/issuances", {
-        method: draftId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Use PUT for updating drafts, POST for new issuances
+      const res = await fetch(
+        draftId ? `/api/issuances/${draftId}` : "/api/issuances",
+        {
+          method: draftId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!res.ok) {
-        // Attempt to parse error JSON like you had
+        // Try to extract error message from response
         let errorMessage = "Failed to process issuance.";
-
         try {
           const ct = res.headers.get("content-type") || "";
           if (ct.includes("application/json")) {
             const err = await res.json();
             if (err?.error) errorMessage = err.error;
           }
-        } catch (e) {
-          console.log(e);
-          /* ignore parse error */
+        } catch {
+          // ignore parsing errors
         }
         toast.error(errorMessage);
         return;
@@ -587,19 +840,26 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 
       const result = await res.json();
 
+      // Update issuance reference if returned
       if (result.issuanceRef) {
-    setIssuance(result.issuance);
-  }
+        setIssuance(result.issuance);
+      }
 
+      // Display any warnings (e.g., low stock alerts)
       if (result.warning && result.warning.length > 0) {
         result.warning.forEach((w: string, i: number) => {
           setTimeout(() => toast.warning(w), i * 5000);
         });
       }
 
+      // Show success message and redirect
       setTimeout(() => {
-        toast.success(drInfo.saveAsDraft ? "Issuance saved as draft." : "Issuance saved successfully!");
-        onSaveSuccess?.();
+        toast.success(
+          drInfo.saveAsDraft
+            ? "Issuance saved as draft."
+            : "Issuance saved successfully!"
+        );
+        if (onSaveSuccess) onSaveSuccess();
         setTimeout(() => {
           window.location.href = "/warehouse/issuance_log";
         }, 1500);
@@ -610,6 +870,9 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     }
   };
 
+  /**
+   * Load draft data when component mounts or draftData changes
+   */
   useEffect(() => {
     if (draftData) {
       setClientName(draftData.clientName || "");
@@ -633,242 +896,288 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     }
   }, [draftData]);
 
+  /**
+   * Set "issued by" field from logged-in user information
+   */
   useEffect(() => {
-  if (user) {
-    setIssuedBy(
-      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
-    );
-  }
-}, [user]);
-
-
-  //const MAX_QUANTITY = 9999;
-
-  const sanitizeToDigits = (input: string) => {
-    const digits = input.replace(/\D+/g, "");
-    if (digits === "") return "";
-    const parsed = parseInt(digits, 10);
-    return Number.isNaN(parsed) ? "" : parsed;
-  };
-
-  
+    if (user) {
+      setIssuedBy(
+        user.username ||
+          user.fullName ||
+          user.firstName ||
+          user.primaryEmailAddress?.emailAddress ||
+          ""
+      );
+    }
+  }, [user]);
 
   return (
     <WarehousemanClientComponent>
       <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
-        <section className="p-10 max-w-4xl mx-auto">
-          <div className="flex flex-row justify-between">
-            {/* <h1 className="text-3xl font-bold text-[#173f63] mb-2">Log Item Issuance</h1> */}
-            <p className="text-md font-bold text-[#173f63]">Issuance Ref: {issuance.id}</p>
-          </div>
+        <section className="p-10 max-w-6xl mx-auto">
+          {/* Issuance reference number display */}
+          <p className="text-md font-bold text-[#173f63] mb-4">
+            Issuance Ref: {issuance.id}
+          </p>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
-            {/* Client Name */}
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Client Name:</label>
-              <input
-                type="text"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            {/* Dispatcher Name */}
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Dispatcher Name:</label>
-              <input
-                type="text"
-                value={dispatcherName}
-                onChange={(e) => setDispatcherName(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            {/* Customer PO Number */}
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Customer PO Number:</label>
-              <input
-                type="text"
-                value={customerPoNumber}
-                onChange={(e) => setCustomerPoNumber(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            {/* PRF Number */}
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">PRF Number:</label>
-              <input
-                type="text"
-                value={prfNumber}
-                onChange={(e) => setPrfNumber(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {issuedBy}</label>
-            </div>
-
-            {/* Add Item Section */}
-            <div className="border-t pt-4 mt-4">
-              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Issue</h2>
-
-              <div className="grid grid-cols-5 gap-2 items-end">
-                {/* Item Name */}
-                <div>
-                  <AutoComplete
-                    label="Item Name"
-                    endpoint="/api/autocomplete/item-name"
-                    value={selectedItem}
-                    onChange={(item) => {
-                      setSelectedItem(item);
-                    }}
-                  />
-                  {/* <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre> */}
-                </div>
-
-                {/* Size */}
-                <div>
-                  <AutoComplete
-                    label="Item Size"
-                    options={availableSizes}
-                    value={selectedSize}
-                    onChange={setSelectedSize}
-                    disabled={!selectedItem || availableSizes.length === 0}
-                  />
-                </div>
-
-                {/* Variant */}
-                <div>
-                  <AutoComplete
-                    label="Item Variant"
-                    options={availableVariants}
-                    value={selectedVariant}
-                    onChange={setSelectedVariant}
-                    disabled={!selectedSize && availableVariants.length === 0}
-                  />
-                </div>
-
-                {/* Unit */}
-                <div>
-                  <AutoComplete
-                    label="Item Unit"
-                    options={availableUnits}
-                    value={selectedUnit}
-                    onChange={setSelectedUnit}
-                    disabled={!selectedVariant && availableUnits.length === 0}
-                  />
-                </div>
-
-                {/* Quantity */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-semibold mb-1 text-[#482b0e]">Quantity</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    min={0}
-                    //max={MAX_QUANTITY}
-                    step={1}
-                    value={quantity === "" ? "" : quantity}
-                    onKeyDown={(e) => {
-                      if (["e", "E", "+", "-", "."].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pasted = e.clipboardData.getData("text");
-                      const sanitized = sanitizeToDigits(pasted);
-                      if (sanitized === "") {
-                        setQuantity("");
-                        return;
-                      }
-                      let parsed = Number(sanitized);
-                      if (parsed < 0) {
-                        parsed = 0;
-                        toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } 
-                      // else if (parsed > MAX_QUANTITY) {
-                      //   parsed = MAX_QUANTITY;
-                      //   toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
-                      // }
-                      setQuantity(String(parsed));
-                    }}
-                    onChange={(e) => {
-                      const value = e.target.value;
-
-                      if (value === "") {
-                        setQuantity("");
-                        return;
-                      }
-
-                      const digitsOnly = value.replace(/\D+/g, "");
-                      if (digitsOnly === "") {
-                        setQuantity("");
-                        return;
-                      }
-
-                      let parsed = parseInt(digitsOnly, 10);
-
-                      if (isNaN(parsed)) {
-                        setQuantity("");
-                        return;
-                      }
-
-                      if (parsed < 0) {
-                        parsed = 0;
-                        toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } 
-                      // else if (parsed > MAX_QUANTITY) {
-                      //   parsed = MAX_QUANTITY;
-                      //   toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
-                      // }
-
-                      setQuantity(String(parsed));
-                    }}
-                    className="border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 mt-5">
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  disabled={isAdding}
-                  className="bg-[#674d33] px-4 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium cursor-pointer"
-                >
-                  {isAdding ? "Adding..." : "Add Item"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={triggerFileInput}
-                  disabled={isScanning}
-                  className="bg-[#0b74ff] px-3 py-2 text-sm rounded text-white hover:bg-[#0966d6] cursor-pointer"
-                  title="Scan an item from a DR/SI/PO image"
-                >
-                  {isScanning ? "Scanning..." : "Scan via OCR"}
-                </button>
-
+            {/* Header information fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                  Client Name:
+                </label>
                 <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={onFileChange}
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className="w-full border border-[#d2bda7] p-2 rounded"
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                  Dispatcher Name:
+                </label>
+                <input
+                  type="text"
+                  value={dispatcherName}
+                  onChange={(e) => setDispatcherName(e.target.value)}
+                  className="w-full border border-[#d2bda7] p-2 rounded"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                  Customer PO Number:
+                </label>
+                <input
+                  type="text"
+                  value={customerPoNumber}
+                  onChange={(e) => setCustomerPoNumber(e.target.value)}
+                  className="w-full border border-[#d2bda7] p-2 rounded"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                  PRF Number:
+                </label>
+                <input
+                  type="text"
+                  value={prfNumber}
+                  onChange={(e) => setPrfNumber(e.target.value)}
+                  className="w-full border border-[#d2bda7] p-2 rounded"
+                />
+              </div>
+            </div>
+
+            {/* Display who is logging this issuance */}
+            <div>
+              <label className="block text-sm font-semibold text-[#482b0e]">
+                Logged by: {issuedBy}
+              </label>
+            </div>
+
+            {/* Items section - main area for adding items */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-[#173f63]">
+                  ITEMS TO ISSUE
+                </h2>
+                {/* OCR scan button - allows scanning receipts/documents */}
+                <button
+                  type="button"
+                  onClick={handleScanClick}
+                  disabled={isScanning}
+                  className="bg-[#0b74ff] px-3 py-2 text-sm rounded text-white hover:bg-[#0966d6] flex items-center gap-2"
+                >
+                  {isScanning ? "Scanning..." : "Scan via OCR"}
+                </button>
+              </div>
+
+              {/* Dynamic input rows for item selection */}
+              <div className="space-y-4">
+                {inputRows.map((row, index) => {
+                  // Get available options based on current selections
+                  const availableSizes = getAvailableSizes(row.combinations);
+                  const availableUnits = getAvailableUnits(
+                    row.combinations,
+                    row.selectedSize
+                  );
+
+                  // Calculate stock validation states
+                  const qty = Number(row.quantity) || 0;
+                  const hasStock = row.availableStock !== null;
+                  const isOverStock = hasStock && qty > row.availableStock!;
+                  const isValidStock = hasStock && qty <= row.availableStock!;
+
+                  return (
+                    <div
+                      key={row.id}
+                      className="grid grid-cols-6 gap-2 items-start p-3 border border-[#d2bda7] rounded bg-gray-50"
+                    >
+                      {/* Item name autocomplete */}
+                      <div>
+                        <AutoComplete
+                          label="Item Name"
+                          endpoint="/api/autocomplete/item-name"
+                          value={row.selectedItem}
+                          onChange={(item) => handleItemChange(row.id, item)}
+                        />
+                      </div>
+
+                      {/* Size selector - disabled if no sizes available */}
+                      <div>
+                        <AutoComplete
+                          label="Size"
+                          options={availableSizes}
+                          value={row.selectedSize}
+                          onChange={(size) => handleSizeChange(row.id, size)}
+                          disabled={availableSizes.length === 0}
+                        />
+                      </div>
+
+                      {/* Variant selector - currently disabled (not implemented) */}
+                      <div>
+                        <AutoComplete
+                          label="Variant"
+                          options={[]}
+                          value={row.selectedVariant}
+                          onChange={(variant) =>
+                            updateRow(row.id, "selectedVariant", variant)
+                          }
+                          disabled
+                        />
+                      </div>
+
+                      {/* Unit selector - disabled if no units available */}
+                      <div>
+                        <AutoComplete
+                          label="Unit"
+                          options={availableUnits}
+                          value={row.selectedUnit}
+                          onChange={(unit) => handleUnitChange(row.id, unit)}
+                          disabled={availableUnits.length === 0}
+                        />
+                      </div>
+
+                      {/* Quantity input with stock validation feedback */}
+                      <div className="relative">
+                        <label className="text-sm font-semibold mb-1 text-[#482b0e]">
+                          Quantity
+                        </label>
+                        <input
+                          type="number"
+                          value={row.quantity}
+                          onChange={(e) =>
+                            updateRow(row.id, "quantity", e.target.value)
+                          }
+                          className={`w-full border p-2 rounded ${
+                            isOverStock
+                              ? "border-red-500 bg-red-50"
+                              : "border-[#d2bda7]"
+                          }`}
+                        />
+
+                        {/* Loading indicator while fetching stock */}
+                        {row.isLoadingStock && (
+                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                            <span className="animate-spin">⏳</span> Checking
+                            stock...
+                          </div>
+                        )}
+
+                        {/* Stock validation messages */}
+                        {hasStock && qty > 0 && (
+                          <div
+                            className={`text-xs mt-1 flex items-center gap-1 ${
+                              isOverStock ? "text-red-600" : "text-green-600"
+                            }`}
+                          >
+                            {isOverStock ? (
+                              <>
+                                <AlertTriangle size={14} />
+                                <span className="font-semibold">
+                                  Exceeds stock! Only {row.availableStock}{" "}
+                                  available
+                                </span>
+                              </>
+                            ) : isValidStock ? (
+                              <>
+                                <CheckCircle size={14} />
+                                <span>
+                                  Stock available: {row.availableStock}
+                                </span>
+                              </>
+                            ) : null}
+                          </div>
+                        )}
+
+                        {/* Show available stock when quantity is zero */}
+                        {hasStock && qty === 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Available: {row.availableStock}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Row action buttons (add/remove) */}
+                      <div className="flex gap-2 mt-6">
+                        {/* Show add button only on last row */}
+                        {index === inputRows.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={addEmptyRow}
+                            className="p-2 bg-green-600 text-white rounded hover:bg-green-700"
+                            title="Add Row"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        )}
+                        {/* Show remove button if more than one row exists */}
+                        {inputRows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeRow(row.id)}
+                            className="p-2 bg-red-600 text-white rounded hover:bg-red-700"
+                            title="Remove Row"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Button to add all input rows to the final items list */}
+              <button
+                type="button"
+                onClick={handleAddAllRows}
+                disabled={isAdding}
+                className="mt-4 bg-[#674d33] px-6 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium"
+              >
+                {isAdding ? "Adding..." : "Add Items to List"}
+              </button>
+
+              {/* Hidden file input for OCR image upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onFileChange}
+              />
+
+              {/* Display table of items that have been added to the final list */}
               {items.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-6">
                   <h3 className="text-sm font-semibold mb-2">Items Added</h3>
                   <table className="w-full border text-sm">
-                    <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                    <thead className="bg-[#f5e6d3]">
                       <tr>
                         <th className="border px-2 py-1">Item Name</th>
                         <th className="border px-2 py-1">Size</th>
@@ -882,15 +1191,23 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
                       {items.map((item, idx) => (
                         <tr key={`${item.itemId}-${idx}`}>
                           <td className="border px-2 py-1">{item.itemName}</td>
-                          <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
+                          <td className="border px-2 py-1">
+                            {item.sizeName || "(None)"}
+                          </td>
+                          <td className="border px-2 py-1">
+                            {item.variantName || "(None)"}
+                          </td>
+                          <td className="border px-2 py-1">
+                            {item.unitName || "(None)"}
+                          </td>
                           <td className="border px-2 py-1">{item.quantity}</td>
                           <td className="border px-2 py-1">
                             <button
                               type="button"
-                              className="text-red-500 text-xs hover:underline cursor-pointer"
-                              onClick={() => setItems(items.filter((_, index) => index !== idx))}
+                              className="text-red-500 text-xs hover:underline"
+                              onClick={() =>
+                                setItems(items.filter((_, i) => i !== idx))
+                              }
                             >
                               Remove
                             </button>
@@ -903,25 +1220,26 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
               )}
             </div>
 
+            {/* Form action buttons */}
             <div className="mt-6 flex justify-end gap-4">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDone}
-                //disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
-                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700 cursor-pointer"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Done
               </button>
             </div>
           </form>
 
+          {/* Modal for entering DR (Delivery Receipt) number */}
           {showDRModal && (
             <DRModal
               onClose={() => setShowDRModal(false)}
@@ -930,36 +1248,42 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
                 setShowDRModal(false);
                 setShowSummary(true);
               }}
-              //className="hover:bg-gray-100"
             />
           )}
 
+          {/* Summary confirmation modal before final save */}
           {showSummary && (
             <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
               <div className="bg-white w-[600px] p-6 rounded shadow">
-                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Issuance</h2>
-                <p className="mb-2 text-sm text-gray-700">Client: {clientName}</p>
-                <p className="mb-2 text-sm text-gray-700">Dispatcher: {dispatcherName}</p>
-                <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drNumber || "Draft"}</p>
-                <p className="mb-2 text-sm text-gray-700">Customer PO Number: {customerPoNumber}</p>
+                <h2 className="text-xl font-bold mb-4 text-[#173f63]">
+                  Confirm Issuance
+                </h2>
+                <p className="mb-2 text-sm">Client: {clientName}</p>
+                <p className="mb-2 text-sm">Dispatcher: {dispatcherName}</p>
+                <p className="mb-2 text-sm">
+                  DR Number: {drInfo?.drNumber || "Draft"}
+                </p>
 
+                {/* Summary table of all items */}
                 <table className="w-full mt-4 text-sm border">
-                  <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                  <thead className="bg-[#f5e6d3]">
                     <tr>
                       <th className="border px-2 py-1">Item</th>
                       <th className="border px-2 py-1">Size</th>
-                      <th className="border px-2 py-1">Variant</th>
                       <th className="border px-2 py-1">Unit</th>
                       <th className="border px-2 py-1">Qty</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((item, idx) => (
-                      <tr key={`${item.itemId}-${idx}`}>
+                      <tr key={idx}>
                         <td className="border px-2 py-1">{item.itemName}</td>
-                        <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
+                        <td className="border px-2 py-1">
+                          {item.sizeName || "(None)"}
+                        </td>
+                        <td className="border px-2 py-1">
+                          {item.unitName || "(None)"}
+                        </td>
                         <td className="border px-2 py-1">{item.quantity}</td>
                       </tr>
                     ))}
@@ -968,24 +1292,37 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 
                 <div className="flex justify-end gap-4 mt-6">
                   <button
-                    onClick={() => {
-                      setShowSummary(false);
-                      //setShowDRModal(true);
-                    }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
+                    onClick={() => setShowSummary(false)}
+                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                   >
                     Cancel
                   </button>
-                  <button 
-                  onClick={() => {
-                    handleSaveIssuance();
-                  }} 
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
+                  <button
+                    onClick={handleSaveIssuance}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
                     Save
                   </button>
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Modal for choosing OCR mode (webcam vs file upload) */}
+          {showOCRModeModal && (
+            <OCRModeModal
+              onClose={() => setShowOCRModeModal(false)}
+              onSelectWebcam={handleSelectWebcam}
+              onSelectUpload={handleSelectUpload}
+            />
+          )}
+
+          {/* Modal for capturing image via webcam */}
+          {showWebcamModal && (
+            <WebcamCaptureModal
+              onClose={() => setShowWebcamModal(false)}
+              onCapture={handleWebcamCapture}
+            />
           )}
         </section>
       </main>
@@ -994,4 +1331,3 @@ async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
 };
 
 export default NewIssuancePage;
-// Latest version - Sept.2 - 5:40PM
