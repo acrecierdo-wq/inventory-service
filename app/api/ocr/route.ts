@@ -1,112 +1,93 @@
-// // app/api/ocr/route.ts
-
-// import { NextRequest, NextResponse } from "next/server";
-
-// export async function POST(req: NextRequest) {
-//   try {
-//     const { imageUrl } = await req.json();
-//     if (!imageUrl) {
-//       return NextResponse.json({ error: "No imageUrl provided" }, { status: 400 });
-//     }
-
-//     const apiKey = process.env.OCR_API_KEY;
-//     if (!apiKey) {
-//       return NextResponse.json({ error: "OCR API key missing" }, { status: 500 });
-//     }
-
-//     // Call OCR.Space
-//     const formData = new FormData();
-//     formData.append("apikey", apiKey);
-//     formData.append("url", imageUrl); // Image URL from Cloudinary
-//     formData.append("language", "eng");
-//     formData.append("scale", "true");
-//     formData.append("OCREngine", "2");
-
-//     const ocrResponse = await fetch("https://api.ocr.space/parse/image", {
-//       method: "POST",
-//       body: formData,
-//     });
-
-//     const result = await ocrResponse.json();
-
-//     if (result.IsErroredOnProcessing) {
-//       return NextResponse.json({ error: "OCR processing failed", details: result }, { status: 500 });
-//     }
-
-//     const parsedText = result.ParsedResults?.[0]?.ParsedText || "";
-
-//     return NextResponse.json({
-//       success: true,
-//       parsedText,
-//       raw: result, // For debugging
-//     });
-
-//   } catch (err) {
-//     console.error(err);
-//     return NextResponse.json({ error: "Server error", err }, { status: 500 });
-//   }
-// }
-
 // app/api/ocr/route.ts
 
+import { NextRequest, NextResponse } from "next/server";
 import { extractIssuanceFields } from "@/lib/ocr/extractIssuanceFields";
 import { db } from "@/db/drizzle";
-import { items as inventory } from "@/db/schema";
-import { NextRequest, NextResponse } from "next/server";
+import { items } from "@/db/schema";
 
+/**
+ * POST endpoint that processes images using OCR (Optical Character Recognition)
+ * to extract text and match it with inventory items.
+ *
+ * @param req - The incoming request containing an imageUrl in the body
+ * @returns JSON response with extracted fields and raw text, or error message
+ */
 export async function POST(req: NextRequest) {
   try {
+    // Parse the request body to get the image URL
     const { imageUrl } = await req.json();
 
+    // Validate that an image URL was provided
     if (!imageUrl) {
-      return NextResponse.json({ error: "No imageUrl provided" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Image URL required" },
+        { status: 400 }
+      );
     }
 
-    const apiKey = process.env.OCR_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Missing OCR API key" }, { status: 500 });
-    }
-
-    // ===== OCR SPACE REQUEST =====
+    // Prepare form data for OCR.space API request
     const formData = new FormData();
-    formData.append("apikey", apiKey);
-    formData.append("url", imageUrl);
-    formData.append("language", "eng");
-    formData.append("scale", "true");
-    formData.append("OCREngine", "2");
+    formData.append("url", imageUrl); // The image to process
+    formData.append("apikey", process.env.OCR_API_KEY!); // API authentication key
+    formData.append("language", "eng"); // Set language to English
+    formData.append("isOverlayRequired", "false"); // Don't need overlay coordinates
+    formData.append("detectOrientation", "true"); // Auto-detect image rotation
+    formData.append("scale", "true"); // Scale image for better accuracy
+    formData.append("OCREngine", "2"); // Use the newer, more accurate OCR engine
 
+    // Send the image to OCR.space API for text extraction
     const ocrResponse = await fetch("https://api.ocr.space/parse/image", {
       method: "POST",
       body: formData,
     });
 
-    const result = await ocrResponse.json();
+    // Parse the OCR API response
+    const ocrResult = await ocrResponse.json();
 
-    if (result.IsErroredOnProcessing) {
-      return NextResponse.json(
-        { error: "OCR failed", details: result },
-        { status: 500 }
-      );
+    // Log the complete OCR result for debugging purposes
+    console.log("🔍 OCR Result:", JSON.stringify(ocrResult, null, 2));
+
+    // Check if OCR processing was successful and text was extracted
+    if (!ocrResult.IsErroredOnProcessing && ocrResult.ParsedResults?.[0]) {
+      // Get the extracted text from the first result
+      const parsedText = ocrResult.ParsedResults[0].ParsedText;
+
+      // Log the raw extracted text
+      console.log("📄 Parsed Text:", parsedText);
+
+      // Fetch all inventory item names from the database
+      // This allows us to match extracted text with existing items
+      const inventoryItems = await db.select({ name: items.name }).from(items);
+      const itemNames = inventoryItems.map((i) => i.name);
+
+      // Process the extracted text to identify specific fields
+      // (e.g., item names, quantities, dates) using our custom parser
+      const fields = extractIssuanceFields(parsedText, itemNames);
+
+      // Log the successfully extracted and parsed fields
+      console.log("✅ Extracted Fields:", fields);
+
+      // Return success response with extracted fields and raw text
+      return NextResponse.json({
+        success: true,
+        fields,
+        rawText: parsedText,
+      });
     }
 
-    const parsedText = result.ParsedResults?.[0]?.ParsedText || "";
+    // If OCR processing failed, return error with details
+    return NextResponse.json(
+      { error: "OCR processing failed", details: ocrResult },
+      { status: 500 }
+    );
+  } catch (error: unknown) {
+    // Log any unexpected errors that occur during processing
+    console.error("OCR API error:", error);
 
-    // ===== FETCH INVENTORY ITEMS FOR MATCHING =====
-    const items = await db.select().from(inventory);
+    // Extract error message safely (handle both Error objects and unknown types)
+    const message = error instanceof Error ? error.message : "OCR failed";
 
-    // IMPORTANT: the correct field is "name", NOT "itemName"
-    const inventoryNames = items.map((i) => i.name);
-
-    // ===== RUN EXTRACTION LOGIC =====
-    const fields = extractIssuanceFields(parsedText, inventoryNames);
-
-    return NextResponse.json({
-      success: true,
-      fields,
-      rawText: parsedText,
-    });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Server error", details: err }, { status: 500 });
+    // Return error response
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
