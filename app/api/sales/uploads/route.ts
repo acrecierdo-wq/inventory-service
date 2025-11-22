@@ -1,6 +1,7 @@
 // /app/api/sales/uploads/route.ts
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { UploadApiResponse } from "cloudinary";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
@@ -55,23 +56,27 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Upload to Cloudinary using upload_stream
-    const uploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: "quotations",
-          resource_type: "raw", // Allows DWG, PDF, Excel, etc.
-          public_id: `${Date.now()}-${file.name}`,
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
+    const uploadResult = await new Promise<UploadApiResponse>(
+      (resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "quotations",
+            resource_type: "raw",
+            public_id: `${Date.now()}-${file.name}`,
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else if (!result)
+              reject(new Error("No result returned from Cloudinary"));
+            else resolve(result);
+          }
+        );
 
-      uploadStream.end(buffer);
-    });
+        uploadStream.end(buffer);
+      }
+    );
 
-    const result = uploadResult as any;
+    const result = uploadResult;
 
     if (!result.secure_url) {
       return NextResponse.json(
