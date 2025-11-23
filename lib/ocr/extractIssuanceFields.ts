@@ -200,24 +200,32 @@ export function extractIssuanceFields(
       const line = descriptionLines[i];
       const upper = line.toUpperCase();
 
-      // Skip metadata lines that don't contain item information
+      // **IMPROVED: More comprehensive metadata detection**
       const isMetadata =
-        upper.match(/^(Nº|NO\.|#)\s*\d+/) || // Line numbers
+        upper.match(/^(Nº|NO\.|#|N°)\s*\d+/) || // Receipt/Reference numbers
         upper.includes("DATE") ||
         upper.includes("TERMS") ||
         upper.includes("REMARKS") ||
-        upper.match(/^P\.O\.\s*NO/) || // PO number (already extracted)
-        upper === "QUANTITY" || // Column headers
+        upper.match(/^P\.O\.\s*NO/i) || // PO number patterns
+        upper.match(/^\.\s*P\.O\./i) || // Malformed PO patterns (". P.O.")
+        upper === "QUANTITY" ||
         upper === "UNIT" ||
-        line.length < 3; // Too short to be meaningful
+        upper === "DESCRIPTION" ||
+        line.length < 3 ||
+        // **NEW: Skip lines that are clearly not product descriptions**
+        upper.match(/^\d{4,}/) || // Long numbers (serial numbers, etc.)
+        upper.includes("NOVEMBER") || // Dates
+        upper.includes("DECEMBER") ||
+        upper.includes("JANUARY") ||
+        upper.includes("FEBRUARY") ||
+        upper.match(/^\d{1,2}$/); // Single/double digit numbers
 
       if (isMetadata) {
         console.log("⏭️ Skipping metadata:", line);
         continue;
       }
 
-      // Check if this line is a standalone quantity line (e.g., "100 PCS." or "400 PCS")
-      // Pattern: number followed by unit keyword, possibly with punctuation
+      // Check if this line is a standalone quantity line
       const qtyPattern = new RegExp(
         `^(\\d{1,4})\\s*(${unitWords.join("|")})\\.?\\s*$`,
         "i"
@@ -234,11 +242,29 @@ export function extractIssuanceFields(
         continue;
       }
 
-      // Check if this line is a description line
-      // Must contain letters, be longer than 3 chars, and not be just numbers
-      if (line.match(/[A-Z]/i) && line.length > 3 && !upper.match(/^\d+$/)) {
+      // **IMPROVED: More specific description validation**
+      // A valid description should:
+      // 1. Contain letters (not just symbols/numbers)
+      // 2. Be longer than 5 characters (product names are rarely shorter)
+      // 3. Not be purely numeric
+      // 4. Not match common metadata patterns
+      // 5. Contain actual words (at least 2 letters in a row)
+      if (
+        line.match(/[A-Z]/i) && // Has letters
+        line.length > 5 && // Reasonable length for product name
+        !upper.match(/^\d+$/) && // Not just numbers
+        line.match(/[A-Z]{2,}/i) && // Has at least one word (2+ letters)
+        !upper.match(/^(BY:|RECEIVED|APPROVED|CHECKED|PREPARED|DELIVERED)/i) && // Not signature fields
+        !upper.includes("BIR") && // Not tax/legal text
+        !upper.includes("ACCREDITATION") &&
+        !upper.includes("AUTHORITY") &&
+        !upper.includes("EXPIRY") &&
+        !upper.match(/^N°|^NO\.|^#/) // Not reference numbers
+      ) {
         descriptions.push(line.trim());
         console.log(`📝 Found description: ${line}`);
+      } else {
+        console.log(`⏭️ Rejected as description: ${line}`);
       }
     }
 
