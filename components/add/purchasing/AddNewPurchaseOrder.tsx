@@ -1,353 +1,20 @@
-// // app/components/add/purchasing/add_purchase_order.tsx
-
-// "use client";
-
-// import { useEffect, useState, ChangeEvent } from "react";
-// import {
-//   Dialog,
-//   DialogContent,
-//   DialogHeader,
-//   DialogTitle,
-// } from "@/components/ui/dialog";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/components/ui/select";
-// import { Textarea } from "@/components/ui/textarea";
-
-// type Supplier = {
-//   id: number;
-//   supplierName: string;
-//   contactNumber: string;
-//   email: string;
-//   role: string;
-//   tinNumber: string;
-//   address: string;
-//   status: string;
-//   loggedBy: string;
-//   createdAt: string;
-//   updatedAt: string;
-// };
-
-// type Item = {
-//   id: number;
-//   name: string;
-//   purchasingPurchaseOrderId?: number;
-//   itemId?: number;
-//   sizeId?: number;
-//   variantId?: number;
-//   unitId?: number;
-//   quantity?: number;
-//   unitPrice?: number;
-//   totalPrice?: number | string;
-// };
-
-// type FormState = {
-//   supplierId: string;
-//   terms: string;
-//   deliveryMode: string;
-//   projectName: string;
-//   remarks: string;
-//   preparedBy: string;
-//   items: Item[];
-// };
-
-// export default function AddPurchaseOrderModal({
-//   onClose,
-// }: {
-//   onClose: () => void;
-// }) {
-//   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-//   const [items, setItems] = useState<Item[]>([]);
-//   const [form, setForm] = useState<FormState>({
-//     supplierId: "",
-//     terms: "",
-//     deliveryMode: "",
-//     projectName: "",
-//     remarks: "",
-//     preparedBy: "",
-//     items: [],
-//   });
-//   const [loading, setLoading] = useState(false);
-
-//   // ✅ Fetch suppliers & items
-//   useEffect(() => {
-//     const loadSuppliers = async () => {
-//       const res = await fetch("/api/purchasing/suppliers");
-//       const data = await res.json();
-//       setSuppliers(data.data || data);
-//     };
-
-//     const loadItems = async () => {
-//       const res = await fetch("/api/items");
-//       const data = await res.json();
-//       setItems(data.data || data);
-//     };
-
-//     loadSuppliers();
-//     loadItems();
-//   }, []);
-
-//   // ✅ Add new item row
-//   const addItemRow = (): void => {
-//     setForm((prev) => ({
-//       ...prev,
-//       items: [
-//         ...prev.items,
-//         {
-//           id: 0,
-//           name: "",
-//           itemId: 0,
-//           quantity: 1,
-//           unitPrice: 0,
-//           totalPrice: 0,
-//         },
-//       ],
-//     }));
-//   };
-
-//   // ✅ Update item field
-//   const updateItemRow = <K extends keyof Item>(
-//     index: number,
-//     field: K,
-//     value: Item[K]
-//   ): void => {
-//     const updated = [...form.items];
-//     updated[index] = { ...updated[index], [field]: value };
-//     setForm({ ...form, items: updated });
-//   };
-
-//   // ✅ Remove a row
-//   const removeItemRow = (index: number): void => {
-//     setForm((prev) => ({
-//       ...prev,
-//       items: prev.items.filter((_, i) => i !== index),
-//     }));
-//   };
-
-//   // ✅ Submit handler
-//   const handleSubmit = async (): Promise<void> => {
-//     if (!form.supplierId) {
-//       alert("Please select a supplier.");
-//       return;
-//     }
-//     if (form.items.length === 0) {
-//       alert("Please add at least one item.");
-//       return;
-//     }
-
-//     setLoading(true);
-//     try {
-//       const res = await fetch("/api/purchasing/purchase_orders", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify(form),
-//       });
-
-//       if (res.ok) {
-//         alert("Purchase Order created successfully!");
-//         onClose();
-//       } else {
-//         alert("Failed to create Purchase Order.");
-//       }
-//     } catch (err) {
-//       console.error("Error creating PO:", err);
-//       alert("An error occurred while creating the purchase order.");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <Dialog open onOpenChange={onClose}>
-//       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-//         <DialogHeader>
-//           <DialogTitle className="text-xl font-semibold text-[#173f63]">
-//             New Purchase Order
-//           </DialogTitle>
-//         </DialogHeader>
-
-//         {/* Supplier Details */}
-//         <div className="grid grid-cols-2 gap-4 mt-4">
-//           <div>
-//             <label className="text-sm font-medium">Supplier</label>
-//             <Select
-//               onValueChange={(val) => setForm({ ...form, supplierId: val })}
-//             >
-//               <SelectTrigger>
-//                 <SelectValue placeholder="Select Supplier" />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 {suppliers.map((s) => (
-//                   <SelectItem key={s.id} value={s.id.toString()}>
-//                     {s.supplierName}
-//                   </SelectItem>
-//                 ))}
-//               </SelectContent>
-//             </Select>
-//           </div>
-
-//           <div>
-//             <label className="text-sm font-medium">Terms (Payment)</label>
-//             <Input
-//               value={form.terms}
-//               onChange={(e: ChangeEvent<HTMLInputElement>) =>
-//                 setForm({ ...form, terms: e.target.value })
-//               }
-//               placeholder="e.g. 30 days credit"
-//             />
-//           </div>
-
-//           <div>
-//             <label className="text-sm font-medium">Mode of Delivery</label>
-//             <Select
-//               onValueChange={(val) => setForm({ ...form, deliveryMode: val })}
-//             >
-//               <SelectTrigger>
-//                 <SelectValue placeholder="Select delivery mode" />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 <SelectItem value="Pickup">Pickup</SelectItem>
-//                 <SelectItem value="Delivery">Delivery</SelectItem>
-//                 <SelectItem value="Other">Other</SelectItem>
-//               </SelectContent>
-//             </Select>
-//           </div>
-
-//           <div>
-//             <label className="text-sm font-medium">Project Name</label>
-//             <Input
-//               value={form.projectName}
-//               onChange={(e: ChangeEvent<HTMLInputElement>) =>
-//                 setForm({ ...form, projectName: e.target.value })
-//               }
-//               placeholder="Enter project name"
-//             />
-//           </div>
-//         </div>
-
-//         {/* Item Table */}
-//         <div className="mt-6">
-//           <h3 className="font-semibold text-[#173f63] mb-2">Items</h3>
-//           <table className="min-w-full border border-gray-300 rounded">
-//             <thead className="bg-gray-100">
-//               <tr>
-//                 <th className="px-3 py-2 text-left">Item</th>
-//                 <th className="px-3 py-2 text-left">Qty</th>
-//                 <th className="px-3 py-2 text-left">Unit Price</th>
-//                 <th className="px-3 py-2 text-left">Total</th>
-//                 <th></th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {form.items.map((row, index) => {
-//                 const total = (row.quantity || 0) * (row.unitPrice || 0);
-//                 return (
-//                   <tr key={index} className="border-t">
-//                     <td className="px-3 py-2">
-//                       <Select
-//                         onValueChange={(val) =>
-//                           updateItemRow(index, "itemId", Number(val))
-//                         }
-//                       >
-//                         <SelectTrigger>
-//                           <SelectValue placeholder="Select item" />
-//                         </SelectTrigger>
-//                         <SelectContent>
-//                           {items.map((i) => (
-//                             <SelectItem key={i.id} value={i.id.toString()}>
-//                               {i.name}
-//                             </SelectItem>
-//                           ))}
-//                         </SelectContent>
-//                       </Select>
-//                     </td>
-
-//                     <td className="px-3 py-2">
-//                       <Input
-//                         type="number"
-//                         value={row.quantity ?? 1}
-//                         onChange={(e) =>
-//                           updateItemRow(index, "quantity", Number(e.target.value))
-//                         }
-//                         className="w-20"
-//                       />
-//                     </td>
-
-//                     <td className="px-3 py-2">
-//                       <Input
-//                         type="number"
-//                         value={row.unitPrice ?? 0}
-//                         onChange={(e) =>
-//                           updateItemRow(index, "unitPrice", Number(e.target.value))
-//                         }
-//                         className="w-24"
-//                       />
-//                     </td>
-
-//                     <td className="px-3 py-2">₱{total.toFixed(2)}</td>
-
-//                     <td className="px-3 py-2 text-right">
-//                       <button
-//                         className="h-5 w-5 text-red-500 text-xs hover:underline cursor-pointer rounded-full"
-//                         onClick={() => removeItemRow(index)}
-//                       >
-//                         ✕
-//                       </button>
-//                     </td>
-//                   </tr>
-//                 );
-//               })}
-//             </tbody>
-//           </table>
-
-//           <div className="mt-3">
-//             <Button variant="outline" onClick={addItemRow}>
-//               + Add Item
-//             </Button>
-//           </div>
-//         </div>
-
-//         {/* Remarks */}
-//         <div className="mt-6">
-//           <label className="text-sm font-medium">Remarks</label>
-//           <Textarea
-//             value={form.remarks}
-//             onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-//               setForm({ ...form, remarks: e.target.value })
-//             }
-//             placeholder="Enter remarks or special notes"
-//           />
-//         </div>
-
-//         {/* Footer */}
-//         <div className="flex justify-end gap-2 mt-6">
-//           <Button variant="outline" onClick={onClose}>
-//             Cancel
-//           </Button>
-//           <Button onClick={handleSubmit} disabled={loading}>
-//             {loading ? "Saving..." : "Save Purchase Order"}
-//           </Button>
-//         </div>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// }
-
-// app/components/add/purchasing/add_purchase_order.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/header";
 import AutoComplete from "@/components/autocomplete/AutoComplete";
 import { toast } from "sonner";
 import { useUser } from "@clerk/nextjs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import OCRModeModal from "@/components/modals/OCRModeModal";
+import WebcamCaptureModal from "@/components/modals/WebcamCaptureModal";
+import { Trash2, Plus } from "lucide-react";
 
 type Selection = { id: string | number; name: string };
 
@@ -376,6 +43,17 @@ interface PurchaseOrderItem {
   totalPrice: number;
 }
 
+interface InputRow {
+  id: string;
+  selectedItem: Selection | null;
+  selectedSize: Selection | null;
+  selectedVariant: Selection | null;
+  selectedUnit: Selection | null;
+  quantity: string;
+  unitPrice: string;
+  combinations: Combination[];
+}
+
 export default function AddPurchaseOrder() {
   const { user } = useUser();
 
@@ -394,60 +72,270 @@ export default function AddPurchaseOrder() {
   const [preparedBy, setPreparedBy] = useState("");
   const [poNumber, setPoNumber] = useState("");
   const [date] = useState(() => new Date().toISOString().split("T")[0]);
-  // Items
+
+  // OCR-related states
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [showOCRModeModal, setShowOCRModeModal] = useState(false);
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
+
+  // Dynamic input rows
+  const [inputRows, setInputRows] = useState<InputRow[]>([
+    {
+      id: crypto.randomUUID(),
+      selectedItem: null,
+      selectedSize: null,
+      selectedVariant: null,
+      selectedUnit: null,
+      quantity: "",
+      unitPrice: "",
+      combinations: [],
+    },
+  ]);
+
+  // Final items list
   const [items, setItems] = useState<PurchaseOrderItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
-  const [selectedSize, setSelectedSize] = useState<Selection | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<Selection | null>(null);
-  const [selectedUnit, setSelectedUnit] = useState<Selection | null>(null);
-  const [quantity, setQuantity] = useState("");
-  const [unitPrice, setUnitPrice] = useState("");
-  const [combinations, setCombinations] = useState<Combination[]>([]);
 
-  // --- Derive dynamic options ---
-  const availableSizes = Array.from(
-    new Map(
-      combinations
-        .filter((c) => c.sizeId != null && c.sizeName)
-        .map((c) => [String(c.sizeId), { id: String(c.sizeId), name: c.sizeName! }])
-    ).values()
-  );
+  // === OCR HANDLERS ===
 
-  const availableVariants = Array.from(
-    new Map(
-      combinations
-        .filter(
-          (c) =>
-            (!selectedSize || c.sizeId === Number(selectedSize.id)) &&
-            c.variantId != null &&
-            c.variantName
-        )
-        .map((c) => [String(c.variantId), { id: String(c.variantId), name: c.variantName! }])
-    ).values()
-  );
+  const handleScanClick = () => {
+    setShowOCRModeModal(true);
+  };
 
-  const availableUnits = Array.from(
-    new Map(
-      combinations
-        .filter((c) => {
-          if (selectedSize && selectedVariant) {
-            return (
-              c.sizeId === Number(selectedSize.id) &&
-              c.variantId === Number(selectedVariant.id) &&
-              c.unitId != null &&
-              c.unitName
+  const handleSelectWebcam = () => {
+    setShowWebcamModal(true);
+  };
+
+  const handleSelectUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleWebcamCapture = (file: File) => {
+    handleOCRFile(file);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleOCRFile(file);
+    }
+    e.target.value = "";
+  };
+
+  async function uploadToCloudinary(file: File) {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const unsignedPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    if (cloudName && unsignedPreset) {
+      const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", unsignedPreset);
+
+      const res = await fetch(url, { method: "POST", body: fd });
+      if (!res.ok) throw new Error("Cloudinary upload failed");
+      const json = await res.json();
+      return json.secure_url as string;
+    }
+
+    throw new Error("Cloudinary config missing");
+  }
+
+  /**
+   * Main OCR processing function for Purchase Orders
+   * ONLY auto-fills: terms, project name, remarks, and items
+   * Supplier selection is manual (OCR just helps find match in dropdown)
+   */
+  async function handleOCRFile(file: File) {
+    setIsScanning(true);
+    try {
+      const cloudinaryUrl = await uploadToCloudinary(file);
+      console.log("☁️ Uploaded to Cloudinary:", cloudinaryUrl);
+
+      const ocrRes = await fetch("/api/ocr/purchase-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: cloudinaryUrl }),
+      });
+
+      if (!ocrRes.ok) {
+        const err = await ocrRes.json().catch(() => null);
+        throw new Error(err?.error || "OCR request failed");
+      }
+
+      const ocrJson = await ocrRes.json();
+      const fields = ocrJson.fields || {};
+
+      console.log("📦 OCR Extracted Fields:", fields);
+
+      // ✅ Step 1: Try to match supplier from database (but don't auto-fill address/contact/TIN)
+      if (fields.supplierName) {
+        const supplierRes = await fetch(
+          `/api/autocomplete/supplier-name?query=${encodeURIComponent(
+            fields.supplierName
+          )}`
+        );
+        if (supplierRes.ok) {
+          const suppliers = await supplierRes.json();
+          if (suppliers.length > 0) {
+            setSupplier({ id: suppliers[0].id, name: suppliers[0].name });
+            console.log("✅ Supplier matched from DB:", suppliers[0].name);
+            toast.success(`Found supplier: ${suppliers[0].name}`, {
+              duration: 3000,
+            });
+          } else {
+            toast.info(
+              `Supplier "${fields.supplierName}" not found in database. Please select manually.`,
+              { duration: 5000 }
             );
           }
-          if (selectedSize && !selectedVariant) {
-            return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
-          }
-          return c.unitId != null && c.unitName;
-        })
-        .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
-    ).values()
-  );
+        }
+      }
 
-  // --- Fetch supplier details automatically ---
+      // ✅ Step 2: Auto-fill ONLY terms, project name, and remarks
+      if (fields.terms) {
+        setTerms(fields.terms);
+        console.log("✅ Auto-filled Terms:", fields.terms);
+      }
+
+      if (fields.projectName) {
+        setProjectName(fields.projectName);
+        console.log("✅ Auto-filled Project Name:", fields.projectName);
+      }
+
+      if (fields.remarks) {
+        setRemarks(fields.remarks);
+        console.log("✅ Auto-filled Remarks:", fields.remarks);
+      }
+
+      // ✅ Step 3: Create input rows for each detected item
+      if (Array.isArray(fields.items) && fields.items.length > 0) {
+        const newRows: InputRow[] = [];
+
+        for (const extractedItem of fields.items) {
+          const row = await createInputRowFromOCR(extractedItem);
+          newRows.push(row);
+        }
+
+        setInputRows(newRows);
+
+        toast.success(
+          `✅ Scanned ${fields.items.length} item(s). Review and add to list.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.info("No items extracted from the purchase order.");
+      }
+    } catch (err) {
+      console.error("❌ OCR error:", err);
+      toast.error((err as Error)?.message || "OCR scan failed.");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  /**
+   * Creates a pre-filled input row from OCR-extracted item data
+   */
+  async function createInputRowFromOCR(extractedItem: {
+    itemName: string | null;
+    quantity: number | null;
+    unit: string | null;
+    unitPrice: number | null;
+    size: string | null;
+    description: string;
+  }): Promise<InputRow> {
+    const { itemName, quantity, unit, unitPrice, size } = extractedItem;
+
+    const row: InputRow = {
+      id: crypto.randomUUID(),
+      selectedItem: null,
+      selectedSize: null,
+      selectedVariant: null,
+      selectedUnit: null,
+      quantity: quantity ? String(quantity) : "",
+      unitPrice: unitPrice ? String(unitPrice) : "",
+      combinations: [],
+    };
+
+    if (!itemName) return row;
+
+    try {
+      // Step 1: Search for the item
+      const acRes = await fetch(
+        `/api/autocomplete/item-name?query=${encodeURIComponent(itemName)}`
+      );
+      if (!acRes.ok) return row;
+
+      const items = await acRes.json();
+      if (!Array.isArray(items) || items.length === 0) return row;
+
+      const matchedItem = items[0];
+      row.selectedItem = { id: matchedItem.id, name: matchedItem.name };
+
+      // Step 2: Fetch combinations for this item
+      const combRes = await fetch(
+        `/api/inventory-options?itemName=${encodeURIComponent(
+          matchedItem.name
+        )}`
+      );
+      if (!combRes.ok) return row;
+
+      const combinations: Combination[] = await combRes.json();
+      row.combinations = Array.isArray(combinations) ? combinations : [];
+
+      // Step 3: Match size if extracted
+      if (size && row.combinations.length > 0) {
+        const availableSizes = Array.from(
+          new Map(
+            row.combinations
+              .filter((c) => c.sizeId != null && c.sizeName)
+              .map((c) => [
+                String(c.sizeId),
+                { id: String(c.sizeId!), name: c.sizeName! },
+              ])
+          ).values()
+        );
+
+        const matchedSize = availableSizes.find((s) =>
+          s.name.toLowerCase().includes(size.toLowerCase())
+        );
+        if (matchedSize) {
+          row.selectedSize = matchedSize;
+        }
+      }
+
+      // Step 4: Match unit if extracted
+      if (unit && row.combinations.length > 0) {
+        const availableUnits = Array.from(
+          new Map(
+            row.combinations
+              .filter((c) => c.unitId != null && c.unitName)
+              .map((c) => [
+                String(c.unitId),
+                { id: String(c.unitId!), name: c.unitName! },
+              ])
+          ).values()
+        );
+
+        const matchedUnit = availableUnits.find((u) =>
+          u.name.toLowerCase().includes(unit.toLowerCase())
+        );
+        if (matchedUnit) {
+          row.selectedUnit = matchedUnit;
+        }
+      }
+
+      return row;
+    } catch (err) {
+      console.error("Error creating row from OCR:", err);
+      return row;
+    }
+  }
+
+  // === EXISTING LOGIC ===
+
+  // Fetch supplier details automatically when supplier is selected
   useEffect(() => {
     const fetchSupplierDetails = async () => {
       if (!supplier) {
@@ -484,40 +372,6 @@ export default function AddPurchaseOrder() {
     fetchNextPoNumber();
   }, []);
 
-  // --- Fetch item options when item changes ---
-  useEffect(() => {
-    if (!selectedItem) {
-      setCombinations([]);
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-      return;
-    }
-    const fetchOptions = async () => {
-      try {
-        const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(selectedItem.name)}`);
-        if (!res.ok) throw new Error("Failed to fetch item options");
-        const data: Combination[] = await res.json();
-        setCombinations(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("inventory-options error:", err);
-        setCombinations([]);
-      }
-    };
-    fetchOptions();
-  }, [selectedItem]);
-
-  // --- Auto reset dependent selections ---
-  useEffect(() => {
-    setSelectedVariant(null);
-    setSelectedUnit(null);
-  }, [selectedSize]);
-
-  useEffect(() => {
-    setSelectedUnit(null);
-  }, [selectedVariant]);
-
-  // --- Auto assign user info ---
   useEffect(() => {
     if (user) {
       setPreparedBy(
@@ -530,36 +384,173 @@ export default function AddPurchaseOrder() {
     }
   }, [user]);
 
-  // --- Add Item to PO list ---
-  const handleAddItem = () => {
-    if (!selectedItem) return toast.error("Select an item first");
-    if (!quantity || Number(quantity) <= 0) return toast.error("Enter a valid quantity");
-    if (!unitPrice || Number(unitPrice) <= 0) return toast.error("Enter a valid unit price");
+  useEffect(() => {
+    inputRows.forEach((row, index) => {
+      if (!row.selectedItem) return;
 
-    const newItem: PurchaseOrderItem = {
-      itemId: String(selectedItem.id),
-      itemName: selectedItem.name,
-      sizeId: selectedSize ? String(selectedSize.id) : null,
-      sizeName: selectedSize?.name || null,
-      variantId: selectedVariant ? String(selectedVariant.id) : null,
-      variantName: selectedVariant?.name || null,
-      unitId: selectedUnit ? String(selectedUnit.id) : null,
-      unitName: selectedUnit?.name || null,
-      quantity: Number(quantity),
-      unitPrice: Number(unitPrice),
-      totalPrice: Number(quantity) * Number(unitPrice),
-    };
+      const fetchOptions = async () => {
+        try {
+          const res = await fetch(
+            `/api/inventory-options?itemName=${encodeURIComponent(
+              row.selectedItem!.name
+            )}`
+          );
+          if (!res.ok) throw new Error("Failed to fetch item options");
+          const data: Combination[] = await res.json();
 
-    setItems((prev) => [...prev, newItem]);
-    setSelectedItem(null);
-    setSelectedSize(null);
-    setSelectedVariant(null);
-    setSelectedUnit(null);
-    setQuantity("");
-    setUnitPrice("");
+          setInputRows((prev) =>
+            prev.map((r, i) =>
+              i === index
+                ? { ...r, combinations: Array.isArray(data) ? data : [] }
+                : r
+            )
+          );
+        } catch (err) {
+          console.error("inventory-options error:", err);
+        }
+      };
+      fetchOptions();
+    });
+  }, [inputRows]);
+
+  const getAvailableSizes = (combinations: Combination[]) => {
+    return Array.from(
+      new Map(
+        combinations
+          .filter((c) => c.sizeId != null && c.sizeName)
+          .map((c) => [
+            String(c.sizeId),
+            { id: String(c.sizeId), name: c.sizeName! },
+          ])
+      ).values()
+    );
   };
 
-  // --- Submit PO ---
+  const getAvailableVariants = (
+    combinations: Combination[],
+    selectedSize: Selection | null
+  ) => {
+    return Array.from(
+      new Map(
+        combinations
+          .filter(
+            (c) =>
+              (!selectedSize || c.sizeId === Number(selectedSize.id)) &&
+              c.variantId != null &&
+              c.variantName
+          )
+          .map((c) => [
+            String(c.variantId),
+            { id: String(c.variantId), name: c.variantName! },
+          ])
+      ).values()
+    );
+  };
+
+  const getAvailableUnits = (
+    combinations: Combination[],
+    selectedSize: Selection | null,
+    selectedVariant: Selection | null
+  ) => {
+    return Array.from(
+      new Map(
+        combinations
+          .filter((c) => {
+            if (selectedSize && selectedVariant) {
+              return (
+                c.sizeId === Number(selectedSize.id) &&
+                c.variantId === Number(selectedVariant.id) &&
+                c.unitId != null &&
+                c.unitName
+              );
+            }
+            if (selectedSize && !selectedVariant) {
+              return (
+                c.sizeId === Number(selectedSize.id) &&
+                c.unitId != null &&
+                c.unitName
+              );
+            }
+            return c.unitId != null && c.unitName;
+          })
+          .map((c) => [
+            String(c.unitId),
+            { id: String(c.unitId), name: c.unitName! },
+          ])
+      ).values()
+    );
+  };
+
+  const handleAddRow = () => {
+    setInputRows((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        selectedItem: null,
+        selectedSize: null,
+        selectedVariant: null,
+        selectedUnit: null,
+        quantity: "",
+        unitPrice: "",
+        combinations: [],
+      },
+    ]);
+  };
+
+  const handleRemoveRow = (id: string) => {
+    setInputRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const handleAddAllRows = () => {
+    const newItems: PurchaseOrderItem[] = [];
+
+    for (const row of inputRows) {
+      if (!row.selectedItem) {
+        toast.error("Please select an item for all rows");
+        return;
+      }
+      if (!row.quantity || Number(row.quantity) <= 0) {
+        toast.error("Please enter valid quantity for all rows");
+        return;
+      }
+      if (!row.unitPrice || Number(row.unitPrice) <= 0) {
+        toast.error("Please enter valid unit price for all rows");
+        return;
+      }
+
+      newItems.push({
+        itemId: String(row.selectedItem.id),
+        itemName: row.selectedItem.name,
+        sizeId: row.selectedSize ? String(row.selectedSize.id) : null,
+        sizeName: row.selectedSize?.name || null,
+        variantId: row.selectedVariant ? String(row.selectedVariant.id) : null,
+        variantName: row.selectedVariant?.name || null,
+        unitId: row.selectedUnit ? String(row.selectedUnit.id) : null,
+        unitName: row.selectedUnit?.name || null,
+        quantity: Number(row.quantity),
+        unitPrice: Number(row.unitPrice),
+        totalPrice: Number(row.quantity) * Number(row.unitPrice),
+      });
+    }
+
+    setItems((prev) => [...prev, ...newItems]);
+
+    setInputRows([
+      {
+        id: crypto.randomUUID(),
+        selectedItem: null,
+        selectedSize: null,
+        selectedVariant: null,
+        selectedUnit: null,
+        quantity: "",
+        unitPrice: "",
+        combinations: [],
+      },
+    ]);
+
+    toast.success("Items added successfully!");
+  };
+
   const handleSubmit = async () => {
     if (!supplier) return toast.error("Please select a supplier");
     if (items.length === 0) return toast.error("Add at least one item");
@@ -574,14 +565,14 @@ export default function AddPurchaseOrder() {
       remarks,
       preparedBy,
       items: items.map((i) => ({
-  itemId: Number(i.itemId),
-  sizeId: i.sizeId ? Number(i.sizeId) : null,
-  variantId: i.variantId ? Number(i.variantId) : null,
-  unitId: i.unitId ? Number(i.unitId) : null,
-  quantity: Number(i.quantity),
-  unitPrice: Number(i.unitPrice),
-  totalPrice: Number(i.totalPrice),
-})),
+        itemId: Number(i.itemId),
+        sizeId: i.sizeId ? Number(i.sizeId) : null,
+        variantId: i.variantId ? Number(i.variantId) : null,
+        unitId: i.unitId ? Number(i.unitId) : null,
+        quantity: Number(i.quantity),
+        unitPrice: Number(i.unitPrice),
+        totalPrice: Number(i.totalPrice),
+      })),
     };
 
     try {
@@ -609,42 +600,74 @@ export default function AddPurchaseOrder() {
     <main className="bg-[#ffedce] min-h-screen w-full">
       <Header />
       <section className="p-10 max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#173f63] mb-6">Create Purchase Order</h1>
+        <h1 className="text-3xl font-bold text-[#173f63] mb-6">
+          Create Purchase Order
+        </h1>
 
         <form className="bg-white p-6 rounded shadow grid grid-cols-2 gap-4">
           {/* Supplier Info */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]"></label>
             <AutoComplete
               endpoint="/api/purchasing/suppliers"
               value={supplier}
               onChange={setSupplier}
               label="Supplier"
-              
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">PO Number</label>
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              PO Number
+            </label>
             <div>{poNumber}</div>
           </div>
 
+          {/* ✅ TRULY DISABLED AND READ-ONLY ADDRESS/CONTACT/TIN */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Address</label>
-            <input value={supplierAddress} disabled className="border border-[#d2bda7] p-2 rounded w-full bg-gray-100" />
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              Address
+            </label>
+            <input
+              value={supplierAddress}
+              onChange={(e) => setSupplierAddress(e.target.value)}
+              disabled={!supplier}
+              readOnly
+              className="border border-[#d2bda7] p-2 rounded w-full disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+              placeholder={!supplier ? "Select supplier first" : ""}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Contact</label>
-            <input value={supplierContact} disabled className="border border-[#d2bda7] p-2 rounded w-full bg-gray-100" />
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              Contact
+            </label>
+            <input
+              value={supplierContact}
+              onChange={(e) => setSupplierContact(e.target.value)}
+              disabled={!supplier}
+              readOnly
+              className="border border-[#d2bda7] p-2 rounded w-full disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+              placeholder={!supplier ? "Select supplier first" : ""}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">TIN</label>
-            <input value={supplierTIN} disabled className="border border-[#d2bda7] p-2 rounded w-full bg-gray-100" />
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              TIN
+            </label>
+            <input
+              value={supplierTIN}
+              onChange={(e) => setSupplierTIN(e.target.value)}
+              disabled={!supplier}
+              readOnly
+              className="border border-[#d2bda7] p-2 rounded w-full disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+              placeholder={!supplier ? "Select supplier first" : ""}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Terms</label>
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              Terms
+            </label>
             <input
               type="text"
               value={terms}
@@ -655,32 +678,36 @@ export default function AddPurchaseOrder() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Delivery Mode</label>
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              Delivery Mode
+            </label>
             <Select onValueChange={setDeliveryMode} value={deliveryMode}>
-            <SelectTrigger className="border border-[#d2bda7] p-2 w-full rounded cursor-pointer">
-              <SelectValue placeholder="Select a mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mode">Select mode</SelectItem>
-              <SelectItem value="deliver">Deliver</SelectItem>
-              <SelectItem value="pickup">Pickup</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+              <SelectTrigger className="border border-[#d2bda7] p-2 w-full rounded cursor-pointer">
+                <SelectValue placeholder="Select a mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mode">Select mode</SelectItem>
+                <SelectItem value="deliver">Deliver</SelectItem>
+                <SelectItem value="pickup">Pickup</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {deliveryMode === "other" && (
-            <input 
-              type="text"
-              placeholder="Please specify other delivery mode"
-              className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100 mt-2"
-              value={otherDeliveryMode}
-              onChange={(e) => setOtherDeliveryMode(e.target.value)}
-            />
-          )}
+            {deliveryMode === "other" && (
+              <input
+                type="text"
+                placeholder="Please specify other delivery mode"
+                className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100 mt-2"
+                value={otherDeliveryMode}
+                onChange={(e) => setOtherDeliveryMode(e.target.value)}
+              />
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Project Name</label>
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              Project Name
+            </label>
             <input
               type="text"
               value={projectName}
@@ -691,7 +718,9 @@ export default function AddPurchaseOrder() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Remarks</label>
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              Remarks
+            </label>
             <input
               type="text"
               value={remarks}
@@ -702,69 +731,196 @@ export default function AddPurchaseOrder() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Prepared by:</label>
+            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              Prepared by:
+            </label>
             <span className="capitalize">{preparedBy}</span>
           </div>
 
-          {/* Items Section */}
+          {/* Items Section with OCR */}
           <div className="col-span-2 border-t pt-4 mt-4">
-            <h2 className="text-lg font-bold mb-3 text-[#173f63]">Add Items</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-[#173f63]">Add Items</h2>
+              <button
+                type="button"
+                onClick={handleScanClick}
+                disabled={isScanning}
+                className="bg-[#0b74ff] px-3 py-2 text-sm rounded text-white hover:bg-[#0966d6] flex items-center gap-2 disabled:opacity-50"
+              >
+                {isScanning ? "Scanning..." : "Scan via OCR"}
+              </button>
+            </div>
 
-            <div className="grid grid-cols-6 gap-2">
-              <AutoComplete
-                label="Item"
-                endpoint="/api/autocomplete/item-name"
-                value={selectedItem}
-                onChange={setSelectedItem}
-              />
-              <AutoComplete
-                label="Size"
-                options={availableSizes}
-                value={selectedSize}
-                onChange={setSelectedSize}
-              />
-              <AutoComplete
-                label="Variant"
-                options={availableVariants}
-                value={selectedVariant}
-                onChange={setSelectedVariant}
-              />
-              <AutoComplete
-                label="Unit"
-                options={availableUnits}
-                value={selectedUnit}
-                onChange={setSelectedUnit}
-              />
-              <div>
-                <label className="block text-sm font-medium">Quantity</label>
-              <input
-                type="number"
-                placeholder="Enter quantity..."
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded disabled:bg-gray-100 hover:bg-gray-100"
-              />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Unit Price</label>
-                <input
-                type="number"
-                placeholder="Enter unit price..."
-                value={unitPrice}
-                onChange={(e) => setUnitPrice(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded disabled:bg-gray-100 hover:bg-gray-100"
-              />
-              </div>
+            <div className="space-y-4">
+              {inputRows.map((row) => {
+                const availableSizes = getAvailableSizes(row.combinations);
+                const availableVariants = getAvailableVariants(
+                  row.combinations,
+                  row.selectedSize
+                );
+                const availableUnits = getAvailableUnits(
+                  row.combinations,
+                  row.selectedSize,
+                  row.selectedVariant
+                );
+
+                return (
+                  <div
+                    key={row.id}
+                    className="grid grid-cols-7 gap-2 items-end border p-3 rounded bg-gray-50"
+                  >
+                    <AutoComplete
+                      label="Item"
+                      endpoint="/api/autocomplete/item-name"
+                      value={row.selectedItem}
+                      onChange={(val) =>
+                        setInputRows((prev) =>
+                          prev.map((r) =>
+                            r.id === row.id
+                              ? {
+                                  ...r,
+                                  selectedItem: val,
+                                  selectedSize: null,
+                                  selectedVariant: null,
+                                  selectedUnit: null,
+                                }
+                              : r
+                          )
+                        )
+                      }
+                    />
+                    <AutoComplete
+                      label="Size"
+                      options={availableSizes}
+                      value={row.selectedSize}
+                      onChange={(val) =>
+                        setInputRows((prev) =>
+                          prev.map((r) =>
+                            r.id === row.id
+                              ? {
+                                  ...r,
+                                  selectedSize: val,
+                                  selectedVariant: null,
+                                  selectedUnit: null,
+                                }
+                              : r
+                          )
+                        )
+                      }
+                    />
+                    <AutoComplete
+                      label="Variant"
+                      options={availableVariants}
+                      value={row.selectedVariant}
+                      onChange={(val) =>
+                        setInputRows((prev) =>
+                          prev.map((r) =>
+                            r.id === row.id
+                              ? {
+                                  ...r,
+                                  selectedVariant: val,
+                                  selectedUnit: null,
+                                }
+                              : r
+                          )
+                        )
+                      }
+                    />
+                    <AutoComplete
+                      label="Unit"
+                      options={availableUnits}
+                      value={row.selectedUnit}
+                      onChange={(val) =>
+                        setInputRows((prev) =>
+                          prev.map((r) =>
+                            r.id === row.id ? { ...r, selectedUnit: val } : r
+                          )
+                        )
+                      }
+                    />
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Qty..."
+                        value={row.quantity}
+                        onChange={(e) =>
+                          setInputRows((prev) =>
+                            prev.map((r) =>
+                              r.id === row.id
+                                ? { ...r, quantity: e.target.value }
+                                : r
+                            )
+                          )
+                        }
+                        className="w-full border border-[#d2bda7] p-2 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium">
+                        Unit Price
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Price..."
+                        value={row.unitPrice}
+                        onChange={(e) =>
+                          setInputRows((prev) =>
+                            prev.map((r) =>
+                              r.id === row.id
+                                ? { ...r, unitPrice: e.target.value }
+                                : r
+                            )
+                          )
+                        }
+                        className="w-full border border-[#d2bda7] p-2 rounded"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddRow}
+                        className="p-2 bg-green-600 text-white rounded hover:bg-green-700"
+                        title="Add Row"
+                      >
+                        <Plus size={20} />
+                      </button>
+                      {inputRows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRow(row.id)}
+                          className="p-2 bg-red-600 text-white rounded hover:bg-red-700"
+                          title="Remove Row"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <button
               type="button"
-              onClick={handleAddItem}
-              className="mt-3 bg-[#d2bda7] px-4 py-2 text-sm rounded text-white hover:bg-[#674d33] cursor-pointer"
+              onClick={handleAddAllRows}
+              className="mt-4 bg-[#674d33] px-6 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium"
             >
-              Add Item
+              Add Items to List
             </button>
 
+            {/* Hidden file input for OCR upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onFileChange}
+            />
+
+            {/* Final items table */}
             {items.length > 0 && (
               <div className="mt-4">
                 <table className="w-full border text-sm">
@@ -784,10 +940,18 @@ export default function AddPurchaseOrder() {
                     {items.map((i, idx) => (
                       <tr key={idx}>
                         <td className="border px-2 py-1">{i.itemName}</td>
-                        <td className="border px-2 py-1">{i.sizeName || "-"}</td>
-                        <td className="border px-2 py-1">{i.variantName || "-"}</td>
-                        <td className="border px-2 py-1">{i.unitName || "-"}</td>
-                        <td className="border px-2 py-1 text-center">{i.quantity}</td>
+                        <td className="border px-2 py-1">
+                          {i.sizeName || "-"}
+                        </td>
+                        <td className="border px-2 py-1">
+                          {i.variantName || "-"}
+                        </td>
+                        <td className="border px-2 py-1">
+                          {i.unitName || "-"}
+                        </td>
+                        <td className="border px-2 py-1 text-center">
+                          {i.quantity}
+                        </td>
                         <td className="border px-2 py-1 text-right">
                           {i.unitPrice.toFixed(2)}
                         </td>
@@ -834,6 +998,22 @@ export default function AddPurchaseOrder() {
             </button>
           </div>
         </form>
+
+        {/* OCR Modals */}
+        {showOCRModeModal && (
+          <OCRModeModal
+            onClose={() => setShowOCRModeModal(false)}
+            onSelectWebcam={handleSelectWebcam}
+            onSelectUpload={handleSelectUpload}
+          />
+        )}
+
+        {showWebcamModal && (
+          <WebcamCaptureModal
+            onClose={() => setShowWebcamModal(false)}
+            onCapture={handleWebcamCapture}
+          />
+        )}
       </section>
     </main>
   );
