@@ -112,7 +112,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         publicMetadata: { ...currentMetadata, status: "deactivated" },
       });
 
-      dbUpdates = { status: "Inactive" };
+      //dbUpdates = { status: "Inactive" };
       description = `Deactivated user ${userEmail}`;
     } else if (action === "activate") {
       // ✅ Re-enable sign-in
@@ -121,7 +121,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         publicMetadata: { ...currentMetadata, status: "active" },
       });
 
-      dbUpdates = { status: "Active" };
+      //dbUpdates = { status: "Active" };
       description = `Activated user ${userEmail}`;
     } else if (action === "changeRole") {
       if (!newRole)

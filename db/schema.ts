@@ -256,12 +256,9 @@ export const suppliers = pgTable("suppliers", {
 }
 export const personnelAccounts = pgTable("personnel_accounts", {
   id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnels.id, { onDelete: "cascade" }),
   clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
-  username: varchar("username", { length: 50 }).notNull(),
-  email: varchar("email", { length: 50 }).notNull().unique(),
-  contactNumber: varchar("contact_number", { length: 20 }).notNull(),
   role: varchar("role", { length: 50 }).notNull(),
-  status: varchar("status", { enum: ["Active", "Inactive"] }).default("Active"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -270,10 +267,14 @@ export const personnelAccounts = pgTable("personnel_accounts", {
 }
 export const personnels = pgTable("personnels", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  username: varchar("username", { length: 50 }).notNull().unique(),
   personnelName: varchar("personnel_name", { length: 255 }).notNull(),
   department: varchar("department", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  contactNumber: varchar("contact_number", { length: 20 }).notNull(),
+  status: varchar("status", { enum: ["Active", "Inactive"]}).notNull().default("Active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
 });
 
@@ -586,30 +587,31 @@ export const quotationFilesRelations = relations(quotationFiles, ({ one }) => ({
   }),
 }));
 
-// //relation
-// export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({
-//   guardian: one(guardianAndParentsTable, {
-//     fields: [applicantsInformationTable.applicants_id],
-//     references: [guardianAndParentsTable.applicants_id],
-//   }),
-//   education: one(educationalBackgroundTable, {
-//     fields: [applicantsInformationTable.applicants_id],
-//     references: [educationalBackgroundTable.applicants_id],
-//   }),
-//   documents: one(documentsTable, {
-//     fields: [applicantsInformationTable.applicants_id],
-//     references: [documentsTable.applicants_id],
-//   }),
-//   status: one(applicationStatusTable, {
-//     fields: [applicantsInformationTable.applicants_id],
-//     references: [applicationStatusTable.applicants_id],
-//   }),
-//   reservationFee: one(reservationFeeTable, {
-//     fields: [applicantsInformationTable.applicants_id],
-//     references: [reservationFeeTable.applicants_id],
-//   }),
+  // //relation
+  // export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({
+  //   guardian: one(guardianAndParentsTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [guardianAndParentsTable.applicants_id],
+  //   }),
+  //   education: one(educationalBackgroundTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [educationalBackgroundTable.applicants_id],
+  //   }),
+  //   documents: one(documentsTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [documentsTable.applicants_id],
+  //   }),
+  //   status: one(applicationStatusTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [applicationStatusTable.applicants_id],
+  //   }),
+  //   reservationFee: one(reservationFeeTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [reservationFeeTable.applicants_id],
+  //   }),
 
-//   admissionStatus: one(AdmissionStatusTable, {
-//     fields: [applicantsInformationTable.applicants_id],
-//     references: [AdmissionStatusTable.applicants_id],
-//   }),
+
+  //   admissionStatus: one(AdmissionStatusTable, {
+  //     fields: [applicantsInformationTable.applicants_id],
+  //     references: [AdmissionStatusTable.applicants_id],
+  //   }),

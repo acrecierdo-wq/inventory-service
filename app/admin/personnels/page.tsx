@@ -1,16 +1,22 @@
-// app/purchasing/p_supplier_list/page.tsx
+// app/admin/personnels/page.tsx
 
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/header";
 import Image from "next/image";
 import AddPersonnelModal from "@/components/add/admin/add_personnel";
-// import PersonnelActions from "@/"
+import PersonnelActions from "./actions/personnel_actions";
+import { toast } from "sonner";
 
 type Personnel = {
-  id?: number;
+  id: number;
+  username: string;
   personnelName: string;
   department: string;
+  email: string;
+  contactNumber: string;
+  address: string;
+  status: "Active" | "Inactive";
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -19,14 +25,18 @@ type Personnel = {
 export default function SupplierList() {
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [, setLoading] = useState(true);
+
   const [isAddPersonnelModalOpen, setIsAddPersonnelModalOpen] = useState(false);
   const [editingPersonnel, setEditingPersonnel] = useState<Personnel | null>(null);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"personnelName" | "reversePersonnelName" | "" >("");
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
+
+  const sortRef = useRef<HTMLDivElement | null>(null);
 
   const fetchPersonnel = async () => {
     const res = await fetch("/api/admin/personnels");
@@ -39,48 +49,45 @@ export default function SupplierList() {
     fetchPersonnel();
   }, []);
 
-//   const handleEdit = (personnel: Personnel) => {
-//     setEditingPersonnel(personnel);
-//     setIsAddPersonnelModalOpen(true);
-//   };
+  const handleEdit = (personnel: Personnel) => {
+    setEditingPersonnel(personnel);
+    setIsAddPersonnelModalOpen(true);
+  };
 
-//   const handleDelete = async (id: number) => {
-//   try {
-//     const res = await fetch(`/api/admin/personnels/${id}`, { method: "DELETE" });
-//     const json = await res.json();
+  const handleDelete = async (id: number) => {
+  try {
+    const res = await fetch(`/api/admin/personnels/${id}`, { method: "DELETE" });
+    const json = await res.json();
 
-//     if (res.ok && json.success) {
-//       toast.success("Personnel deleted successfully.");
-//       fetchPersonnel(); // refresh list
-//     } else {
-//       toast.error(json.error || "Failed to delete personnel.");
-//     }
-//   } catch (error) {
-//     console.error("Delete error:", error);
-//     toast.error("Error deleting personnel.");
-//   }
-// };
-
-const sortRef = useRef<HTMLDivElement | null>(null);
+    if (res.ok && json.success) {
+      toast.success("Personnel deleted successfully.");
+      fetchPersonnel(); // refresh list
+    } else {
+      toast.error(json.error || "Failed to delete personnel.");
+    }
+  } catch (error) {
+    console.error("Delete error:", error);
+    toast.error("Error deleting personnel.");
+  }
+};
 
       const filteredPersonnels = personnel
-    .filter((personnel) =>
-      personnel.personnelName.toLowerCase().includes(searchTerm.toLowerCase()) 
-    //   (!selectedCategory || item.category?.name === selectedCategory) &&
-    //   (!selectedStatus || item.status === selectedStatus)
-    )
+    .filter((p) => {
+      const term = searchTerm.toLowerCase();
+      return (
+        p.personnelName.toLowerCase().includes(term)
+    ||    p.department.toLowerCase().includes(term)
+    ||    p.username.toLowerCase().includes(term)
+    ||    p.email.toLowerCase().includes(term)
+      );
+    })
     .sort((a, b) => {
-      switch (sortBy) {
-        case "personnelName":
-          return a.personnelName.localeCompare(b.personnelName);
-        case "reversePersonnelName":
-          return b.personnelName.localeCompare(a.personnelName);
-        default:
-          return 0;
-      }
+      if (sortBy === "personnelName") return a.personnelName.localeCompare(b.personnelName);
+      if (sortBy === "reversePersonnelName") return b.personnelName.localeCompare(a.personnelName);
+      return 0;
     });
 
-    const totalPages = Math.ceil(filteredPersonnels.length / recordsPerPage);
+  const totalPages = Math.ceil(filteredPersonnels.length / recordsPerPage);
   const paginatedPersonnels = filteredPersonnels.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
@@ -179,11 +186,13 @@ const sortRef = useRef<HTMLDivElement | null>(null);
       <div className="flex-1 overflow-y-visible mt-2 rounded relative">
         <div className="bg-white rounded shadow-md mb-2">
 
-        <div className="bg-[#fcd0d0] grid grid-cols-[2fr_2fr_2fr_2fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+        <div className="bg-[#fcd0d0] grid grid-cols-[2fr_2fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
           <>
+            <span>Username</span>
             <span>Name</span>
             <span>Department</span>
-            <span>DATE | TIME CREATED</span>
+            <span>Email</span>
+            <span>Status</span>
             <span>Actions</span>
           </>
         </div>
@@ -193,17 +202,29 @@ const sortRef = useRef<HTMLDivElement | null>(null);
           paginatedPersonnels.map((p) => (
             <div
               key={p.id}
-              className="grid grid-cols-[2fr_2fr_2fr_2fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+              className="grid grid-cols-[2fr_2fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
             >
-              <span>{p.personnelName}</span>
-              <span className="">{p.department}</span>
-              <span>{p.createdAt}</span>
+              <span>{p.username}</span>
+              <span className="uppercase">{p.personnelName}</span>
+              <span>{p.department}</span>
+              <span>{p.email}</span>
+              <span><span
+                    className={`px-5 py-1 rounded-full text-xs font-medium text-center
+                    ${
+                      p.status === "Active"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {p.status === "Active" ? "Active" : "Inactive"}
+                  </span>
+                  </span>
               <div className="flex items-center justify-center">
-                {/* <PersonnelActions
+                <PersonnelActions
                 item={p}
                 onDelete={() => p.id && handleDelete(p.id)}
                 onEdit={() => handleEdit(p)}
-                 /> */}
+                 />
               </div>
             </div>
           ))
