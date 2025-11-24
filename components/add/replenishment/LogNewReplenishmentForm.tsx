@@ -4,12 +4,22 @@
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
-import DelRefModal from "@/app/warehouse/replenishment_log/DR_modal";
 import { toast } from "sonner";
 import AutoComplete from "@/components/autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
-import { DraftReplenishment, FormInfo } from "@/app/warehouse/replenishment_log/types/replenishment";
+import {
+  DraftReplenishment,
+  FormInfo,
+} from "@/app/warehouse/replenishment_log/types/replenishment";
 import { useUser } from "@clerk/nextjs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CheckCircle, AlertTriangle, Package } from "lucide-react";
 
 type Selection = { id: string | number; name: string };
 
@@ -23,115 +33,168 @@ type Combination = {
   unitName: string | null;
 };
 
+type PurchaseOrder = {
+  id: number;
+  poNumber: string;
+  supplierId: number;
+  supplierName: string;
+  terms: string | null;
+  deliveryMode: string | null;
+  projectName: string | null;
+  remarks: string | null;
+  status: "Pending" | "Partial" | "Complete";
+  items: Array<{
+    itemId: number;
+    itemName: string;
+    sizeId: number | null;
+    sizeName: string | null;
+    variantId: number | null;
+    variantName: string | null;
+    unitId: number | null;
+    unitName: string | null;
+    quantity: number; // Expected
+    receivedQuantity: number; // Already received
+    remainingQuantity: number; // Still needed
+    unitPrice: number;
+  }>;
+};
 
+// ✅ NEW: Type for PO Status Summary
+type POStatusSummary = {
+  poNumber: string;
+  status: "Pending" | "Partial" | "Complete";
+  items: Array<{
+    itemName: string;
+    expected: number;
+    received: number;
+    remaining: number;
+  }>;
+};
 
 interface Props {
   draftData?: DraftReplenishment;
-  draftId?: string;
+  draftId?: number;
   onSaveSuccess?: () => void;
-};
+}
 
 const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
+
+  const [availablePOs, setAvailablePOs] = useState<PurchaseOrder[]>([]);
+  const [selectedPO, setSelectedPO] = useState<string>("");
+  const [isLoadingPO, setIsLoadingPO] = useState(false);
+
   const [supplier, setSupplier] = useState(draftData?.supplier || "");
   const [poRefNum, setPoRefNum] = useState(draftData?.poRefNum || "");
   const [remarks, setRemarks] = useState(draftData?.remarks || "");
-  const [recordedBy, setRecordedBy] = useState(draftData?.recordedBy || "")
-  const [showDRModal, setShowDRModal] = useState(false);
-  const [drInfo, setDrInfo] = useState<{ drRefNum: string; isDraft: boolean } | null>(null);
+  const [recordedBy, setRecordedBy] = useState(draftData?.recordedBy || "");
+  const [isSaving, setIsSaving] = useState(false);
+  // ✅ NEW: DR Number is now a regular form field
+  const [drRefNum, setDrRefNum] = useState(draftData?.drRefNum || "");
+
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
-  const [items, setItems] = useState<FormInfo[]>(() => 
-    draftData?.items.map((i) => ({
-      itemId: String(i.itemId),
-      sizeId: i.sizeId !== null ? String(i.sizeId) : null,
-      variantId: i.variantId !== null ? String(i.variantId) : null,
-      unitId: i.unitId !== null ? String(i.unitId) : null,
-      quantity: i.quantity,
-      itemName: i.itemName,
-      sizeName: i.sizeName,
-      variantName: i.variantName,
-      unitName: i.unitName,
-    })) || []
+  const [poStatusSummary, setPOStatusSummary] =
+    useState<POStatusSummary | null>(null);
+  const [showPOStatusModal, setShowPOStatusModal] = useState(false);
+
+  const [items, setItems] = useState<FormInfo[]>(
+    () =>
+      draftData?.items.map((i) => ({
+        itemId: String(i.itemId),
+        sizeId: i.sizeId !== null ? String(i.sizeId) : null,
+        variantId: i.variantId !== null ? String(i.variantId) : null,
+        unitId: i.unitId !== null ? String(i.unitId) : null,
+        quantity: i.quantity,
+        itemName: i.itemName,
+        sizeName: i.sizeName,
+        variantName: i.variantName,
+        unitName: i.unitName,
+      })) || []
   );
 
-  const [newItem, setNewItem] = useState<FormInfo>({
-      itemId: "",
-      sizeId: null,
-      variantId: null,
-      unitId: null,
-      quantity: 0,
-      itemName: "",
-      sizeName: null,
-      variantName: null,
-      unitName: null,
-    });
-    console.log("New items:", newItem);
-
-  // UI selections
   const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
   const [selectedSize, setSelectedSize] = useState<Selection | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<Selection | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<Selection | null>(
+    null
+  );
   const [selectedUnit, setSelectedUnit] = useState<Selection | null>(null);
-  const [quantity, setQuantity] = useState<string>("");
+  const [quantity, setQuantity] = useState("");
+  const [combinations, setCombinations] = useState<Combination[]>([]);
 
-  // raw row-level combos returned by API
-    const [combinations, setCombinations] = useState<Combination[]>([]);
-  
-    // Derived option arrays (unique and filtered)
-    const availableSizes = Array.from(
-      new Map(
-        combinations
-          .filter((c) => c.sizeId != null && c.sizeName)
-          .map((c) => [String(c.sizeId), { id: String(c.sizeId), name: c.sizeName! }])
-      ).values()
-    );
-  
-    const availableVariants = Array.from(
-      new Map(
-        combinations
-          .filter((c) => (!selectedSize || c.sizeId === Number(selectedSize.id)) && c.variantId != null && c.variantName)
-          .map((c) => [String(c.variantId), { id: String(c.variantId), name: c.variantName! }])
-      ).values()
-    );
-  
-    const availableUnits = Array.from(
-      new Map(
-        combinations
-          .filter((c) => {
-            // units must match selected size and selected variant (if provided)
-            if (selectedSize && selectedVariant) {
-              return c.sizeId === Number(selectedSize.id) && c.variantId === Number(selectedVariant.id) && c.unitId != null && c.unitName;
-            }
-            // if variant isn't chosen yet (but size is), show units for size across variants
-            if (selectedSize && !selectedVariant) {
-              return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
-            }
-            // otherwise show all units (fallback)
-            return c.unitId != null && c.unitName;
-          })
-          .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
-      ).values()
-    );
+  // Fetch available purchase orders
+  useEffect(() => {
+    const fetchPurchaseOrders = async () => {
+      try {
+        const res = await fetch("/api/purchasing/purchase_orders/available");
+        if (res.ok) {
+          const data = await res.json();
+          setAvailablePOs(data);
+        }
+      } catch (err) {
+        console.error("Error fetching purchase orders:", err);
+        toast.error("Failed to load purchase orders");
+      }
+    };
 
-  // debug-like object similar to previous UI
-useEffect(() => {
-    setNewItem((prev) => ({
-      ...prev,
-      itemId: selectedItem ? String(selectedItem.id) : "",
-      itemName: selectedItem?.name || "",
-      sizeId: selectedSize ? String(selectedSize.id) : null,
-      sizeName: selectedSize?.name || null,
-      variantId: selectedVariant ? String(selectedVariant.id) : null,
-      variantName: selectedVariant?.name || null,
-      unitId: selectedUnit ? String(selectedUnit.id) : null,
-      unitName: selectedUnit?.name || null,
-      quantity: Number(quantity) || 0,
-    }));
-  }, [selectedItem, selectedSize, selectedVariant, selectedUnit, quantity]);
+    fetchPurchaseOrders();
+  }, []);
 
-  // When an item is selected (from item-name autocomplete), fetch row-level combos
+  // Handle PO selection
+  const handlePOSelection = async (poNumber: string) => {
+    if (!poNumber || poNumber === "none") {
+      setSelectedPO("");
+      setSupplier("");
+      setPoRefNum("");
+      setRemarks("");
+      setItems([]);
+      return;
+    }
+
+    setIsLoadingPO(true);
+    setSelectedPO(poNumber);
+
+    try {
+      const po = availablePOs.find((p) => p.poNumber === poNumber);
+      if (!po) {
+        toast.error("Purchase order not found");
+        return;
+      }
+
+      setSupplier(po.supplierName);
+      setPoRefNum(po.poNumber);
+      setRemarks(po.remarks || "");
+
+      const poItems: FormInfo[] = po.items.map((item) => ({
+        itemId: String(item.itemId),
+        itemName: item.itemName,
+        sizeId: item.sizeId ? String(item.sizeId) : null,
+        sizeName: item.sizeName,
+        variantId: item.variantId ? String(item.variantId) : null,
+        variantName: item.variantName,
+        unitId: item.unitId ? String(item.unitId) : null,
+        unitName: item.unitName,
+        quantity: 0, // User will enter received quantity
+        expectedQuantity: item.quantity, // ✅ Store expected
+        receivedSoFar: item.receivedQuantity, // ✅ Already received
+        remainingQuantity: item.remainingQuantity, // ✅ Still needed
+      }));
+
+      setItems(poItems);
+
+      toast.success(
+        `Loaded PO ${poNumber} with ${po.items.length} item(s). Enter received quantities.`
+      );
+    } catch (err) {
+      console.error("Error loading PO:", err);
+      toast.error("Failed to load purchase order details");
+    } finally {
+      setIsLoadingPO(false);
+    }
+  };
+
+  // Fetch item combinations
   useEffect(() => {
     if (!selectedItem) {
       setCombinations([]);
@@ -142,27 +205,21 @@ useEffect(() => {
     }
 
     const fetchOptions = async () => {
-      
       try {
-        
-        
-        // pass itemName so API aggregates across all itemIds that share the same name
-        const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(String(selectedItem.name))}`);
+        const res = await fetch(
+          `/api/inventory-options?itemName=${encodeURIComponent(
+            String(selectedItem.name)
+          )}`
+        );
         if (!res.ok) {
-          const data: Combination[] = await res.json();
-      console.log("inventory-options response", data);
-
-          console.warn("inventory-options returned non-ok status");
           setCombinations([]);
           return;
         }
         const data: Combination[] = await res.json();
         setCombinations(Array.isArray(data) ? data : []);
       } catch {
-        console.error("Failed to fetch inventory options:");
         setCombinations([]);
       }
-      // reset dependent selections when item changes
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
@@ -171,12 +228,93 @@ useEffect(() => {
     fetchOptions();
   }, [selectedItem]);
 
-  useEffect(() => {
-      console.log("Available Sizes:", availableSizes);
-      console.log("Available Variants:", availableVariants);
-      console.log("Available Units:", availableUnits);
-  }, [availableSizes, availableVariants, availableUnits]);
+  // Derive available options
+  const availableSizes = Array.from(
+    new Map(
+      combinations
+        .filter((c) => c.sizeId != null && c.sizeName)
+        .map((c) => [
+          String(c.sizeId),
+          { id: String(c.sizeId), name: c.sizeName! },
+        ])
+    ).values()
+  );
 
+  const availableVariants = Array.from(
+    new Map(
+      combinations
+        .filter(
+          (c) =>
+            (!selectedSize || c.sizeId === Number(selectedSize.id)) &&
+            c.variantId != null &&
+            c.variantName
+        )
+        .map((c) => [
+          String(c.variantId),
+          { id: String(c.variantId), name: c.variantName! },
+        ])
+    ).values()
+  );
+
+  const availableUnits = Array.from(
+    new Map(
+      combinations
+        .filter((c) => {
+          if (selectedSize && selectedVariant) {
+            return (
+              c.sizeId === Number(selectedSize.id) &&
+              c.variantId === Number(selectedVariant.id) &&
+              c.unitId != null &&
+              c.unitName
+            );
+          }
+          if (selectedSize && !selectedVariant) {
+            return (
+              c.sizeId === Number(selectedSize.id) &&
+              c.unitId != null &&
+              c.unitName
+            );
+          }
+          return c.unitId != null && c.unitName;
+        })
+        .map((c) => [
+          String(c.unitId),
+          { id: String(c.unitId), name: c.unitName! },
+        ])
+    ).values()
+  );
+
+  // Auto-select single options
+  useEffect(() => {
+    if (!selectedItem) return;
+
+    if (availableSizes.length === 1 && !selectedSize) {
+      setSelectedSize(availableSizes[0]);
+    }
+
+    if (selectedSize && availableVariants.length === 1 && !selectedVariant) {
+      setSelectedVariant(availableVariants[0]);
+    }
+
+    if (
+      selectedSize &&
+      selectedVariant &&
+      availableUnits.length === 1 &&
+      !selectedUnit
+    ) {
+      setSelectedUnit(availableUnits[0]);
+    }
+  }, [
+    selectedItem,
+    selectedSize,
+    selectedVariant,
+    availableSizes,
+    availableVariants,
+    availableUnits,
+    selectedUnit,
+  ]);
+
+  // Reset invalid selections
   useEffect(() => {
     setSelectedVariant(null);
     setSelectedUnit(null);
@@ -184,53 +322,12 @@ useEffect(() => {
 
   useEffect(() => {
     setSelectedUnit(null);
-  }, [selectedVariant])
+  }, [selectedVariant]);
 
-  // Auto-select single options where useful and keep selections valid
-  useEffect(() => {
-    if (!selectedItem) {
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-      return;
-    }
-
-    if (availableSizes.length === 1 && !selectedSize) {
-      setSelectedSize(availableSizes[0]);
-    }
-
-    if(selectedSize && availableVariants.length === 1 && !selectedVariant) {
-      setSelectedVariant(availableVariants[0]);
-    }
-
-    if (selectedSize && selectedVariant && availableUnits.length === 1 && !selectedUnit) {
-      setSelectedUnit(availableUnits[0]);
-    }
-  }, [selectedItem, availableSizes, availableVariants, availableUnits, selectedSize, selectedVariant, selectedUnit]);
-
-  useEffect(() => {
-    if (selectedSize && !availableSizes.some((s) => String(s.id) === String(selectedSize.id))) {
-      setSelectedSize(null);
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-    }
-
-    if (selectedVariant && !availableVariants.some((v) => String(v.id) === String(selectedVariant.id))) {
-      setSelectedVariant(null);
-      setSelectedUnit(null);
-    }
-
-    if (selectedUnit && !availableUnits.some((u) => String(u.id) === String(selectedUnit.id))) {
-      setSelectedUnit(null);
-    }
-  }, [selectedSize, selectedVariant, selectedUnit, availableSizes, availableVariants, availableUnits]);
-
-  // Add item: consult item-find (which resolves correct item id) then push to list
   const handleAddItem = async () => {
     if (isAdding) return;
     setIsAdding(true);
 
-    // Basic validations: require item, require size/variant/unit depending on options
     if (!selectedItem) {
       toast.error("Please select an item.");
       setIsAdding(false);
@@ -251,8 +348,8 @@ useEffect(() => {
       setIsAdding(false);
       return;
     }
-    if (!quantity || Number(quantity) <= 0 || isNaN(Number(quantity))) {
-      toast.error("Please enter a valid quantity.");
+    if (!quantity || Number(quantity) <= 0) {
+      toast.error("Enter a valid quantity.");
       setIsAdding(false);
       return;
     }
@@ -260,76 +357,43 @@ useEffect(() => {
     try {
       const params = new URLSearchParams({
         itemName: selectedItem.name,
-        sizeId: selectedSize ? String(selectedSize.id) : "",
-        variantId: selectedVariant ? String(selectedVariant.id) : "",
-        unitId: selectedUnit ? String(selectedUnit.id) : "",
+        ...(selectedSize && { size: selectedSize.name }),
+        ...(selectedVariant && { variant: selectedVariant.name }),
+        ...(selectedUnit && { unit: selectedUnit.name }),
       });
 
-      // item-find should return the specific item id that matches the combination
       const res = await fetch(`/api/item-find?${params.toString()}`);
-      const found = await res.json();
+      if (!res.ok) throw new Error("Failed to find item combination");
 
-      if (!found || !found.id) {
-        toast.error("Failed to find matching item in inventory.");
+      const data = await res.json();
+      if (!data.exists) {
+        toast.error(
+          "That size/variant/unit combination does not exist in inventory."
+        );
         setIsAdding(false);
         return;
       }
 
-       const stockRes = await fetch(`/api/items/${found.id}`);
-      if (!stockRes.ok) {
-        toast.error("Unable to fetch stock for item.");
-        setIsAdding(false);
-        return;
-      }
+      setItems((prev) => [
+        ...prev,
+        {
+          itemId: String(data.itemId),
+          sizeId: selectedSize ? String(selectedSize.id) : null,
+          variantId: selectedVariant ? String(selectedVariant.id) : null,
+          unitId: selectedUnit ? String(selectedUnit.id) : null,
+          quantity: Number(quantity),
+          itemName: selectedItem.name,
+          sizeName: selectedSize?.name || null,
+          variantName: selectedVariant?.name || null,
+          unitName: selectedUnit?.name || null,
+        },
+      ]);
 
-      const stockData = await stockRes.json();
-      const qty = Number(quantity);
-
-      if (stockData.stock + qty >= stockData.ceilingLevel) {
-        toast.warning(` Overstock: "${selectedItem.name}" currently has ${stockData.stock} in stock. You are replenishing ${qty}. It will go beyond ceiling level of ${stockData.ceilingLevel}.`, { duration: 10000 });
-        setIsAdding(false);
-        setSelectedItem(null);
-        setSelectedSize(null);
-        setSelectedVariant(null);
-        setSelectedUnit(null);
-        setQuantity("");
-        return;
-      }
-
-      const candidate: FormInfo = {
-        itemId: String(found.id),
-        sizeId: selectedSize ? String(selectedSize.id) : null,
-        variantId: selectedVariant ? String(selectedVariant.id) : null,
-        unitId: selectedUnit ? String(selectedUnit.id) : null,
-        quantity: Number(quantity),
-        itemName: selectedItem.name,
-        sizeName: selectedSize?.name || null,
-        variantName: selectedVariant?.name || null,
-        unitName: selectedUnit?.name || null,
-      };
-
-      const isDuplicate = items.some(
-        (i) =>
-          i.itemId === candidate.itemId &&
-          (i.sizeId || null) === (candidate.sizeId || null) &&
-          (i.variantId || null) === (candidate.variantId || null) &&
-          (i.unitId || null) === (candidate.unitId || null)
-      );
-
-      if (isDuplicate) {
-        toast.error("This item with the selected options is already added.");
-        setIsAdding(false);
-        return;
-      }
-
-      setItems((prev) => [...prev, candidate]);
-
-      // Reset selections for next entry
+      toast.success("Item added to the list.");
       setSelectedItem(null);
       setSelectedSize(null);
       setSelectedVariant(null);
       setSelectedUnit(null);
-      //setCombinations([]);
       setQuantity("");
     } catch (err) {
       console.error("Item-find error:", err);
@@ -350,87 +414,83 @@ useEffect(() => {
       return;
     }
 
+    // ✅ Validate DR Number
+    if (!drRefNum || drRefNum.trim() === "") {
+      toast.error("Please enter a Delivery Receipt number.");
+      return;
+    }
+
     if (items.length === 0) {
       toast.error("Please add at least one item.");
       return;
     }
 
-    setShowDRModal(true);
+    const itemsWithoutQty = items.filter(
+      (item) => !item.quantity || item.quantity <= 0
+    );
+    if (itemsWithoutQty.length > 0) {
+      toast.error("Please enter valid quantities for all items.");
+      return;
+    }
+
+    // Just show the summary modal for review
+    setShowSummary(true);
   };
 
   const handleSaveReplenishment = async () => {
-    if (!drInfo) return;
-    if (!supplier || !poRefNum || items.length === 0) {
+    if (!supplier || !poRefNum || !drRefNum || items.length === 0) {
       toast.error("Please fill in all the required fields.");
       return;
     }
+
+    // ✅ NEW: Set saving state to true
+    setIsSaving(true);
 
     const payload = {
       supplier,
       poRefNum,
       remarks,
+      drRefNum,
+      isDraft: false,
       recordedBy,
-      drRefNum: drInfo.drRefNum,
-      isDraft: drInfo.isDraft ? "draft" : "replenished",
       items: items.map((i) => ({
         itemId: Number(i.itemId),
         sizeId: i.sizeId ? Number(i.sizeId) : null,
         variantId: i.variantId ? Number(i.variantId) : null,
         unitId: i.unitId ? Number(i.unitId) : null,
-        quantity: i.quantity,
+        quantity: Number(i.quantity),
       })),
+      draftId: draftId || null,
     };
 
-    console.log('[handleSaveReplenishment] drInfo', drInfo);
-    console.log('[submit replenishment] payload about to send', payload);
-    console.log("[ReplenishmentForm] About to PUT /api/replenishment", payload);
-
-
     try {
-      console.log('[submit replenishment] payload about to send', payload);
-      console.log("[ReplenishmentForm] About to PUT /api/replenishment", payload);
-
-      const res = await fetch(draftId ? `/api/replenishment/${draftId}` : "/api/replenishment", {
-        method: draftId ? "PUT" : "POST",
+      const res = await fetch("/api/warehouse/replenishments", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        // Attempt to parse error JSON like you had
-        let errorMessage = "Failed to process replenishment.";
-        try {
-          const ct = res.headers.get("content-type") || "";
-          if (ct.includes("application/json")) {
-            const err = await res.json();
-            if (err?.error) errorMessage = err.error;
-          }
-        } catch (e) {
-          console.log(e);
-          /* ignore parse error */
-        }
-        toast.error(errorMessage);
-        return;
-      }
+      if (!res.ok) throw new Error("Failed to save replenishment");
 
       const result = await res.json();
 
-      if (result.warning && result.warning.length > 0) {
-        result.warning.forEach((w: string, i: number) => {
-          setTimeout(() => toast.warning(w), i * 5000);
-        });
-      }
-
-      setTimeout(() => {
-        toast.success(drInfo.isDraft ? "Replenishment saved as draft." : "Replenishment saved successfully!");
+      if (result.poStatusSummary) {
+        setPOStatusSummary(result.poStatusSummary);
+        setShowSummary(false);
+        setShowPOStatusModal(true);
+      } else {
+        toast.success("Replenishment saved successfully!");
         onSaveSuccess?.();
         setTimeout(() => {
           window.location.href = "/warehouse/replenishment_log";
         }, 1500);
-      }, (result.warning?.length || 0) * 1000);
+      }
     } catch (err) {
       console.error("Replenishment error:", err);
       toast.error("Something went wrong while saving the replenishment.");
+    } finally {
+      // ✅ NEW: Always reset saving state
+      setIsSaving(false);
     }
   };
 
@@ -457,199 +517,205 @@ useEffect(() => {
   }, [draftData]);
 
   useEffect(() => {
-      if (user) {
-         setRecordedBy(
-      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
-    );
-      }
-    }, [user]);
-
-  const MAX_QUANTITY = 9999;
-
-  const sanitizeToDigits = (input: string) => {
-    const digits = input.replace(/\D+/g, "");
-    if (digits === "") return "";
-    const parsed = parseInt(digits, 10);
-    return Number.isNaN(parsed) ? "" : parsed;
-  };
+    if (user) {
+      setRecordedBy(
+        user.username ||
+          user.fullName ||
+          user.firstName ||
+          user.primaryEmailAddress?.emailAddress ||
+          ""
+      );
+    }
+  }, [user]);
 
   return (
     <WarehousemanClientComponent>
-      <main className="bg-[#ffedce] w-full min-h-screen">
+      <main className="bg-[#ffedce] min-h-screen w-full">
         <Header />
         <section className="p-10 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Item Replenishment</h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-3xl font-bold text-[#173f63]">
+              Log Item Replenishment
+            </h1>
+
+            <div className="w-64">
+              <Select onValueChange={handlePOSelection} value={selectedPO}>
+                <SelectTrigger className="border border-[#d2bda7] bg-white">
+                  <SelectValue placeholder="Select Purchase Order" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Manual Entry</SelectItem>
+                  {availablePOs.map((po) => (
+                    <SelectItem
+                      key={po.id}
+                      value={po.poNumber}
+                      disabled={po.status === "Complete"}
+                    >
+                      {po.poNumber} - {po.supplierName} ({po.status})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
-            {/* Supplier */}
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Supplier:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Supplier:
+              </label>
               <input
                 type="text"
                 value={supplier}
+                readOnly
                 onChange={(e) => setSupplier(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+                disabled={!!selectedPO && isLoadingPO}
+                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100 disabled:bg-gray-100"
               />
             </div>
 
-            {/* PO reference number */}
-            <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">PO Reference Number:</label>
-              <input
-                type="text"
-                value={poRefNum}
-                onChange={(e) => setPoRefNum(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                  PO Reference Number:
+                </label>
+                <input
+                  type="text"
+                  value={poRefNum}
+                  readOnly
+                  onChange={(e) => setPoRefNum(e.target.value)}
+                  disabled={!!selectedPO && isLoadingPO}
+                  className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100 disabled:bg-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                  Delivery Receipt Number:
+                </label>
+                <input
+                  type="text"
+                  value={drRefNum}
+                  onChange={(e) => setDrRefNum(e.target.value)}
+                  placeholder="Enter DR number..."
+                  className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+                />
+              </div>
             </div>
-            {/* Remarks */}
+
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Remarks:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Remarks:
+              </label>
               <input
                 type="text"
                 value={remarks}
+                readOnly
                 onChange={(e) => setRemarks(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {recordedBy}</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Logged by: {recordedBy}
+              </label>
             </div>
 
-            {/* Add Item Section */}
             <div className="border-t pt-4 mt-4">
-              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Replenish</h2>
+              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">
+                Items to Replenish
+              </h2>
 
-              <div className="grid grid-cols-5 gap-2 items-end">
-                {/* Item Name */}
-                <div>
-                  <AutoComplete
-                    label="Item Name"
-                    endpoint="/api/autocomplete/item-name"
-                    value={selectedItem}
-                    onChange={(item) => {
-                      setSelectedItem(item);
-                    }}
-                  />
-                  {/* <pre className="text-xs text-gray-500">{JSON.stringify(newItem, null, 2)}</pre> */}
+              {!selectedPO && (
+                <div className="grid grid-cols-5 gap-2 items-end mb-4">
+                  <div>
+                    <AutoComplete
+                      label="Item Name"
+                      endpoint="/api/autocomplete/item-name"
+                      value={selectedItem}
+                      onChange={(item) => {
+                        setSelectedItem(item);
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <AutoComplete
+                      label="Item Size"
+                      options={availableSizes}
+                      value={selectedSize}
+                      onChange={setSelectedSize}
+                      disabled={!selectedItem || availableSizes.length === 0}
+                    />
+                  </div>
+
+                  <div>
+                    <AutoComplete
+                      label="Item Variant"
+                      options={availableVariants}
+                      value={selectedVariant}
+                      onChange={setSelectedVariant}
+                      disabled={!selectedSize && availableVariants.length === 0}
+                    />
+                  </div>
+
+                  <div>
+                    <AutoComplete
+                      label="Item Unit"
+                      options={availableUnits}
+                      value={selectedUnit}
+                      onChange={setSelectedUnit}
+                      disabled={!selectedVariant && availableUnits.length === 0}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                      Quantity:
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter quantity..."
+                      value={quantity}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || Number(val) < 0) {
+                          setQuantity("");
+                          return;
+                        }
+
+                        const parsed = parseInt(val, 10);
+                        if (isNaN(parsed)) {
+                          setQuantity("");
+                          return;
+                        }
+
+                        setQuantity(String(parsed));
+                      }}
+                      className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+                    />
+                  </div>
                 </div>
+              )}
 
-                {/* Size */}
-                <div>
-                  <AutoComplete
-                    label="Item Size"
-                    options={availableSizes}
-                    value={selectedSize}
-                    onChange={setSelectedSize}
-                    disabled={!selectedItem || availableSizes.length === 0}
-                  />
-                </div>
+              {!selectedPO && (
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  disabled={isAdding}
+                  className="mt-5 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
+                >
+                  {isAdding ? "Adding..." : "Add Item"}
+                </button>
+              )}
 
-                {/* Variant */}
-                <div>
-                  <AutoComplete
-                    label="Item Variant"
-                    options={availableVariants}
-                    value={selectedVariant}
-                    onChange={setSelectedVariant}
-                    disabled={!selectedSize && availableVariants.length === 0}
-                  />
-                </div>
-
-                {/* Unit */}
-                <div>
-                  <AutoComplete
-                    label="Item Unit"
-                    options={availableUnits}
-                    value={selectedUnit}
-                    onChange={setSelectedUnit}
-                    disabled={!selectedVariant && availableUnits.length === 0}
-                  />
-                </div>
-
-                {/* Quantity */}
-                <div className="flex flex-col">
-                  <label className="text-sm font-semibold mb-1 text-[#482b0e]">Quantity</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    min={0}
-                    max={MAX_QUANTITY}
-                    step={1}
-                    value={quantity === "" ? "" : quantity}
-                    onKeyDown={(e) => {
-                      if (["e", "E", "+", "-", "."].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pasted = e.clipboardData.getData("text");
-                      const sanitized = sanitizeToDigits(pasted);
-                      if (sanitized === "") {
-                        setQuantity("");
-                        return;
-                      }
-                      let parsed = Number(sanitized);
-                      if (parsed < 0) {
-                        parsed = 0;
-                        toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } else if (parsed > MAX_QUANTITY) {
-                        parsed = MAX_QUANTITY;
-                        toast.error(`Quantity canoot exceed ${MAX_QUANTITY}.`, { duration: 2000 });
-                      }
-                      setQuantity(String(parsed));
-                    }}
-                    onChange={(e) => {
-                      const value = e.target.value;
-
-                      if (value === "") {
-                        setQuantity("");
-                        return;
-                      }
-
-                      const digitsOnly = value.replace(/\D+/g, "");
-                      if (digitsOnly === "") {
-                        setQuantity("");
-                        return;
-                      }
-
-                      let parsed = parseInt(digitsOnly, 10);
-
-                      if (isNaN(parsed)) {
-                        setQuantity("");
-                        return;
-                      }
-
-                      if (parsed < 0) {
-                        parsed = 0;
-                        toast.error("Quantity cannot be negative.", { duration: 2000 });
-                      } else if (parsed > MAX_QUANTITY) {
-                        parsed = MAX_QUANTITY;
-                        toast.error(`Quantity cannot exceed ${MAX_QUANTITY}`, { duration: 2000 });
-                      }
-
-                      setQuantity(String(parsed));
-                    }}
-                    className="border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAddItem}
-                disabled={isAdding}
-                className="mt-5 bg-[#d2bda7] px-4 py-2 text-sm rounded hover:bg-[#674d33] text-white font-medium cursor-pointer"
-              >
-                {isAdding ? "Adding..." : "Add Item"}
-              </button>
-
+              {/* ✅ UPDATED: Items table with Expected/Received columns */}
               {items.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-semibold mb-2">Items Added</h3>
+                  <h3 className="text-sm font-semibold mb-2">
+                    Items to Receive
+                  </h3>
                   <table className="w-full border text-sm">
                     <thead className="bg-[#f5e6d3] text-[#482b0e]">
                       <tr>
@@ -657,29 +723,86 @@ useEffect(() => {
                         <th className="border px-2 py-1">Size</th>
                         <th className="border px-2 py-1">Variant</th>
                         <th className="border px-2 py-1">Unit</th>
-                        <th className="border px-2 py-1">Qty</th>
+                        <th className="border px-2 py-1">Expected</th>
+                        <th className="border px-2 py-1">Already Received</th>
+                        <th className="border px-2 py-1">Remaining</th>
+                        <th className="border px-2 py-1">Qty Receiving Now</th>
                         <th className="border px-2 py-1">Remove</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((item, idx) => (
-                        <tr key={`${item.itemId}-${idx}`}>
-                          <td className="border px-2 py-1">{item.itemName}</td>
-                          <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.quantity}</td>
-                          <td className="border px-2 py-1">
-                            <button
-                              type="button"
-                              className="text-red-500 text-xs hover:underline cursor-pointer"
-                              onClick={() => setItems(items.filter((_, index) => index !== idx))}
-                            >
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {items.map((item, idx) => {
+                        const receivingNow = item.quantity || 0;
+                        const expected = item.expectedQuantity || 0;
+                        const alreadyReceived = item.receivedSoFar || 0;
+                        const remaining = item.remainingQuantity || 0;
+                        const willBeComplete =
+                          alreadyReceived + receivingNow >= expected;
+
+                        return (
+                          <tr
+                            key={`${item.itemId}-${idx}`}
+                            className={
+                              willBeComplete ? "bg-green-50" : "bg-yellow-50"
+                            }
+                          >
+                            <td className="border px-2 py-1">
+                              {item.itemName}
+                            </td>
+                            <td className="border px-2 py-1">
+                              {item.sizeName || "(None)"}
+                            </td>
+                            <td className="border px-2 py-1">
+                              {item.variantName || "(None)"}
+                            </td>
+                            <td className="border px-2 py-1">
+                              {item.unitName || "(None)"}
+                            </td>
+                            <td className="border px-2 py-1 text-center font-semibold">
+                              {expected}
+                            </td>
+                            <td className="border px-2 py-1 text-center text-blue-600">
+                              {alreadyReceived}
+                            </td>
+                            <td className="border px-2 py-1 text-center text-orange-600 font-semibold">
+                              {remaining}
+                            </td>
+                            <td className="border px-2 py-1">
+                              <input
+                                type="number"
+                                value={item.quantity || ""}
+                                onChange={(e) => {
+                                  const newQty =
+                                    parseInt(e.target.value, 10) || 0;
+                                  setItems((prev) =>
+                                    prev.map((i, index) =>
+                                      index === idx
+                                        ? { ...i, quantity: newQty }
+                                        : i
+                                    )
+                                  );
+                                }}
+                                max={remaining}
+                                className="w-20 border border-gray-300 px-2 py-1 rounded text-center"
+                                placeholder="0"
+                              />
+                            </td>
+                            <td className="border px-2 py-1">
+                              <button
+                                type="button"
+                                className="text-red-500 text-xs hover:underline cursor-pointer"
+                                onClick={() =>
+                                  setItems(
+                                    items.filter((_, index) => index !== idx)
+                                  )
+                                }
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -697,71 +820,596 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={handleDone}
-                //disabled={!clientName || !dispatcherName || !customerPoNumber || !prfNumber || items.length === 0}
                 className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
               >
                 Done
               </button>
             </div>
           </form>
+          {showSummary && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
+              <div className="bg-[#ffedce] rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Header Section */}
+                <div className="bg-white border-b-4 border-[#d2bda7] p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-[#173f63] p-3 rounded-lg">
+                      <Package className="text-white" size={28} />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-[#173f63]">
+                        Replenishment Summary
+                      </h2>
+                      <p className="text-sm text-gray-600">
+                        Review details before confirming
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-          {showDRModal && (
-            <DelRefModal
-              onClose={() => setShowDRModal(false)}
-              onConfirm={(data) => {
-                console.log('[DelRefModal onConfirm] data', data);
-                setDrInfo(data);
-                setShowDRModal(false);
-                setShowSummary(true);
-              }}
-              //className="hover:bg-gray-100"
-            />
+                {/* Content Section - Scrollable */}
+                <div className="flex-1 overflow-y-auto p-6 bg-[#ffedce]">
+                  {/* Info Cards */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
+                      <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide">
+                        Supplier
+                      </label>
+                      <p className="text-sm font-medium text-gray-800 mt-1">
+                        {supplier}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
+                      <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide">
+                        PO Reference Number
+                      </label>
+                      <p className="text-sm font-medium text-gray-800 mt-1">
+                        {poRefNum}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
+                      <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide">
+                        DR Number
+                      </label>
+                      <p className="text-sm font-medium text-gray-800 mt-1">
+                        {drRefNum}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
+                      <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide">
+                        Remarks
+                      </label>
+                      <p className="text-sm font-medium text-gray-800 mt-1">
+                        {remarks || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* ✅ NEW: Overstock Warning Section - After Remarks */}
+                  {(() => {
+                    const overstockItems = items.filter((item) => {
+                      const receivingNow = item.quantity || 0;
+                      const expected = item.expectedQuantity || 0;
+                      const alreadyReceived = item.receivedSoFar || 0;
+                      return alreadyReceived + receivingNow > expected;
+                    });
+
+                    if (overstockItems.length > 0) {
+                      return (
+                        <div className="mb-6 bg-yellow-50 border border-yellow-400 rounded-lg p-4">
+                          {/* Header */}
+                          <div className="flex items-start gap-3 mb-4">
+                            <AlertTriangle
+                              className="text-yellow-600 flex-shrink-0 mt-0.5"
+                              size={20}
+                            />
+                            <div>
+                              <h3 className="text-md font-bold text-yellow-800 mb-1">
+                                Over-Receiving Detected
+                              </h3>
+                              <p className="text-sm text-yellow-700">
+                                The following items will exceed their expected
+                                quantity:
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Items List */}
+                          <div className="space-y-2 mb-4">
+                            {overstockItems.map((item, idx) => {
+                              const receivingNow = item.quantity || 0;
+                              const expected = item.expectedQuantity || 0;
+                              const alreadyReceived = item.receivedSoFar || 0;
+                              const excess =
+                                alreadyReceived + receivingNow - expected;
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="bg-white border border-yellow-200 rounded p-3"
+                                >
+                                  <div className="font-semibold text-gray-800 text-md mb-1">
+                                    {item.itemName}
+                                    {item.sizeName && (
+                                      <span className="text-gray-600 font-semibold">
+                                        {" "}
+                                        - {item.sizeName}
+                                      </span>
+                                    )}
+                                    {item.variantName && (
+                                      <span className="text-gray-600 font-semibold">
+                                        {" "}
+                                        - {item.variantName}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-yellow-700">
+                                    Expected:{" "}
+                                    <span className="font-semibold">
+                                      {expected}
+                                    </span>{" "}
+                                    | Receiving:{" "}
+                                    <span className="font-semibold">
+                                      {receivingNow}
+                                    </span>{" "}
+                                    | Excess:{" "}
+                                    <span className="font-semibold text-red-600">
+                                      +{excess}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Footer */}
+                          <p className="text-xs text-yellow-700 font-medium">
+                            Please verify quantities before confirming.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* ✅ NEW: Predicted PO Status - Below DR Number */}
+                  <div className="mb-6 bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
+                    <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide block mb-2">
+                      Predicted PO Status After Saving:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {items.every((item) => {
+                        const receivingNow = item.quantity || 0;
+                        const expected = item.expectedQuantity || 0;
+                        const alreadyReceived = item.receivedSoFar || 0;
+                        return alreadyReceived + receivingNow >= expected;
+                      }) ? (
+                        <>
+                          <CheckCircle className="text-green-600" size={20} />
+                          <span className="text-sm font-semibold text-green-700">
+                            Complete - All items fulfilled
+                          </span>
+                        </>
+                      ) : items.some(
+                          (item) =>
+                            (item.receivedSoFar || 0) > 0 ||
+                            (item.quantity || 0) > 0
+                        ) ? (
+                        <>
+                          <AlertTriangle
+                            className="text-yellow-600"
+                            size={20}
+                          />
+                          <span className="text-sm font-semibold text-yellow-700">
+                            Partial - Some items still pending
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Package className="text-gray-600" size={20} />
+                          <span className="text-sm font-semibold text-gray-700">
+                            Pending - No items received yet
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Items Table - WITHOUT Status Column */}
+                  <div className="bg-white rounded-lg border border-[#d2bda7] shadow-sm overflow-hidden">
+                    <div className="bg-[#f5e6d3] px-4 py-3 border-b border-[#d2bda7]">
+                      <h3 className="text-sm font-bold text-[#482b0e] uppercase tracking-wide">
+                        Items Summary
+                      </h3>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm table-fixed">
+                        <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                          <tr>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-48">
+                              Item
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-32">
+                              Size
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-32">
+                              Variant
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-24">
+                              Unit
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-24">
+                              Expected
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-32">
+                              Already Received
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-28">
+                              Remaining
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-32">
+                              Receiving Now
+                            </th>
+                            {/* ✅ REMOVED: Status column */}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item, idx) => {
+                            const receivingNow = item.quantity || 0;
+                            const expected = item.expectedQuantity || 0;
+                            const alreadyReceived = item.receivedSoFar || 0;
+                            const remaining = item.remainingQuantity || 0;
+                            const willBeComplete =
+                              alreadyReceived + receivingNow >= expected;
+                            const isOverReceiving =
+                              alreadyReceived + receivingNow > expected;
+
+                            return (
+                              <tr
+                                key={`${item.itemId}-${idx}`}
+                                className={`border-b border-[#d2bda7] hover:bg-[#fef5e4] transition-colors ${
+                                  isOverReceiving
+                                    ? "bg-yellow-100"
+                                    : willBeComplete
+                                    ? "bg-green-50"
+                                    : "bg-white"
+                                }`}
+                              >
+                                <td
+                                  className="px-3 py-3 text-gray-800 truncate max-w-0"
+                                  title={item.itemName}
+                                >
+                                  {item.itemName}
+                                </td>
+                                <td className="px-3 py-3 text-gray-600 truncate max-w-0">
+                                  {item.sizeName || (
+                                    <span className="text-gray-400 italic">
+                                      (None)
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-3 text-gray-600 truncate max-w-0">
+                                  {item.variantName || (
+                                    <span className="text-gray-400 italic">
+                                      (None)
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-3 text-gray-600 truncate max-w-0">
+                                  {item.unitName || (
+                                    <span className="text-gray-400 italic">
+                                      (None)
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-3 text-center font-semibold text-gray-800">
+                                  {expected}
+                                </td>
+                                <td className="px-3 py-3 text-center font-semibold text-blue-600">
+                                  {alreadyReceived}
+                                </td>
+                                <td className="px-3 py-3 text-center font-semibold text-orange-600">
+                                  {remaining}
+                                </td>
+                                <td
+                                  className={`px-3 py-3 text-center font-bold ${
+                                    isOverReceiving
+                                      ? "text-red-600"
+                                      : "text-[#173f63]"
+                                  }`}
+                                >
+                                  {receivingNow}
+                                  {isOverReceiving && (
+                                    <span className="ml-1 text-xs">⚠️</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Status Legend */}
+                  <div className="mt-4 flex items-center gap-6 text-xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="text-green-700" size={16} />
+                      <span className="text-gray-600">
+                        Item Will Be Complete (Expected qty reached)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="text-yellow-700" size={16} />
+                      <span className="text-gray-600">
+                        Over-Receiving (Exceeds expected qty)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Section with Actions */}
+                <div className="bg-white border-t-4 border-[#d2bda7] p-6">
+                  <div className="flex justify-end gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowSummary(false)}
+                      disabled={isSaving}
+                      className="px-6 py-2.5 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveReplenishment}
+                      disabled={isSaving}
+                      className="px-6 py-2.5 bg-[#674d33] text-white rounded-lg hover:bg-[#d2bda7] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
+                    >
+                      {isSaving && (
+                        <svg
+                          className="animate-spin h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                      )}
+                      {isSaving ? "Saving..." : "Confirm & Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
-          {showSummary && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
-              <div className="bg-white w-[600px] p-6 rounded shadow">
-                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Replenishment</h2>
-                <p className="mb-2 text-sm text-gray-700">Supplier: {supplier}</p>
-                <p className="mb-2 text-sm text-gray-700">PO Reference No.: {poRefNum}</p>
-                <p className="mb-2 text-sm text-gray-700">DR Number: {drInfo?.drRefNum || "Draft"}</p>
+          {showPOStatusModal && poStatusSummary && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
+              <div className="bg-[#ffedce] rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Header Section */}
+                <div className="bg-white border-b-4 border-[#d2bda7] p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-[#173f63] p-3 rounded-lg">
+                        <Package className="text-white" size={28} />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-[#173f63]">
+                          Purchase Order Status Update
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                          Receipt confirmation completed
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                <table className="w-full mt-4 text-sm border">
-                  <thead className="bg-[#f5e6d3] text-[#482b0e]">
-                    <tr>
-                      <th className="border px-2 py-1">Item</th>
-                      <th className="border px-2 py-1">Size</th>
-                      <th className="border px-2 py-1">Variant</th>
-                      <th className="border px-2 py-1">Unit</th>
-                      <th className="border px-2 py-1">Qty</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => (
-                      <tr key={`${item.itemId}-${idx}`}>
-                        <td className="border px-2 py-1">{item.itemName}</td>
-                        <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.quantity}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {/* Content Section - Scrollable */}
+                <div className="flex-1 overflow-y-auto p-6 bg-[#ffedce]">
+                  {/* PO Info Cards */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
+                      <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide">
+                        PO Number
+                      </label>
+                      <p className="text-lg font-bold text-blue-600 mt-1">
+                        {poStatusSummary.poNumber}
+                      </p>
+                    </div>
 
-                <div className="flex justify-end gap-4 mt-6">
-                  <button
-                    onClick={() => {
-                      setShowSummary(false);
-                      setShowDRModal(true);
-                    }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button onClick={handleSaveReplenishment} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer">
-                    Save
-                  </button>
+                    <div className="bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
+                      <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide">
+                        Overall Status
+                      </label>
+                      <div className="mt-2">
+                        <span
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold ${
+                            poStatusSummary.status === "Complete"
+                              ? "bg-green-100 text-green-800 border border-green-300"
+                              : poStatusSummary.status === "Partial"
+                              ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                              : "bg-gray-100 text-gray-800 border border-gray-300"
+                          }`}
+                        >
+                          {poStatusSummary.status === "Complete" ? (
+                            <CheckCircle size={16} />
+                          ) : (
+                            <AlertTriangle size={16} />
+                          )}
+                          {poStatusSummary.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Summary Banner */}
+                  {poStatusSummary.status === "Complete" ? (
+                    <div className="mb-6 bg-green-50 border border-green-300 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle
+                          className="text-green-600 flex-shrink-0 mt-0.5"
+                          size={20}
+                        />
+                        <div>
+                          <h3 className="text-md font-bold text-green-800 mb-1">
+                            All Items Received
+                          </h3>
+                          <p className="text-sm text-green-700">
+                            This purchase order has been fully fulfilled. All
+                            expected items have been received.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mb-6 bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle
+                          className="text-yellow-600 flex-shrink-0 mt-0.5"
+                          size={20}
+                        />
+                        <div>
+                          <h3 className="text-md font-bold text-yellow-800 mb-1">
+                            Partial Receipt
+                          </h3>
+                          <p className="text-sm text-yellow-700">
+                            Some items are still pending. The purchase order
+                            remains open for additional deliveries.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Items Table */}
+                  <div className="bg-white rounded-lg border border-[#d2bda7] shadow-sm overflow-hidden">
+                    <div className="bg-[#f5e6d3] px-4 py-3 border-b border-[#d2bda7]">
+                      <h3 className="text-sm font-bold text-[#482b0e] uppercase tracking-wide">
+                        Items Status
+                      </h3>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                          <tr>
+                            <th className="border-b border-[#d2bda7] px-4 py-3 text-left font-semibold">
+                              Item Name
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-4 py-3 text-center font-semibold w-28">
+                              Expected
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-4 py-3 text-center font-semibold w-28">
+                              Received
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-4 py-3 text-center font-semibold w-28">
+                              Remaining
+                            </th>
+                            <th className="border-b border-[#d2bda7] px-4 py-3 text-center font-semibold w-24">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {poStatusSummary.items.map((item, idx) => {
+                            const isComplete = item.remaining === 0;
+                            return (
+                              <tr
+                                key={idx}
+                                className={`border-b border-[#d2bda7] hover:bg-[#fef5e4] transition-colors ${
+                                  isComplete ? "bg-green-50" : "bg-yellow-50"
+                                }`}
+                              >
+                                <td className="px-4 py-3 text-gray-800 font-medium">
+                                  {item.itemName}
+                                </td>
+                                <td className="px-4 py-3 text-center font-semibold text-gray-800">
+                                  {item.expected}
+                                </td>
+                                <td className="px-4 py-3 text-center text-blue-600 font-bold">
+                                  {item.received}
+                                </td>
+                                <td className="px-4 py-3 text-center text-orange-600 font-bold">
+                                  {item.remaining}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {isComplete ? (
+                                    <div className="flex items-center justify-center gap-1">
+                                      <CheckCircle
+                                        className="text-green-600"
+                                        size={20}
+                                      />
+                                      <span className="text-xs font-semibold text-green-700">
+                                        Complete
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-center gap-1">
+                                      <AlertTriangle
+                                        className="text-yellow-600"
+                                        size={20}
+                                      />
+                                      <span className="text-xs font-semibold text-yellow-700">
+                                        Pending
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Status Legend */}
+                  <div className="mt-4 flex items-center gap-6 text-xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="text-green-600" size={16} />
+                      <span className="text-gray-600">Item Complete</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="text-yellow-600" size={16} />
+                      <span className="text-gray-600">Item Pending</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Section with Actions */}
+                <div className="bg-white border-t-4 border-[#d2bda7] p-6">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPOStatusModal(false);
+                        onSaveSuccess?.();
+                        setTimeout(() => {
+                          window.location.href = "/warehouse/replenishment_log";
+                        }, 500);
+                      }}
+                      className="px-8 py-2.5 bg-[#173f63] text-white rounded-lg hover:bg-[#2a5a7f] font-semibold transition-colors shadow-md flex items-center gap-2"
+                    >
+                      Done
+                      <CheckCircle size={18} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
