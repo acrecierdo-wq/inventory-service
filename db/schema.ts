@@ -1,6 +1,16 @@
 // db/schema.ts
 
-import { pgTable, serial, varchar, integer, boolean, timestamp, text, uuid, numeric } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  varchar,
+  integer,
+  boolean,
+  timestamp,
+  text,
+  uuid,
+  numeric,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const audit_logs = pgTable("audit_logs", {
@@ -44,10 +54,14 @@ export const items = pgTable("items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: varchar("name", { length: 255 }).notNull(),
 
-  categoryId: integer("category_id").notNull().references(() => categories.id),   // FK to categories table
-  unitId: integer("unit_id").notNull().references(() => units.id),           // FK to units table
-  variantId: integer("variant_id").references(() => variants.id),   // color or type
-  sizeId: integer("size_id").references(() => sizes.id),         // mm/cm/large/small
+  categoryId: integer("category_id")
+    .notNull()
+    .references(() => categories.id), // FK to categories table
+  unitId: integer("unit_id")
+    .notNull()
+    .references(() => units.id), // FK to units table
+  variantId: integer("variant_id").references(() => variants.id), // color or type
+  sizeId: integer("size_id").references(() => sizes.id), // mm/cm/large/small
 
   stock: integer("stock").notNull().default(0),
   reorderLevel: integer("reorder_level").notNull().default(30),
@@ -58,49 +72,67 @@ export const items = pgTable("items", {
   isActive: boolean("is_active").default(true),
 });
 
-{/* Item Issuances */}
+{
+  /* Item Issuances */
+}
 
 export const itemIssuances = pgTable("item_issuances", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
-clientName: varchar("client_name", { length: 255 }).notNull(),
-dispatcherName: varchar("dispatcher_name", { length: 255 }).notNull(),
+  clientName: varchar("client_name", { length: 255 }).notNull(),
+  dispatcherName: varchar("dispatcher_name", { length: 255 }).notNull(),
 
-createdAt: timestamp("created_at").defaultNow().notNull(),
-issuedAt: timestamp("issued_at", ),
-issuedBy: varchar("issued_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  issuedAt: timestamp("issued_at"),
+  issuedBy: varchar("issued_by", { length: 255 }).notNull(),
 
-customerPoNumber: varchar("customer_po_number", { length: 100 }).notNull(),
-prfNumber: varchar("prf_number", { length: 100 }).notNull(),
+  customerPoNumber: varchar("customer_po_number", { length: 100 }).notNull(),
+  prfNumber: varchar("prf_number", { length: 100 }).notNull(),
 
-drNumber: varchar("dr_number", { length: 100 }),
-saveAsDraft: boolean("save_as_draft").default(false),
+  drNumber: varchar("dr_number", { length: 100 }),
+  saveAsDraft: boolean("save_as_draft").default(false),
 
-status: varchar("status", { enum: ["Issued", "Draft", "Archived"] }).notNull().default("Draft"), // Issued, Draft, Archived
-restocked: boolean("restocked").default(false),
+  status: varchar("status", { enum: ["Issued", "Draft", "Archived"] })
+    .notNull()
+    .default("Draft"), // Issued, Draft, Archived
+  restocked: boolean("restocked").default(false),
 });
 
-{/* Item Issuance Items */}
+{
+  /* Item Issuance Items */
+}
 
 export const itemIssuanceItems = pgTable("item_issuance_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
-  issuanceId: integer("issuance_id").notNull().references(() => itemIssuances.id, { onDelete: "cascade" }),
+  issuanceId: integer("issuance_id")
+    .notNull()
+    .references(() => itemIssuances.id, { onDelete: "cascade" }),
 
-  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict" }),
+  itemId: integer("item_id")
+    .notNull()
+    .references(() => items.id, { onDelete: "restrict" }),
 
-  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
-  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
-  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
+  sizeId: integer("size_id").references(() => sizes.id, {
+    onDelete: "restrict",
+  }),
+  variantId: integer("variant_id").references(() => variants.id, {
+    onDelete: "restrict",
+  }),
+  unitId: integer("unit_id").references(() => units.id, {
+    onDelete: "restrict",
+  }),
 
   quantity: integer("quantity").notNull(),
 });
 
-{/* Internal Usages */}
+{
+  /* Internal Usages */
+}
 
 export const internalUsages = pgTable("internal_usages", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  
+
   personnelName: varchar("personnel_name", { length: 255 }).notNull(),
   department: varchar("department", { length: 255 }).notNull(),
 
@@ -110,35 +142,53 @@ export const internalUsages = pgTable("internal_usages", {
 
   note: varchar("note", { length: 255 }),
 
-  status: varchar("status", { enum: ["Utilized", "Archived"]}).notNull().default("Utilized"),
+  status: varchar("status", { enum: ["Utilized", "Archived"] })
+    .notNull()
+    .default("Utilized"),
 
   loggedAt: timestamp("logged_at").defaultNow().notNull(),
   loggedBy: varchar("logged_by", { length: 255 }).notNull(),
 });
 
-{/* Internal Usage Items */}
+{
+  /* Internal Usage Items */
+}
 
 export const internalUsageItems = pgTable("internal_usage_items", {
- id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  usageId: integer("usage_id").notNull().references(() => internalUsages.id, { onDelete: "cascade" }),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  usageId: integer("usage_id")
+    .notNull()
+    .references(() => internalUsages.id, { onDelete: "cascade" }),
 
-  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict"}),
-  
-  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
-  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
-  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
+  itemId: integer("item_id")
+    .notNull()
+    .references(() => items.id, { onDelete: "restrict" }),
+
+  sizeId: integer("size_id").references(() => sizes.id, {
+    onDelete: "restrict",
+  }),
+  variantId: integer("variant_id").references(() => variants.id, {
+    onDelete: "restrict",
+  }),
+  unitId: integer("unit_id").references(() => units.id, {
+    onDelete: "restrict",
+  }),
 
   quantity: integer("quantity").notNull(),
 });
 
-{/* Purchasing Purchase Orders */}
+{
+  /* Purchasing Purchase Orders */
+}
 export const purchasingPurchaseOrders = pgTable("purchasing_purchase_orders", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
   poNumber: varchar("po_number", { length: 100 }).notNull(),
   date: timestamp("date").defaultNow().notNull(),
 
-  supplierId: integer("supplier_id").notNull().references(() => suppliers.id, { onDelete: "restrict" }),
+  supplierId: integer("supplier_id")
+    .notNull()
+    .references(() => suppliers.id, { onDelete: "restrict" }),
 
   terms: varchar("terms"),
   deliveryMode: varchar("delivery_mode"),
@@ -147,31 +197,43 @@ export const purchasingPurchaseOrders = pgTable("purchasing_purchase_orders", {
 
   accountName: varchar("account_name"),
   preparedBy: varchar("prepared_by").notNull(),
-  status: varchar("status", { enum: ["Pending", "Partial", "Complete"] }).notNull().default("Pending"),
+  status: varchar("status", { enum: ["Pending", "Partial", "Complete"] })
+    .notNull()
+    .default("Pending"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-{/* Purchase Order Items */}
+{
+  /* Purchase Order Items */
+}
 export const purchaseOrderItems = pgTable("purchase_order_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-
-  purchasingPurchaseOrderId: integer("purchasing_purchase_order_id").notNull().references(() => purchasingPurchaseOrders.id, { onDelete: "cascade" }),
-
-  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict" }),
-  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
-  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
-  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
-
+  purchasingPurchaseOrderId: integer("purchasing_purchase_order_id")
+    .notNull()
+    .references(() => purchasingPurchaseOrders.id, { onDelete: "cascade" }),
+  itemId: integer("item_id")
+    .notNull()
+    .references(() => items.id, { onDelete: "restrict" }),
+  sizeId: integer("size_id").references(() => sizes.id, {
+    onDelete: "restrict",
+  }),
+  variantId: integer("variant_id").references(() => variants.id, {
+    onDelete: "restrict",
+  }),
+  unitId: integer("unit_id").references(() => units.id, {
+    onDelete: "restrict",
+  }),
   quantity: integer("quantity").notNull(),
-  unitPrice: numeric("unit_price", { precision: 10, scale: 2}),
-  totalPrice: numeric("total_price", { precision: 12, scale: 2 }),
-
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  totalPrice: numeric("total_price", { precision: 14, scale: 2 }),
   receivedQuantity: integer("received_quantity").default(0),
 });
 
-{/* Supplier List */}
+{
+  /* Supplier List */
+}
 export const suppliers = pgTable("suppliers", {
   id: serial("id").primaryKey(),
   supplierName: varchar("supplier_name").notNull(),
@@ -180,14 +242,18 @@ export const suppliers = pgTable("suppliers", {
   role: varchar("role"),
   tinNumber: varchar("tin_number"),
   address: varchar("address"),
-  status: varchar("status", { enum: ["Active", "Inactive"]}).notNull().default("Active"),
+  status: varchar("status", { enum: ["Active", "Inactive"] })
+    .notNull()
+    .default("Active"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   loggedBy: varchar("logged_by").notNull(),
 });
 
-{/* Personnel Accounts */}
+{
+  /* Personnel Accounts */
+}
 export const personnelAccounts = pgTable("personnel_accounts", {
   id: serial("id").primaryKey(),
   clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
@@ -195,11 +261,13 @@ export const personnelAccounts = pgTable("personnel_accounts", {
   email: varchar("email", { length: 50 }).notNull().unique(),
   contactNumber: varchar("contact_number", { length: 20 }).notNull(),
   role: varchar("role", { length: 50 }).notNull(),
-  status: varchar("status", { enum: ["Active", "Inactive"]}).default("Active"),
+  status: varchar("status", { enum: ["Active", "Inactive"] }).default("Active"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-{/* Personnels */}
+{
+  /* Personnels */
+}
 export const personnels = pgTable("personnels", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   personnelName: varchar("personnel_name", { length: 255 }).notNull(),
@@ -209,7 +277,9 @@ export const personnels = pgTable("personnels", {
   createdBy: varchar("created_by", { length: 255 }).notNull(),
 });
 
-{/* Clients */}
+{
+  /* Clients */
+}
 export const clients = pgTable("clients", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   clientName: varchar("client_name", { length: 255 }).notNull(),
@@ -221,7 +291,9 @@ export const clients = pgTable("clients", {
   createdBy: varchar("created_by", { length: 255 }).notNull(),
 });
 
-{/* Item replenishments */}
+{
+  /* Item replenishments */
+}
 
 export const itemReplenishments = pgTable("item_replenishments", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -232,29 +304,45 @@ export const itemReplenishments = pgTable("item_replenishments", {
   drRefNum: varchar("dr_ref_num", { length: 100 }),
   isDraft: boolean("is_draft").default(false),
 
-  status: varchar("status", { enum: ["Replenished", "Draft", "Archived"]}).notNull().default("Replenished"),
+  status: varchar("status", { enum: ["Replenished", "Draft", "Archived"] })
+    .notNull()
+    .default("Replenished"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   replenishedAt: timestamp("recorded_at"),
-  recordedBy: varchar("recorded_by", { length: 255 }).notNull(), 
+  recordedBy: varchar("recorded_by", { length: 255 }).notNull(),
 });
 
-{/* Replenishment Items */}
+{
+  /* Replenishment Items */
+}
 export const replenishmentItems = pgTable("replenishment_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
-  replenishmentId: integer("replenishment_id").notNull().references(() => itemReplenishments.id, { onDelete: "cascade" }),
+  replenishmentId: integer("replenishment_id")
+    .notNull()
+    .references(() => itemReplenishments.id, { onDelete: "cascade" }),
 
-  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict"}),
-  
-  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
-  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
-  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
+  itemId: integer("item_id")
+    .notNull()
+    .references(() => items.id, { onDelete: "restrict" }),
+
+  sizeId: integer("size_id").references(() => sizes.id, {
+    onDelete: "restrict",
+  }),
+  variantId: integer("variant_id").references(() => variants.id, {
+    onDelete: "restrict",
+  }),
+  unitId: integer("unit_id").references(() => units.id, {
+    onDelete: "restrict",
+  }),
 
   quantity: integer("quantity").notNull(),
 });
 
-{/* Quotation Requests */}
+{
+  /* Quotation Requests */
+}
 
 export const quotation_requests = pgTable("quotation_requests", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -264,22 +352,24 @@ export const quotation_requests = pgTable("quotation_requests", {
   status: varchar("status", { length: 20 })
     .notNull()
     .$type<
-      | "Pending"
-      | "Accepted"
-      | "Rejected"
-      | "Cancelled"
-      | "Cancel_Requested"
+      "Pending" | "Accepted" | "Rejected" | "Cancelled" | "Cancel_Requested"
     >()
     .default("Pending"),
-  customer_id: integer("customer_id").notNull().references(() => customer_profile.id),
+  customer_id: integer("customer_id")
+    .notNull()
+    .references(() => customer_profile.id),
   created_at: timestamp("created_at").defaultNow(),
 });
 
-{/* Quotation Request Files */}
+{
+  /* Quotation Request Files */
+}
 
 export const quotation_request_files = pgTable("quotation_request_files", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  request_id: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
+  request_id: integer("request_id")
+    .notNull()
+    .references(() => quotation_requests.id, { onDelete: "cascade" }),
   publicId: text("public_id").notNull(),
   filename: text("filename").notNull(),
   path: text("path").notNull(),
@@ -287,7 +377,9 @@ export const quotation_request_files = pgTable("quotation_request_files", {
   uploaded_at: timestamp("uploaded_at").defaultNow(),
 });
 
-{/* Customer Profile */}
+{
+  /* Customer Profile */
+}
 
 export const customer_profile = pgTable("customer_profile", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -306,7 +398,9 @@ export const customer_profile = pgTable("customer_profile", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-{/* Purchase Order */}
+{
+  /* Purchase Order */
+}
 export const purchase_orders = pgTable("purchase_orders", {
   id: uuid("id").primaryKey(),
   customerId: integer("customer_id").references(() => customer_profile.id),
@@ -322,18 +416,24 @@ export const purchase_orders = pgTable("purchase_orders", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
   uploadedBy: varchar("uploaded_by"),
   action: varchar("action").default("uploaded"),
-  status: varchar("status" , { enum: ["Pending", "Accepted", "Rejected"]}).default("Pending"),
+  status: varchar("status", {
+    enum: ["Pending", "Accepted", "Rejected"],
+  }).default("Pending"),
 });
 
-{/* Quotations */}
+{
+  /* Quotations */
+}
 
 export const quotations = pgTable("quotations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  requestId: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
+  requestId: integer("request_id")
+    .notNull()
+    .references(() => quotation_requests.id, { onDelete: "cascade" }),
 
   quotationSeq: serial("quotation_seq").notNull().unique(),
   quotationNumber: varchar("quotation_number", { length: 50 }).unique(),
-  
+
   revisionNumber: integer("revision_number").default(0),
   baseQuotationId: integer("base_quotation_id"),
 
@@ -344,9 +444,15 @@ export const quotations = pgTable("quotations", {
   deliveryDeadline: timestamp("delivery_deadline"),
 
   porgressStatus: varchar("progess_status", { length: 30 })
-    .$type<"in_progress" | "ready_for_pickup" | "out_for_delivery" | "completed" | "none">()
+    .$type<
+      | "in_progress"
+      | "ready_for_pickup"
+      | "out_for_delivery"
+      | "completed"
+      | "none"
+    >()
     .default("none"),
-  
+
   status: varchar("status", { length: 20 })
     .notNull()
     .$type<
@@ -364,7 +470,7 @@ export const quotations = pgTable("quotations", {
   validity: varchar("validity").notNull(),
   delivery: varchar("delivery", { length: 100 }),
   warranty: varchar("warranty", { length: 50 }).notNull(),
-  
+
   quotationNotes: text("quotation_notes"),
   cadSketch: varchar("cad_sketch", { length: 255 }),
 
@@ -377,11 +483,15 @@ export const quotations = pgTable("quotations", {
   customerActionAt: timestamp("customer_action_at").defaultNow().notNull(),
 });
 
-{/* Quotation Items */}
+{
+  /* Quotation Items */
+}
 
 export const quotationItems = pgTable("quotation_items", {
   id: uuid("id").primaryKey().defaultRandom(),
-  quotationId: uuid("quotation_id").notNull().references(() => quotations.id, { onDelete: "cascade" }),
+  quotationId: uuid("quotation_id")
+    .notNull()
+    .references(() => quotations.id, { onDelete: "cascade" }),
 
   itemName: varchar("item_name", { length: 255 }).notNull(),
   scopeOfWork: text("scope_of_work").notNull(),
@@ -390,7 +500,9 @@ export const quotationItems = pgTable("quotation_items", {
   totalPrice: numeric("total_price", { precision: 14, scale: 2 }),
 });
 
-{/* Quotation Materials */}
+{
+  /* Quotation Materials */
+}
 
 export const quotationMaterials = pgTable("quotation_materials", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -405,7 +517,9 @@ export const quotationMaterials = pgTable("quotation_materials", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-{/* Quotation Files */}
+{
+  /* Quotation Files */
+}
 
 export const quotationFiles = pgTable("quotation_files", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -419,15 +533,17 @@ export const quotationFiles = pgTable("quotation_files", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
 
-export const quotationRequestsRelations = relations(quotation_requests, ({ one, many }) => ({
-  customer: one(customer_profile, {
-    fields: [quotation_requests.customer_id],
-    references: [customer_profile.id],
-  }),
-  quotations: many(quotations),
-  files: many(quotation_request_files),
-}));
-
+export const quotationRequestsRelations = relations(
+  quotation_requests,
+  ({ one, many }) => ({
+    customer: one(customer_profile, {
+      fields: [quotation_requests.customer_id],
+      references: [customer_profile.id],
+    }),
+    quotations: many(quotations),
+    files: many(quotation_request_files),
+  })
+);
 
 // Quotations → Items
 export const quotationsRelations = relations(quotations, ({ one, many }) => ({
@@ -440,21 +556,27 @@ export const quotationsRelations = relations(quotations, ({ one, many }) => ({
 }));
 
 // Items → Materials
-export const quotationItemsRelations = relations(quotationItems, ({ one, many }) => ({
-  quotation: one(quotations, {
-    fields: [quotationItems.quotationId],
-    references: [quotations.id],
-  }),
-  materials: many(quotationMaterials),
-}));
+export const quotationItemsRelations = relations(
+  quotationItems,
+  ({ one, many }) => ({
+    quotation: one(quotations, {
+      fields: [quotationItems.quotationId],
+      references: [quotations.id],
+    }),
+    materials: many(quotationMaterials),
+  })
+);
 
 // Materials → Item
-export const quotationMaterialsRelations = relations(quotationMaterials, ({ one }) => ({
-  item: one(quotationItems, {
-    fields: [quotationMaterials.quotationItemId],
-    references: [quotationItems.id],
-  }),
-}));
+export const quotationMaterialsRelations = relations(
+  quotationMaterials,
+  ({ one }) => ({
+    item: one(quotationItems, {
+      fields: [quotationMaterials.quotationItemId],
+      references: [quotationItems.id],
+    }),
+  })
+);
 
 // Files → Quotation
 export const quotationFilesRelations = relations(quotationFiles, ({ one }) => ({
@@ -464,31 +586,30 @@ export const quotationFilesRelations = relations(quotationFiles, ({ one }) => ({
   }),
 }));
 
-  // //relation
-  // export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({
-  //   guardian: one(guardianAndParentsTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [guardianAndParentsTable.applicants_id],
-  //   }),
-  //   education: one(educationalBackgroundTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [educationalBackgroundTable.applicants_id],
-  //   }),
-  //   documents: one(documentsTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [documentsTable.applicants_id],
-  //   }),
-  //   status: one(applicationStatusTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [applicationStatusTable.applicants_id],
-  //   }),
-  //   reservationFee: one(reservationFeeTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [reservationFeeTable.applicants_id],
-  //   }),
+// //relation
+// export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({
+//   guardian: one(guardianAndParentsTable, {
+//     fields: [applicantsInformationTable.applicants_id],
+//     references: [guardianAndParentsTable.applicants_id],
+//   }),
+//   education: one(educationalBackgroundTable, {
+//     fields: [applicantsInformationTable.applicants_id],
+//     references: [educationalBackgroundTable.applicants_id],
+//   }),
+//   documents: one(documentsTable, {
+//     fields: [applicantsInformationTable.applicants_id],
+//     references: [documentsTable.applicants_id],
+//   }),
+//   status: one(applicationStatusTable, {
+//     fields: [applicantsInformationTable.applicants_id],
+//     references: [applicationStatusTable.applicants_id],
+//   }),
+//   reservationFee: one(reservationFeeTable, {
+//     fields: [applicantsInformationTable.applicants_id],
+//     references: [reservationFeeTable.applicants_id],
+//   }),
 
-
-  //   admissionStatus: one(AdmissionStatusTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [AdmissionStatusTable.applicants_id],
-  //   }),
+//   admissionStatus: one(AdmissionStatusTable, {
+//     fields: [applicantsInformationTable.applicants_id],
+//     references: [AdmissionStatusTable.applicants_id],
+//   }),

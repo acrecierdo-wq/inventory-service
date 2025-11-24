@@ -1,16 +1,16 @@
 // app/warehouse/replenishment_log/types/replenishment.tsx
 
 export type Replenishment = {
-    id: number;
-    supplier: string;
-    poRefNum: string;
-    remarks?: string;
-    drRefNum: string;
-    status: "Replenished" | "Draft" | "Archived";
-    createdAt: string;
-    replenishedAt: string;
-    recordedBy: string;
-    items: ReplenishmentItemDetail[];
+  id: number;
+  supplier: string;
+  poRefNum: string;
+  remarks?: string;
+  drRefNum: string;
+  status: "Replenished" | "Draft" | "Archived";
+  createdAt: string;
+  replenishedAt: string;
+  recordedBy: string;
+  items: ReplenishmentItemDetail[];
 };
 
 export type ReplenishmentItemDetail = {
@@ -26,17 +26,17 @@ export type ReplenishmentItemDetail = {
 };
 
 export type DraftReplenishment = {
-    id: number;
-    supplier: string;
-    poRefNum: string;
-    remarks?: string;
-    drRefNum: string;
-    status: string;
-    isDraft: boolean;
-    createdAt: string;
-    replenishedAt: string;
-    recordedBy: string;
-    items: ReplenishmentItemDetail[];
+  id: number;
+  supplier: string;
+  poRefNum: string;
+  remarks?: string;
+  drRefNum: string;
+  status: string;
+  isDraft: boolean;
+  createdAt: string;
+  replenishedAt: string;
+  recordedBy: string;
+  items: ReplenishmentItemDetail[];
 };
 
 export type DraftReplenishmentItem = {
@@ -58,9 +58,14 @@ export type FormInfo = {
   sizeId: string | null;
   variantId: string | null;
   unitId: string | null;
-  quantity: number;
+  quantity: number; // Quantity being received in this replenishment
   itemName: string;
   sizeName: string | null;
   variantName: string | null;
   unitName: string | null;
+
+  //  Track expected vs received
+  expectedQuantity?: number; // From PO
+  receivedSoFar?: number; // Already received before this replenishment
+  remainingQuantity?: number; // Still needed after previous replenishments
 };
