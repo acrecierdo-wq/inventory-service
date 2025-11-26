@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 
-    const { username, email, role, contactNumber } = body;
+    const { username, email, role } = body;
     if (!email || !role || !username)
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
 
@@ -160,11 +160,11 @@ export async function POST(req: NextRequest) {
     // 🗃️ Insert into local personnel_accounts
     await db.insert(personnelAccounts).values({
       clerkId: user.id,
-      username: finalUsername,
-      email,
-      contactNumber: contactNumber || "N/A",
-      role,
-      status: "Active",
+      personnelId: body.personnelId ?? undefined,
+      // username: finalUsername,
+      // email: email,
+      role: role,
+      // status: "Active",
     });
 
     // 🪵 Log audit trail
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
       action: "CREATE",
       description: `Created ${role} account for ${email}`,
       actorId: admin.id,
-      actorName: `${admin.firstName || ""} ${admin.lastName || ""}`.trim() || "Admin",
+      actorName: `${admin.username || ""}`.trim() || "Admin",
       actorRole: "admin",
       module: "Admin / User Management",
     });

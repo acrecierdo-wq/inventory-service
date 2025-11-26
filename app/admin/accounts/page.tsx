@@ -8,13 +8,20 @@ import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 type StaffUser = {
-  id: string;
+  id: string; 
   username: string | null;
   email: string | null;
-  contactNumber: string | null;
   role: string | null;
   status: "Active" | "Inactive";
+  createdAt: string;
 };
+
+// type Personnel = {
+//   id?: number | string;
+//   username: string | null;
+//   email?: string | null
+//   status?: "Active" | "Inactive";
+// }
 
 type CreatedUser = {
   userId: string;
@@ -24,9 +31,10 @@ type CreatedUser = {
 };
 
 export default function CreateUserPage() {
+  //const [personnels, setPersonnels] = useState<Personnel[]>([]);
+  //const [selectedPersonnelId, setSelectedPersonnelId] = useState<string>("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [contactNumber, setContactNumber] = useState("");
   const [role, setRole] = useState("role");
   const [loading, setLoading] = useState(false);
 
@@ -85,14 +93,13 @@ export default function CreateUserPage() {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, role, contactNumber }),
+        body: JSON.stringify({ username, email, role }),
       });
       const data = await res.json();
       if (res.ok) {
         toast.success("User created!");
         setUsername("");
         setEmail("");
-        setContactNumber("");
         setRole("role");
         // show credentails to admin
         setLastCreated({
@@ -162,13 +169,6 @@ export default function CreateUserPage() {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <input 
-            className="border p-2 w-full rounded hover:bg-gray-100 text-sm"
-            placeholder="Contact Number"
-            value={contactNumber}
-            onChange={(e) => setContactNumber(e.target.value)}
           />
  
           <Select onValueChange={setRole} value={role}>
@@ -269,7 +269,7 @@ export default function CreateUserPage() {
         </section>
         
         <section className="p-5">
-        <h2 className="text-xl font-bold text-[#173f63] p-2">Staff List</h2>
+        <h2 className="text-xl font-bold text-[#173f63] p-2">Accounts List</h2>
 
   <ScrollArea className="bg-white h-[250px] rounded shadow p-2 relative">
     <div className="">
@@ -278,7 +278,6 @@ export default function CreateUserPage() {
           <tr className="bg-[#fff4e0] rounded shadow">
                   <th className="p-2">Username</th>
                   <th className="p-2">Email</th>
-                  <th className="p-2">Contact</th>
                   <th className="p-2">Role</th>
                   <th className="p-2">Status</th>
                   <th className="p-2 text-center">Actions</th>
@@ -298,7 +297,6 @@ export default function CreateUserPage() {
             <tr key={u.id} className="bg-white">
               <td className="p-2 border-b">{u.username ?? "-"}</td>
               <td className="p-2 border-b">{u.email ?? "-"}</td>
-              <td className="p-2 border-b">{u.contactNumber ?? "-"}</td>
               <td className="p-2 border-b capitalize">{u.role}</td>
               <td className="p-2 border-b">
                 <div className="flex flex-col gap-2">

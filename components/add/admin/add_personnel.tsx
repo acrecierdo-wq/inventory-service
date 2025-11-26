@@ -3,17 +3,22 @@
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
 import { useUser } from "@clerk/nextjs";
 
 interface Personnel {
     id?: number;
-    personnelName: string;
+  username: string;
+  personnelName: string;
   department: string;
-  createdBy: string;
+  email: string;
+  contactNumber: string;
+  status: "Active" | "Inactive";
   createdAt: string;
   updatedAt: string;
+  createdBy: string;
 }
 
 interface AddPersonnelModalProps {
@@ -35,8 +40,12 @@ export default function AddPersonnelModal({
 const { user, isLoaded } = useUser();
 
 const [formData, setFormData] = useState<Personnel>({
+    username: "",
     personnelName: "",
     department: "",
+    email: "",
+    contactNumber: "",
+    status: "Active",
     createdAt: "",
     updatedAt: "",
     createdBy: "",
@@ -45,6 +54,7 @@ const [formData, setFormData] = useState<Personnel>({
   const [tempItem, setTempItem] = useState<typeof formData | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  //const [department, setDepartment] = useState("all");
 
   const now = new Date();
 
@@ -54,8 +64,12 @@ const [formData, setFormData] = useState<Personnel>({
       setFormData(personnel);
     } else {
       setFormData({
+        username: "",
         personnelName: "",
         department: "",
+        email: "",
+        contactNumber: "",
+        status: "Active",
         createdAt: "",
         updatedAt: "",
         createdBy: "",
@@ -84,24 +98,38 @@ const [formData, setFormData] = useState<Personnel>({
 
 
   const handleDone = async () => {
-    if (!formData.personnelName.trim()) {
-      toast.error("Please enter personnel name.", { duration: 2000 });
+    if (!formData.username.trim()) {
+      toast.error("Please enter username.", { duration: 2000 });
       return;
     }
 
     if (!formData.department.trim()) {
-      toast.error("Please enter personnel department.", { duration: 2000 });
+      toast.error("Please select personnel department.", { duration: 2000 });
       return;
     }
 
+    if (!formData.email.trim()) {
+      toast.error("Please enter personnel email.", { duration: 2000 });
+      return;
+    }
+
+    if (!formData.contactNumber.trim()) {
+      toast.error("Please enter personnel contact number.", { duration: 2000 });
+      return;
+    }
+
+
     const isDuplicate = existingPersonnel.some((personnel) => {
-  const itemName = personnel.personnelName.trim().toLowerCase();
-  const formName = formData.personnelName.trim().toLowerCase();
+  const itemName = personnel.username.trim().toLowerCase();
+  const formName = formData.username.trim().toLowerCase();
+
+  const personnelNameMatch = personnel.personnelName === formData.personnelName;
+  const emailMatch = personnel.email === formData.email;
 
   const nameMatch = itemName === formName;
   const departmentMatch = personnel.department === formData.department;
 
-  if (nameMatch && departmentMatch ) {
+  if (nameMatch && departmentMatch && personnelNameMatch && emailMatch) {
     console.log("Duplicate found because all fields matched:", {
       personnel,
       formData
@@ -109,11 +137,11 @@ const [formData, setFormData] = useState<Personnel>({
   } else {
     console.log("Checked personnel but not a full duplicate:", {
       personnel,
-      comparisons: { nameMatch, departmentMatch },
+      comparisons: { nameMatch, departmentMatch, personnelNameMatch, emailMatch },
     });
   }
 
-  return nameMatch && departmentMatch;
+  return nameMatch && departmentMatch && personnelNameMatch && emailMatch;
 });
 
 if (isDuplicate) {
@@ -127,8 +155,6 @@ const payload = {
         formData.createdBy ||
         user?.username ||
         user?.fullName ||
-        user?.firstName ||
-        user?.firstName ||
         user?.primaryEmailAddress?.emailAddress ||
          "Admin",
     createdAt: personnel?.createdAt || now,
@@ -181,6 +207,20 @@ onClose();
             
         {/* <DialogDescription className="text-center text-xl py-5"> */}
           <main className="w-full flex flex-col gap-0 mt-2 text-center text-xl py-5">
+
+            <section className="flex flex-row gap-9">
+              <p className="w-[120px] text-black text-start text-sm">
+                Username:<span className="text-red-500"> *</span>
+                </p>
+              <div className="w-[320px]">
+              <Input
+                placeholder="input employee code/id here..."
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100"
+              />
+              </div>
+            </section>
         
             <section className="flex flex-row gap-9">
               <p className="w-[120px] text-black text-start text-sm">
@@ -196,25 +236,65 @@ onClose();
               </div>
             </section>
 
-        <section className="flex flex-row gap-9">
-          <p className="w-[120px] text-black text-start text-sm">
+            <section className="flex flex-row gap-9">
+              <p className="w-[120px] text-black text-start text-sm">
                 Department:<span className="text-red-500"> *</span>
                 </p>
               <div className="w-[320px]">
+                <Select 
+                onValueChange={(value) => 
+                  setFormData({ ...formData, department: value })
+                } 
+                value={formData.department}>
+              <SelectTrigger className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100">
+                <SelectValue placeholder="Select a department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Select department</SelectItem>
+                <SelectItem value="finance">Finance</SelectItem>
+                <SelectItem value="hr">Human Resources</SelectItem>
+                <SelectItem value="sales&marketing">Sales & Marketing</SelectItem>
+                <SelectItem value="warehouse">Warehouse</SelectItem>
+                <SelectItem value="purchasing">Purchasing</SelectItem>
+                <SelectItem value="logistics">Logistics</SelectItem>
+              </SelectContent>
+            </Select>
+              </div>
+            </section>
+
+            <section className="flex flex-row gap-9">
+                <p className="w-[120px] text-black text-start text-sm">
+                  Email:<span className="text-red-500"> *</span>
+                  </p>
+                <div className="w-[320px]">
+                <Input
+                  placeholder="input personnel email here..."
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100"
+                />
+                </div>
+              </section>
+
+              <section className="flex flex-row gap-9">
+              <p className="w-[120px] text-black text-start text-sm">
+                Contact #:<span className="text-red-500"> *</span>
+                </p>
+              <div className="w-[320px]">
               <Input
-                placeholder="input personnel department here..."
-                value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                placeholder="input personnel contact number here..."
+                value={formData.contactNumber}
+                onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
                 className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100"
               />
               </div>
-        </section>
+            </section>
 
         <div className="mt-4 flex justify-center gap-4 ">
           <button
                 type="button"
                 onClick={onClose}
-                className="h-7 w-15 bg-gray-300 text-sm text-gray-700 rounded hover:bg-gray-400"
+                className="h-7 w-15 bg-gray-300 text-sm text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
               >
                 Cancel
               </button>
@@ -241,8 +321,11 @@ onClose();
         <div className="bg-white w-[600px] p-6 rounded shadow">
           <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Personnel</h2>
 
+          <p className="mb-2 text-sm text-gray-700">Username: {formData.username}</p>
           <p className="mb-2 text-sm text-gray-700">Personnel Name: {formData.personnelName}</p>
           <p className="mb-2 text-sm text-gray-700">Department: {formData.department}</p>
+          <p className="mb-2 text-sm text-gray-700">Email: {formData.email}</p>
+          <p className="mb-2 text-sm text-gray-700">Contact #: {formData.contactNumber}</p>
 
           <div className="flex justify-end gap-4 mt-6">
             <button

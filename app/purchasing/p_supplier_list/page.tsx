@@ -198,13 +198,12 @@ const sortRef = useRef<HTMLDivElement | null>(null);
       <div className="flex-1 overflow-y-visible mt-2 rounded relative">
         <div className="bg-white rounded shadow-md mb-2">
 
-        <div className="bg-[#fcd0d0] grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+        <div className="bg-[#fcd0d0] grid grid-cols-[2fr_2fr_1fr_1fr_0.5fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
           <>
             <span>Name</span>
             <span>Email</span>
             <span>Contact</span>
             <span>Role</span>
-            <span>Address</span>
             <span>Actions</span>
           </>
         </div>
@@ -214,13 +213,12 @@ const sortRef = useRef<HTMLDivElement | null>(null);
           paginatedSuppliers.map((s) => (
             <div
               key={s.id}
-              className="grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+              className="grid grid-cols-[2fr_2fr_1fr_1fr_0.5fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
             >
-              <span>{s.supplierName}</span>
+              <span className="text-sm">{s.supplierName}</span>
               <span className="">{s.email}</span>
               <span>{s.contactNumber}</span>
               <span>{s.role}</span>
-              <span>{s.address}</span>
               <div className="flex items-center justify-center">
                 <SupplierActions
                 item={s}
