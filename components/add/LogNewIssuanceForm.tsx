@@ -95,6 +95,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const [showOCRModeModal, setShowOCRModeModal] = useState(false);
   const [showWebcamModal, setShowWebcamModal] = useState(false);
 
+  const [duplicateErrors, setDuplicateErrors] = useState<string[]>([]);
   // Dynamic input rows for adding items (before they're officially added to the list)
   const [inputRows, setInputRows] = useState<InputRow[]>([
     {
@@ -527,12 +528,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   /**
    * Validates and adds all input rows to the final items list
    * NEW: All-or-nothing validation - if ANY item exceeds stock, NONE are added
-   *
-   * Validation includes:
-   * - Item must be selected
-   * - Size must be selected (if sizes exist)
-   * - Quantity must be valid
-   * - ALL items must have sufficient stock (strict validation)
+   * INCLUDES: Duplicate detection shown inline below items table
    */
   const handleAddAllRows = async () => {
     if (isAdding) return;
@@ -545,6 +541,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       qty: number;
     }> = [];
     const validationErrors: string[] = [];
+    const duplicateErrors: string[] = []; // ✅ Separate array for duplicate errors
 
     for (const row of inputRows) {
       // Skip empty rows
@@ -577,7 +574,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
 
       const qty = Number(row.quantity);
 
-      // **STRICT STOCK VALIDATION - This is the key change!**
+      // **STRICT STOCK VALIDATION**
       if (row.availableStock === null) {
         validationErrors.push(
           `❌ "${row.selectedItem.name}": Stock information not loaded. Please wait or refresh.`
@@ -613,6 +610,52 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
           continue;
         }
 
+        // ✅ Check for duplicates in existing items list
+        const isDuplicateInExisting = items.some(
+          (i) =>
+            i.itemId === String(found.id) &&
+            (i.sizeId || null) ===
+              (row.selectedSize ? String(row.selectedSize.id) : null) &&
+            (i.variantId || null) ===
+              (row.selectedVariant ? String(row.selectedVariant.id) : null) &&
+            (i.unitId || null) ===
+              (row.selectedUnit ? String(row.selectedUnit.id) : null)
+        );
+
+        if (isDuplicateInExisting) {
+          duplicateErrors.push(
+            `❌ "${row.selectedItem.name}" (${
+              row.selectedSize?.name || "No Size"
+            }, ${row.selectedVariant?.name || "No Variant"}, ${
+              row.selectedUnit?.name || "No Unit"
+            }): This item is already in the list.`
+          );
+          continue;
+        }
+
+        // ✅ Check for duplicates within current input rows being added
+        const isDuplicateInBatch = validatedRows.some(
+          (validated) =>
+            validated.itemId === String(found.id) &&
+            (validated.row.selectedSize?.id || null) ===
+              (row.selectedSize?.id || null) &&
+            (validated.row.selectedVariant?.id || null) ===
+              (row.selectedVariant?.id || null) &&
+            (validated.row.selectedUnit?.id || null) ===
+              (row.selectedUnit?.id || null)
+        );
+
+        if (isDuplicateInBatch) {
+          duplicateErrors.push(
+            `❌ "${row.selectedItem.name}" (${
+              row.selectedSize?.name || "No Size"
+            }, ${row.selectedVariant?.name || "No Variant"}, ${
+              row.selectedUnit?.name || "No Unit"
+            }): Duplicate detected in current batch.`
+          );
+          continue;
+        }
+
         // Store validated row for later processing
         validatedRows.push({
           row,
@@ -628,21 +671,17 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     }
 
     // **PHASE 2: CHECK VALIDATION RESULTS**
-    if (validationErrors.length > 0) {
-      // Show ALL validation errors at once
-      validationErrors.forEach((error, index) => {
-        setTimeout(() => {
-          toast.error(error, { duration: 6000 });
-        }, index * 500); // Stagger errors by 500ms for readability
-      });
+    const allErrors = [...validationErrors, ...duplicateErrors];
 
-      // Show summary error
-      setTimeout(() => {
-        toast.error(
-          `⚠️ Cannot add items: ${validationErrors.length} item(s) failed validation. Please fix all issues before adding.`,
-          { duration: 8000 }
-        );
-      }, validationErrors.length * 500);
+    if (allErrors.length > 0) {
+      // ✅ NEW: Store duplicate errors in state to display inline
+      setDuplicateErrors(duplicateErrors);
+
+      // ✅ CHANGED: Only show summary toast
+      toast.error(
+        `⚠️ Cannot add items: ${allErrors.length} item(s) failed validation. Please fix all issues before adding.`,
+        { duration: 8000 }
+      );
 
       setIsAdding(false);
       return; // **STOP HERE - Don't add ANY items**
@@ -669,6 +708,9 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
 
     // Add all validated items at once
     setItems((prev) => [...prev, ...newItems]);
+
+    // Clear duplicate errors on success
+    setDuplicateErrors([]);
 
     // Show success message
     toast.success(`✅ Added ${newItems.length} item(s) to list.`, {
@@ -1153,15 +1195,48 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                 })}
               </div>
 
-              {/* Button to add all input rows to the final items list */}
+              {/* NEW: Display duplicate errors inline below input rows */}
+              {duplicateErrors.length > 0 && (
+                <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle
+                      className="text-red-600 mt-0.5 flex-shrink-0"
+                      size={20}
+                    />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-bold text-red-800 mb-2">
+                        ⚠️ Duplicate Items Detected
+                      </h4>
+                      <ul className="space-y-1">
+                        {duplicateErrors.map((error, idx) => (
+                          <li key={idx} className="text-sm text-red-700">
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <button
+                type="button"
+                onClick={handleAddAllRows}
+                disabled={isAdding}
+                className="mt-5 bg-[#674d33] px-4 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium cursor-pointer disabled:opacity-50"
+              >
+                {isAdding ? "Adding..." : "Add Items to List"}
+              </button>
+
+              {/* Button to add all input rows to the final items list */}
+              {/* <button
                 type="button"
                 onClick={handleAddAllRows}
                 disabled={isAdding}
                 className="mt-4 bg-[#674d33] px-6 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium"
               >
                 {isAdding ? "Adding..." : "Add Items to List"}
-              </button>
+              </button> */}
 
               {/* Hidden file input for OCR image upload */}
               <input

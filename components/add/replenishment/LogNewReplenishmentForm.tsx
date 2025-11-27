@@ -544,14 +544,13 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                   <SelectValue placeholder="Select Purchase Order" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Manual Entry</SelectItem>
                   {availablePOs.map((po) => (
                     <SelectItem
                       key={po.id}
                       value={po.poNumber}
                       disabled={po.status === "Complete"}
                     >
-                      {po.poNumber} - {po.supplierName} ({po.status})
+                      {po.poNumber} - ({po.status})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -717,7 +716,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                     Items to Receive
                   </h3>
                   <table className="w-full border text-sm">
-                    <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                    <thead className="bg-[#f5e6d3] text-xs text-[#482b0e]">
                       <tr>
                         <th className="border px-2 py-1">Item Name</th>
                         <th className="border px-2 py-1">Size</th>
@@ -726,7 +725,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         <th className="border px-2 py-1">Expected</th>
                         <th className="border px-2 py-1">Already Received</th>
                         <th className="border px-2 py-1">Remaining</th>
-                        <th className="border px-2 py-1">Qty Receiving Now</th>
+                        <th className="border px-2 py-1">Quantity (Now)</th>
                         <th className="border px-2 py-1">Remove</th>
                       </tr>
                     </thead>
@@ -1135,7 +1134,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                   </div>
 
                   {/* Status Legend */}
-                  <div className="mt-4 flex items-center gap-6 text-xs">
+                  {/* <div className="mt-4 flex items-center gap-6 text-xs">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="text-green-700" size={16} />
                       <span className="text-gray-600">
@@ -1148,7 +1147,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         Over-Receiving (Exceeds expected qty)
                       </span>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Footer Section with Actions */}
@@ -1380,7 +1379,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                   </div>
 
                   {/* Status Legend */}
-                  <div className="mt-4 flex items-center gap-6 text-xs">
+                  {/* <div className="mt-4 flex items-center gap-6 text-xs">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="text-green-600" size={16} />
                       <span className="text-gray-600">Item Complete</span>
@@ -1389,7 +1388,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                       <AlertTriangle className="text-yellow-600" size={16} />
                       <span className="text-gray-600">Item Pending</span>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Footer Section with Actions */}
@@ -1404,7 +1403,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                           window.location.href = "/warehouse/replenishment_log";
                         }, 500);
                       }}
-                      className="px-8 py-2.5 bg-[#173f63] text-white rounded-lg hover:bg-[#2a5a7f] font-semibold transition-colors shadow-md flex items-center gap-2"
+                      className="px-6 py-2 bg-blue-400 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors shadow-md flex items-center gap-2"
                     >
                       Done
                       <CheckCircle size={18} />

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import OCRModeModal from "@/components/modals/OCRModeModal";
 import WebcamCaptureModal from "@/components/modals/WebcamCaptureModal";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, AlertTriangle } from "lucide-react";
 
 type Selection = { id: string | number; name: string };
 
@@ -72,6 +72,9 @@ export default function AddPurchaseOrder() {
   const [preparedBy, setPreparedBy] = useState("");
   const [poNumber, setPoNumber] = useState("");
   const [date] = useState(() => new Date().toISOString().split("T")[0]);
+
+  // NEW: Duplicate errors state
+  const [duplicateErrors, setDuplicateErrors] = useState<string[]>([]);
 
   // OCR-related states
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -384,34 +387,34 @@ export default function AddPurchaseOrder() {
     }
   }, [user]);
 
-  useEffect(() => {
-    inputRows.forEach((row, index) => {
-      if (!row.selectedItem) return;
+  // useEffect(() => {
+  //   inputRows.forEach((row, index) => {
+  //     if (!row.selectedItem) return;
 
-      const fetchOptions = async () => {
-        try {
-          const res = await fetch(
-            `/api/inventory-options?itemName=${encodeURIComponent(
-              row.selectedItem!.name
-            )}`
-          );
-          if (!res.ok) throw new Error("Failed to fetch item options");
-          const data: Combination[] = await res.json();
+  //     const fetchOptions = async () => {
+  //       try {
+  //         const res = await fetch(
+  //           `/api/inventory-options?itemName=${encodeURIComponent(
+  //             row.selectedItem!.name
+  //           )}`
+  //         );
+  //         if (!res.ok) throw new Error("Failed to fetch item options");
+  //         const data: Combination[] = await res.json();
 
-          setInputRows((prev) =>
-            prev.map((r, i) =>
-              i === index
-                ? { ...r, combinations: Array.isArray(data) ? data : [] }
-                : r
-            )
-          );
-        } catch (err) {
-          console.error("inventory-options error:", err);
-        }
-      };
-      fetchOptions();
-    });
-  }, [inputRows]);
+  //         setInputRows((prev) =>
+  //           prev.map((r, i) =>
+  //             i === index
+  //               ? { ...r, combinations: Array.isArray(data) ? data : [] }
+  //               : r
+  //           )
+  //         );
+  //       } catch (err) {
+  //         console.error("inventory-options error:", err);
+  //       }
+  //     };
+  //     fetchOptions();
+  //   });
+  // }, [inputRows]);
 
   const getAvailableSizes = (combinations: Combination[]) => {
     return Array.from(
@@ -497,28 +500,79 @@ export default function AddPurchaseOrder() {
     ]);
   };
 
+  // New function
+  const handleItemSelection = async (rowId: string, item: Selection | null) => {
+    // Update the selected item
+    setInputRows((prev) =>
+      prev.map((row) =>
+        row.id === rowId
+          ? {
+              ...row,
+              selectedItem: item,
+              selectedSize: null,
+              selectedVariant: null,
+              selectedUnit: null,
+              combinations: [],
+            }
+          : row
+      )
+    );
+
+    // If no item selected, stop here
+    if (!item) return;
+
+    // Fetch combinations for this item
+    try {
+      const res = await fetch(
+        `/api/inventory-options?itemName=${encodeURIComponent(
+          String(item.name)
+        )}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch item options");
+      const data: Combination[] = await res.json();
+
+      // Update only this row's combinations
+      setInputRows((prev) =>
+        prev.map((row) =>
+          row.id === rowId
+            ? { ...row, combinations: Array.isArray(data) ? data : [] }
+            : row
+        )
+      );
+    } catch (err) {
+      console.error("inventory-options error:", err);
+    }
+  };
+
   const handleRemoveRow = (id: string) => {
     setInputRows((prev) => prev.filter((r) => r.id !== id));
   };
 
   const handleAddAllRows = () => {
+    const validationErrors: string[] = [];
+    const duplicateErrors: string[] = []; // ✅ NEW: Separate array for duplicates
     const newItems: PurchaseOrderItem[] = [];
 
     for (const row of inputRows) {
+      // Basic validation
       if (!row.selectedItem) {
-        toast.error("Please select an item for all rows");
-        return;
+        validationErrors.push(`❌ Please select an item for all rows`);
+        continue;
       }
       if (!row.quantity || Number(row.quantity) <= 0) {
-        toast.error("Please enter valid quantity for all rows");
-        return;
+        validationErrors.push(
+          `❌ "${row.selectedItem.name}": Please enter valid quantity`
+        );
+        continue;
       }
       if (!row.unitPrice || Number(row.unitPrice) <= 0) {
-        toast.error("Please enter valid unit price for all rows");
-        return;
+        validationErrors.push(
+          `❌ "${row.selectedItem.name}": Please enter valid unit price`
+        );
+        continue;
       }
 
-      newItems.push({
+      const candidate: PurchaseOrderItem = {
         itemId: String(row.selectedItem.id),
         itemName: row.selectedItem.name,
         sizeId: row.selectedSize ? String(row.selectedSize.id) : null,
@@ -530,10 +584,71 @@ export default function AddPurchaseOrder() {
         quantity: Number(row.quantity),
         unitPrice: Number(row.unitPrice),
         totalPrice: Number(row.quantity) * Number(row.unitPrice),
-      });
+      };
+
+      // ✅ Check for duplicates in existing items list
+      const isDuplicateInExisting = items.some(
+        (i) =>
+          i.itemId === candidate.itemId &&
+          (i.sizeId || null) === (candidate.sizeId || null) &&
+          (i.variantId || null) === (candidate.variantId || null) &&
+          (i.unitId || null) === (candidate.unitId || null)
+      );
+
+      if (isDuplicateInExisting) {
+        duplicateErrors.push(
+          `❌ "${row.selectedItem.name}" (${
+            row.selectedSize?.name || "No Size"
+          }, ${row.selectedVariant?.name || "No Variant"}, ${
+            row.selectedUnit?.name || "No Unit"
+          }): This item is already in the list.`
+        );
+        continue;
+      }
+
+      // ✅ Check for duplicates within current batch
+      const isDuplicateInBatch = newItems.some(
+        (i) =>
+          i.itemId === candidate.itemId &&
+          (i.sizeId || null) === (candidate.sizeId || null) &&
+          (i.variantId || null) === (candidate.variantId || null) &&
+          (i.unitId || null) === (candidate.unitId || null)
+      );
+
+      if (isDuplicateInBatch) {
+        duplicateErrors.push(
+          `❌ "${row.selectedItem.name}" (${
+            row.selectedSize?.name || "No Size"
+          }, ${row.selectedVariant?.name || "No Variant"}, ${
+            row.selectedUnit?.name || "No Unit"
+          }): Duplicate detected in current batch.`
+        );
+        continue;
+      }
+
+      newItems.push(candidate);
     }
 
+    // ✅ Check validation results
+    const allErrors = [...validationErrors, ...duplicateErrors];
+
+    if (allErrors.length > 0) {
+      // Store duplicate errors for inline display
+      setDuplicateErrors(duplicateErrors);
+
+      // Show only summary toast
+      toast.error(
+        `⚠️ Cannot add items: ${allErrors.length} item(s) failed validation. Please fix all issues before adding.`,
+        { duration: 8000 }
+      );
+      return;
+    }
+
+    // All validations passed - add items
     setItems((prev) => [...prev, ...newItems]);
+
+    // Clear duplicate errors on success
+    setDuplicateErrors([]);
 
     setInputRows([
       {
@@ -773,21 +888,7 @@ export default function AddPurchaseOrder() {
                       label="Item"
                       endpoint="/api/autocomplete/item-name"
                       value={row.selectedItem}
-                      onChange={(val) =>
-                        setInputRows((prev) =>
-                          prev.map((r) =>
-                            r.id === row.id
-                              ? {
-                                  ...r,
-                                  selectedItem: val,
-                                  selectedSize: null,
-                                  selectedVariant: null,
-                                  selectedUnit: null,
-                                }
-                              : r
-                          )
-                        )
-                      }
+                      onChange={(item) => handleItemSelection(row.id, item)}
                     />
                     <AutoComplete
                       label="Size"
@@ -902,6 +1003,30 @@ export default function AddPurchaseOrder() {
                 );
               })}
             </div>
+
+            {/* ✅ NEW: Display duplicate errors inline */}
+            {duplicateErrors.length > 0 && (
+              <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle
+                    className="text-red-600 mt-0.5 flex-shrink-0"
+                    size={20}
+                  />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-red-800 mb-2">
+                      ⚠️ Duplicate Items Detected
+                    </h4>
+                    <ul className="space-y-1">
+                      {duplicateErrors.map((error, idx) => (
+                        <li key={idx} className="text-sm text-red-700">
+                          {error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               type="button"
