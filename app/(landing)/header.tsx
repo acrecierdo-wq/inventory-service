@@ -8,9 +8,9 @@
 // import { useEffect } from "react";
 
 // export const Header = () => {
-//     const { user, isSignedIn, isLoaded } = useUser(); 
+//     const { user, isSignedIn, isLoaded } = useUser();
 //     const router = useRouter();
-    
+
 //     useEffect(() => {
 //         // Check if the user is signed in and user data is loaded
 //         if (isSignedIn && isLoaded) {
@@ -20,7 +20,7 @@
 //                 if (user?.publicMetadata?.role === 'admin') {
 //                     router.push("/admin/admin_dashboard");
 //                 } else if (user?.publicMetadata?.role === 'sales') {
-//                         router.push("/sales/sales_dashboard");    
+//                         router.push("/sales/sales_dashboard");
 //                 }  else if (user?.publicMetadata?.role === 'warehouseman') {
 //                     router.push("/warehouse/w_dashboard");
 //                 }  else {
@@ -39,10 +39,10 @@
 //             CTIC
 //             </h1>
 //             <div>
-//             <Button variant="link" size="sm" onClick={() => router.push("/landing_page/home")}> 
+//             <Button variant="link" size="sm" onClick={() => router.push("/landing_page/home")}>
 //                 Home
 //                 </Button>
-//                 <Button variant="link" size="sm" onClick={() => router.push("/landing_page/product")}> 
+//                 <Button variant="link" size="sm" onClick={() => router.push("/landing_page/product")}>
 //                 Products
 //                 </Button>
 //                 <Button variant="link" size="sm" onClick={() => router.push("/landing_page/services")}>
@@ -58,9 +58,9 @@
 //             </ClerkLoading>
 //             <ClerkLoaded>
 //             <SignedIn>
-//                 <UserButton 
+//                 <UserButton
 //                 showName afterSignOutUrl="/"
-//                 /> 
+//                 />
 //             </SignedIn>
 //             <SignedOut>
 //                 <SignInButton
@@ -79,16 +79,24 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ClerkLoaded, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs";
-import { Loader2 } from "lucide-react";
+import {
+  ClerkLoaded,
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+  useUser,
+} from "@clerk/nextjs";
+import { Loader2, Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export const Header = () => {
-  const { user, isSignedIn, isLoaded } = useUser(); 
+  const { user, isSignedIn, isLoaded } = useUser();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -105,7 +113,7 @@ export const Header = () => {
         case "warehouseman":
           router.push("/warehouse/w_dashboard");
           break;
-          case "purchasing":
+        case "purchasing":
           router.push("/purchasing/dashboard");
           break;
         default:
@@ -116,37 +124,132 @@ export const Header = () => {
 
   return (
     <header className="sticky z-1000 top-0 h-15 w-full border-b-2 bg-white">
-      <div className="lg:max-w-full-lg mx-auto flex items-center justify-between h-full">
+      <div className="lg:max-w-full-lg mx-auto flex items-center justify-between h-full px-4">
         {/* Logo and Navigation */}
         <div className="pt-8 pl-4 pb-7 flex items-center gap-x-3">
           <a href="/landing_page/home">
             <Image src="/cticlogo.webp" height={40} width={40} alt="CTIC" />
           </a>
-          <h1 className="text-2xl font-extrabold text-yellow-600 tracking-wide">CTIC</h1>
-          <div>
-            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/home")}>Home</Button>
-            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/product")}>Products</Button>
-            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/services")}>Services</Button>
-            <Button variant="link" size="sm" onClick={() => router.push("/landing_page/contact")}>Contact</Button>
+          <h1 className="text-2xl font-extrabold text-yellow-600 tracking-wide">
+            CTIC
+          </h1>
+
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex">
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => router.push("/landing_page/home")}
+            >
+              Home
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => router.push("/landing_page/product")}
+            >
+              Products
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => router.push("/landing_page/services")}
+            >
+              Services
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => router.push("/landing_page/contact")}
+            >
+              Contact
+            </Button>
           </div>
         </div>
 
-        {/* Auth Buttons */}
-        {mounted ? (
-          <ClerkLoaded>
-            <SignedIn>
-              <UserButton showName afterSignOutUrl="/" />
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <Button variant="sidebar" size="sm">Sign In</Button>
-              </SignInButton>
-            </SignedOut>
-          </ClerkLoaded>
-        ) : (
-          <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-        )}
+        {/* Mobile Menu Button and Auth */}
+        <div className="flex items-center gap-x-4 pr-4">
+          {/* Auth Buttons */}
+          {mounted ? (
+            <ClerkLoaded>
+              <SignedIn>
+                <UserButton showName afterSignOutUrl="/" />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button variant="sidebar" size="sm">
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </SignedOut>
+            </ClerkLoaded>
+          ) : (
+            <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+          )}
+
+          {/* Mobile Menu Button */}
+          <button
+            className="lg:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t-2 bg-white px-4 py-4">
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => {
+              router.push("/landing_page/home");
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left"
+          >
+            Home
+          </Button>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => {
+              router.push("/landing_page/product");
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left"
+          >
+            Products
+          </Button>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => {
+              router.push("/landing_page/services");
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left"
+          >
+            Services
+          </Button>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => {
+              router.push("/landing_page/contact");
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left"
+          >
+            Contact
+          </Button>
+        </div>
+      )}
     </header>
   );
 };
