@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as PurchaseOrderInput;
     const now = new Date();
 
-    // 🧩 Validate items before inserting
+    // Validate items
     if (!body.items || body.items.length === 0) {
       return NextResponse.json(
         { error: "No items provided for purchase order." },
@@ -133,83 +133,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validatedItems: Map<number, typeof itemsTable.$inferSelect> = new Map();
-    const mismatchesOverall: Record<
-      number,
-      { field: string; expected: unknown; received: unknown }[]
-    > = {};
+    // Fetch and validate items
+    const validatedItems = new Map<number, typeof itemsTable.$inferSelect>();
+    const mismatches: Record<number, { field: string; expected: unknown; received: unknown }[]> = {};
 
     for (const item of body.items) {
       const itemData = await db.query.items.findFirst({
         where: eq(itemsTable.id, item.itemId),
       });
-
       if (!itemData) {
-        mismatchesOverall[item.itemId] = [
-          { field: "itemId", expected: item.itemId, received: "Not found" },
-        ];
+        mismatches[item.itemId] = [{ field: "itemId", expected: "Existing item", received: "Not found" }];
         continue;
       }
-
-      // const mismatches: { field: string; expected: unknown; received: unknown }[] =
-      //   [];
-
-      // const sizeId =
-      //   item.sizeId !== undefined && Number(item.sizeId) !== 0
-      //     ? Number(item.sizeId)
-      //     : null;
-      // const variantId =
-      //   item.variantId !== undefined && Number(item.variantId) !== 0
-      //     ? Number(item.variantId)
-      //     : null;
-      // const unitId =
-      //   item.unitId !== undefined && Number(item.unitId) !== 0
-      //     ? Number(item.unitId)
-      //     : null;
-
-      // if ((itemData.sizeId ?? null) !== sizeId)
-      //   mismatches.push({
-      //     field: "sizeId",
-      //     expected: itemData.sizeId,
-      //     received: sizeId,
-      //   });
-      // if ((itemData.variantId ?? null) !== variantId)
-      //   mismatches.push({
-      //     field: "variantId",
-      //     expected: itemData.variantId,
-      //     received: variantId,
-      //   });
-      // if ((itemData.unitId ?? null) !== unitId)
-      //   mismatches.push({
-      //     field: "unitId",
-      //     expected: itemData.unitId,
-      //     received: unitId,
-      //   });
-
-      // if (mismatches.length > 0) {
-      //   mismatchesOverall[item.itemId] = mismatches;
-      //   continue;
-      // }
-      
-      // ✅ Only check if the item exists, not strict match
-if (!itemData) {
-  mismatchesOverall[item.itemId] = [
-    { field: "itemId", expected: "Existing item", received: "Not found" },
-  ];
-}
-
-
       validatedItems.set(item.itemId, itemData);
     }
 
-    if (Object.keys(mismatchesOverall).length > 0) {
-      console.warn("Item validation failed:", mismatchesOverall);
-      return NextResponse.json(
-        { error: "Item validation failed.", details: mismatchesOverall },
-        { status: 400 }
-      );
+    if (Object.keys(mismatches).length > 0) {
+      return NextResponse.json({ error: "Item validation failed.", details: mismatches }, { status: 400 });
     }
 
+    // Generate next PO number
     const latestPO = await db
       .select({ poNumber: purchasingPurchaseOrders.poNumber })
       .from(purchasingPurchaseOrders)
@@ -217,14 +160,14 @@ if (!itemData) {
       .limit(1);
 
     let nextNumber = 1;
-    if (latestPO.length > 0 && latestPO[0].poNumber) {
+    if (latestPO.length && latestPO[0].poNumber) {
       const numeric = parseInt(latestPO[0].poNumber.replace(/\D/g, ""), 10);
       if (!isNaN(numeric)) nextNumber = numeric + 1;
     }
 
     const formattedPoNumber = `No. ${String(nextNumber).padStart(7, "0")}`;
 
-    // ✅ Insert main purchase order
+    // Insert main purchase order
     const [newPO] = await db
       .insert(purchasingPurchaseOrders)
       .values({
@@ -243,67 +186,37 @@ if (!itemData) {
       })
       .returning();
 
-    // ✅ Insert purchase order items
-    for (const item of body.items) {
-      const itemData = validatedItems.get(item.itemId);
-      if (!itemData) continue;
-
-      const sizeId =
-        item.sizeId !== undefined && Number(item.sizeId) !== 0
-          ? Number(item.sizeId)
-          : null;
-      const variantId =
-        item.variantId !== undefined && Number(item.variantId) !== 0
-          ? Number(item.variantId)
-          : null;
-      const unitId =
-        item.unitId !== undefined && Number(item.unitId) !== 0
-          ? Number(item.unitId)
-          : null;
-
-      await db.insert(purchaseOrderItems).values({
+    // Insert purchase order items
+    await db.insert(purchaseOrderItems).values(
+      body.items.map((item) => ({
         purchasingPurchaseOrderId: newPO.id,
         itemId: item.itemId,
-        sizeId,
-        variantId,
-        unitId,
+        sizeId: item.sizeId ?? null,
+        variantId: item.variantId ?? null,
+        unitId: item.unitId ?? null,
         quantity: item.quantity,
-        unitPrice:
-          item.unitPrice !== undefined && item.unitPrice !== null
-            ? item.unitPrice.toString()
-            : null,
-        totalPrice:
-          item.totalPrice !== undefined && item.totalPrice !== null
-            ? item.totalPrice.toString()
-            : null,
-      });
-    }
+        unitPrice: String(item.unitPrice ?? 0),
+        totalPrice: item.totalPrice ? String(item.totalPrice) : null,
+        receivedQuantity: 0,
+      }))
+    );
 
-    // ✅ Log to audit trail
+    // Audit log
     await db.insert(audit_logs).values({
       entity: "Purchase Order",
       entityId: newPO.id.toString(),
       action: "ADD",
       description: `Purchase Order ${formattedPoNumber} created.`,
       actorId: user.id,
-      actorName:
-        user.username ||
-        
-        "Purchasing",
+      actorName: user.username || "Purchasing",
       actorRole: role || "Purchasing",
       module: "Purchasing / Purchase Orders",
       timestamp: now,
     });
 
-    return NextResponse.json({
-      message: "Purchase Order created successfully.",
-      purchaseOrderId: newPO.id,
-    });
+    return NextResponse.json({ message: "Purchase Order created successfully.", purchaseOrderId: newPO.id });
   } catch (error) {
     console.error("Error creating purchase order:", error);
-    return NextResponse.json(
-      { error: "Failed to create purchase order", details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create purchase order", details: String(error) }, { status: 500 });
   }
 }

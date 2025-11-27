@@ -256,7 +256,7 @@ export const suppliers = pgTable("suppliers", {
 }
 export const personnelAccounts = pgTable("personnel_accounts", {
   id: serial("id").primaryKey(),
-  personnelId: integer("personnel_id").notNull().references(() => personnels.id, { onDelete: "cascade" }),
+  personnelId: integer("personnel_id").references(() => personnels.id, { onDelete: "cascade" }),
   clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
   role: varchar("role", { length: 50 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
