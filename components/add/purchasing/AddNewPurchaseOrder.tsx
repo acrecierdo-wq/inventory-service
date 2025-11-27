@@ -126,23 +126,45 @@ export default function AddPurchaseOrder() {
   };
 
   async function uploadToCloudinary(file: File) {
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const unsignedPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  try {
+    // Use server-side API route instead of direct Cloudinary upload
+    const formData = new FormData();
+    formData.append("file", file);
 
-    if (cloudName && unsignedPreset) {
-      const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("upload_preset", unsignedPreset);
+    const res = await fetch("/api/cloudinary/upload", {
+      method: "POST",
+      body: formData,
+    });
 
-      const res = await fetch(url, { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Cloudinary upload failed");
-      const json = await res.json();
-      return json.secure_url as string;
+    if (!res.ok) {
+      let errorMessage = "Cloudinary upload failed";
+      try {
+        const errorJson = await res.json();
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        // If response is not JSON, try to get text
+        const errorText = await res.text().catch(() => "");
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
-    throw new Error("Cloudinary config missing");
+    const json = await res.json();
+
+    if (!json.url) {
+      throw new Error("Cloudinary upload succeeded but no URL was returned");
+    }
+
+    return json.url as string;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Failed to upload image to Cloudinary");
   }
+}
 
   /**
    * Main OCR processing function for Purchase Orders
