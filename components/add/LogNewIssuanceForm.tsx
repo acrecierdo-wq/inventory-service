@@ -19,9 +19,9 @@ import { Trash2, Plus, AlertTriangle, CheckCircle } from "lucide-react";
 type Selection = { id: string | number; name: string };
 
 // Basic issuance structure
-type Issuance = {
-  id: string;
-};
+// type Issuance = {
+//   id: string;
+// };
 
 // Combination of item attributes (size, variant, unit) available in inventory
 type Combination = {
