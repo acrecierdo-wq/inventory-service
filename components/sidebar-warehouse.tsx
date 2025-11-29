@@ -18,13 +18,13 @@ export const SideBarWarehouse = ({ className, onNavigate }: Props) => {
     <aside
       className={cn(
         "h-screen w-[250px] bg-gradient-to-t from-[#fff6f5] to-[#ffffff]",
-        "border-r-2 border-slate-200 flex flex-col fixed left-0 top-0 overflow-y-auto shadow-2xl",
+        "flex flex-col fixed left-0 top-0 overflow-y-auto shadow-2xl",
         className
       )}
     >
       {/* Logo */}
       <Link href="/warehouse/w_dashboard">
-        <div className="pt-20 lg:pt-10 border pl-4 pb-1 flex items-center justify-center">
+        <div className="pt-20 lg:pt-10 pl-4 pb-1 flex items-center justify-center">
           <Image src="/cticlogo.webp" height={70} width={70} alt="CTIC" />
         </div>
       </Link>
