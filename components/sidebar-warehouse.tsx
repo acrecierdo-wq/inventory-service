@@ -17,8 +17,8 @@ export const SideBarWarehouse = ({ className, onNavigate }: Props) => {
   return (
     <aside
       className={cn(
-        "h-screen w-[250px] bg-gradient-to-t from-[#fff6f5] to-[#ffffff]",
-        "flex flex-col fixed left-0 top-0 overflow-y-auto shadow-2xl",
+        "h-full w-full bg-gradient-to-t from-[#fff6f5] to-[#ffffff]",
+        "flex flex-col overflow-y-auto shadow-2xl",
         className
       )}
     >

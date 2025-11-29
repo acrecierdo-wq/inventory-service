@@ -60,7 +60,7 @@ const NewInternalUsagePage = () => {
   const [, setLoadingPersonnels] = useState(false);
   const [personnelName, setPersonnelName] = useState("");
   const [department, setDepartment] = useState("");
-  const [purpose, setPurpose] = useState(""); 
+  const [purpose, setPurpose] = useState("");
   const [authorizedBy, setAuthorizedBy] = useState("");
   const [note, setNote] = useState("");
   const [loggedBy, setLoggedBy] = useState("");
@@ -69,13 +69,15 @@ const NewInternalUsagePage = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [passwordError ] = useState(false);
+  const [passwordError] = useState(false);
 
   const [personnelQuery, setPersonnelQuery] = useState("");
-  const [personnelSuggestions, setPersonnelSuggestions] = useState<Personnel[]>([]);
+  const [personnelSuggestions, setPersonnelSuggestions] = useState<Personnel[]>(
+    []
+  );
   const [showPersonnelDropdown, setShowPersonnelDropdown] = useState(false);
-  
-  const [authorizedQuery, ] = useState("");
+
+  const [authorizedQuery] = useState("");
   const [, setAuthorizedSuggestions] = useState<Personnel[]>([]);
   const [showAuthorizedDropdown, setShowAuthorizedDropdown] = useState(false);
 
@@ -96,7 +98,9 @@ const NewInternalUsagePage = () => {
   // UI selections
   const [selectedItem, setSelectedItem] = useState<Selection | null>(null);
   const [selectedSize, setSelectedSize] = useState<Selection | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<Selection | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<Selection | null>(
+    null
+  );
   const [selectedUnit, setSelectedUnit] = useState<Selection | null>(null);
   const [quantity, setQuantity] = useState<string>("");
 
@@ -108,15 +112,26 @@ const NewInternalUsagePage = () => {
     new Map(
       combinations
         .filter((c) => c.sizeId != null && c.sizeName)
-        .map((c) => [String(c.sizeId), { id: String(c.sizeId), name: c.sizeName! }])
+        .map((c) => [
+          String(c.sizeId),
+          { id: String(c.sizeId), name: c.sizeName! },
+        ])
     ).values()
   );
 
   const availableVariants = Array.from(
     new Map(
       combinations
-        .filter((c) => (!selectedSize || c.sizeId === Number(selectedSize.id)) && c.variantId != null && c.variantName)
-        .map((c) => [String(c.variantId), { id: String(c.variantId), name: c.variantName! }])
+        .filter(
+          (c) =>
+            (!selectedSize || c.sizeId === Number(selectedSize.id)) &&
+            c.variantId != null &&
+            c.variantName
+        )
+        .map((c) => [
+          String(c.variantId),
+          { id: String(c.variantId), name: c.variantName! },
+        ])
     ).values()
   );
 
@@ -125,29 +140,41 @@ const NewInternalUsagePage = () => {
       combinations
         .filter((c) => {
           if (selectedSize && selectedVariant) {
-            return c.sizeId === Number(selectedSize.id) && c.variantId === Number(selectedVariant.id) && c.unitId != null && c.unitName;
+            return (
+              c.sizeId === Number(selectedSize.id) &&
+              c.variantId === Number(selectedVariant.id) &&
+              c.unitId != null &&
+              c.unitName
+            );
           }
           if (selectedSize && !selectedVariant) {
-            return c.sizeId === Number(selectedSize.id) && c.unitId != null && c.unitName;
+            return (
+              c.sizeId === Number(selectedSize.id) &&
+              c.unitId != null &&
+              c.unitName
+            );
           }
           return c.unitId != null && c.unitName;
         })
-        .map((c) => [String(c.unitId), { id: String(c.unitId), name: c.unitName! }])
+        .map((c) => [
+          String(c.unitId),
+          { id: String(c.unitId), name: c.unitName! },
+        ])
     ).values()
   );
 
   useEffect(() => {
     async function loadPersonnels() {
       try {
-      setLoadingPersonnels(true);
-      const res = await fetch("/api/admin/personnels");
-      const data = await res.json();
-      setPersonnels(data.personnels);
-    } catch (err) {
-      console.error("Failed to fetch personnels:", err);
-    } finally {
-      setLoadingPersonnels(false);
-    }
+        setLoadingPersonnels(true);
+        const res = await fetch("/api/admin/personnels");
+        const data = await res.json();
+        setPersonnels(data.personnels);
+      } catch (err) {
+        console.error("Failed to fetch personnels:", err);
+      } finally {
+        setLoadingPersonnels(false);
+      }
     }
     loadPersonnels();
   }, []);
@@ -159,11 +186,10 @@ const NewInternalUsagePage = () => {
     }
     console.log("PERSONNELS >>>", personnels);
 
-
     const term = personnelQuery.toLowerCase();
     const filtered = personnels.filter((p: Personnel) =>
-    p.personnelName.toLowerCase().includes(term)
-  );
+      p.personnelName.toLowerCase().includes(term)
+    );
 
     setPersonnelSuggestions(filtered);
   }, [personnelQuery, personnels]);
@@ -176,16 +202,15 @@ const NewInternalUsagePage = () => {
 
     const term = authorizedQuery.toLowerCase();
     const filtered = personnels
-    .filter((p: Personnel) => p.department === "purchasing")
-    .filter((p: Personnel) => p.personnelName.toLowerCase().includes(term)
-  );
+      .filter((p: Personnel) => p.department === "purchasing")
+      .filter((p: Personnel) => p.personnelName.toLowerCase().includes(term));
 
     setAuthorizedSuggestions(filtered);
   }, [authorizedQuery, personnels]);
 
   const authorizedPersonnels = personnels.filter(
-  (p) => p.department.toLowerCase() === "purchasing"
-);
+    (p) => p.department.toLowerCase() === "purchasing"
+  );
 
   useEffect(() => {
     setNewItem((prev) => ({
@@ -213,7 +238,11 @@ const NewInternalUsagePage = () => {
 
     const fetchOptions = async () => {
       try {
-        const res = await fetch(`/api/inventory-options?itemName=${encodeURIComponent(String(selectedItem.name))}`);
+        const res = await fetch(
+          `/api/inventory-options?itemName=${encodeURIComponent(
+            String(selectedItem.name)
+          )}`
+        );
         if (!res.ok) {
           setCombinations([]);
           return;
@@ -290,7 +319,10 @@ const NewInternalUsagePage = () => {
       const qty = Number(quantity);
 
       if (qty > stockData.stock) {
-        toast.warning(`⚠️ Understock: "${selectedItem.name}" currently has only ${stockData.stock} in stock. You are utilizing ${qty}.`, { duration: 10000 });
+        toast.warning(
+          `⚠️ Understock: "${selectedItem.name}" currently has only ${stockData.stock} in stock. You are utilizing ${qty}.`,
+          { duration: 10000 }
+        );
         setIsAdding(false);
         setSelectedItem(null);
         setSelectedSize(null);
@@ -299,13 +331,19 @@ const NewInternalUsagePage = () => {
         setQuantity("");
         return;
       }
-      
+
       if (stockData.stock - qty <= stockData.criticalLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at critical level after this utilization.`, { duration: 10000 });
+        toast.warning(
+          `⚠️ "${selectedItem.name}" will be at critical level after this utilization.`,
+          { duration: 10000 }
+        );
       } else if (stockData.stock - qty <= stockData.reorderLevel) {
-        toast.warning(`⚠️ "${selectedItem.name}" will be at reorder level after this utilization.`, { duration: 10000 });
+        toast.warning(
+          `⚠️ "${selectedItem.name}" will be at reorder level after this utilization.`,
+          { duration: 10000 }
+        );
       }
- 
+
       const candidate: FormItem = {
         itemId: String(found.id),
         sizeId: selectedSize ? String(selectedSize.id) : null,
@@ -361,125 +399,131 @@ const NewInternalUsagePage = () => {
   const handleSaveUsage = () => {
     setShowSummary(false);
     setShowPasswordModal(true); // show PIN modal
-  }
+  };
 
   // "Submit" button in pin modal handler
   const handlePasswordSubmit = async () => {
-  if (!isLoaded || !user) {
-    toast.error("User not loaded yet.");
-    return;
-  }
+    if (!isLoaded || !user) {
+      toast.error("User not loaded yet.");
+      return;
+    }
 
-  if (isSubmitting) return;
-  setIsSubmitting(true);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-  if (!password.trim()) {
-    toast.error("Please enter your password.");
-    setIsSubmitting(false);
-    return;
-  }
+    if (!password.trim()) {
+      toast.error("Please enter your password.");
+      setIsSubmitting(false);
+      return;
+    }
 
-  try {
-    // prepare payload
-    const payload = {
-      personnelName,
-      department,
-      purpose,
-      authorizedBy,
-      note,
-      items: items.map((i) => ({
-        itemId: Number(i.itemId),
-        sizeId: i.sizeId ? Number(i.sizeId) : null,
-        variantId: i.variantId ? Number(i.variantId) : null,
-        unitId: i.unitId ? Number(i.unitId) : null,
-        quantity: i.quantity,
-      })),
-      loggedBy,
-      password,
-    };
-
-    const usageRes = await fetch("/api/internal_usages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const raw = await usageRes.text();
-
-    let usageData: InternalUsageResponse;
     try {
-      usageData = JSON.parse(raw) as InternalUsageResponse;
-    } catch {
-      console.error("Invalid JSON from server:", raw);
-      toast.error("Unexpected server response.");
-      return;
-    }
+      // prepare payload
+      const payload = {
+        personnelName,
+        department,
+        purpose,
+        authorizedBy,
+        note,
+        items: items.map((i) => ({
+          itemId: Number(i.itemId),
+          sizeId: i.sizeId ? Number(i.sizeId) : null,
+          variantId: i.variantId ? Number(i.variantId) : null,
+          unitId: i.unitId ? Number(i.unitId) : null,
+          quantity: i.quantity,
+        })),
+        loggedBy,
+        password,
+      };
 
-    // ❌ Error branch
-    if (!usageRes.ok || "error" in usageData) {
-      const errMsg =
-        "error" in usageData ? usageData.error : "Failed to save internal usage log.";
-      toast.error(errMsg);
-      return;
-    }
-
-    // ✅ Success branch
-    toast.success(usageData.message);
-
-    setShowPasswordModal(false);
-
-    // ⚡ FIX: ensure it's really an array before using .length / .forEach
-    if (Array.isArray(usageData.warning)) {
-      usageData.warning.forEach((msg: string) => {
-        toast.warning(msg);
+      const usageRes = await fetch("/api/internal_usages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-    }
 
-    setTimeout(() => {
-      window.location.href = "/warehouse/internal_usage_log";
-    }, 1500);
-  } catch (err) {
-    console.error("Password verification error:", err);
-    toast.error("Something went wrong while verifying password.");
-    setPassword("");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      const raw = await usageRes.text();
 
-  useEffect(() => {
-    if (user) {
-     setLoggedBy(
-      user.username || user.fullName || user.firstName || user.primaryEmailAddress?.emailAddress || ""
-    );
-    }
-  }, [user]);
+      let usageData: InternalUsageResponse;
+      try {
+        usageData = JSON.parse(raw) as InternalUsageResponse;
+      } catch {
+        console.error("Invalid JSON from server:", raw);
+        toast.error("Unexpected server response.");
+        return;
+      }
 
-const personnelRef = useRef<HTMLDivElement>(null);
-const authorizedRef = useRef<HTMLDivElement>(null);
+      // ❌ Error branch
+      if (!usageRes.ok || "error" in usageData) {
+        const errMsg =
+          "error" in usageData
+            ? usageData.error
+            : "Failed to save internal usage log.";
+        toast.error(errMsg);
+        return;
+      }
 
-useEffect(() => {
-  const handleClickOutside = (e: MouseEvent) => {
-    // Close Personnel dropdown if click is outside
-    if (
-      personnelRef.current &&
-      !personnelRef.current.contains(e.target as Node)
-    ) {
-      setShowPersonnelDropdown(false);
-    }
+      // ✅ Success branch
+      toast.success(usageData.message);
 
-    // Close Authorized dropdown if click is outside
-    if (
-      authorizedRef.current &&
-      !authorizedRef.current.contains(e.target as Node)
-    ) {
-      setShowAuthorizedDropdown(false);
+      setShowPasswordModal(false);
+
+      // ⚡ FIX: ensure it's really an array before using .length / .forEach
+      if (Array.isArray(usageData.warning)) {
+        usageData.warning.forEach((msg: string) => {
+          toast.warning(msg);
+        });
+      }
+
+      setTimeout(() => {
+        window.location.href = "/warehouse/internal_usage_log";
+      }, 1500);
+    } catch (err) {
+      console.error("Password verification error:", err);
+      toast.error("Something went wrong while verifying password.");
+      setPassword("");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  window.addEventListener("click", handleClickOutside);
-  return () => window.removeEventListener("click", handleClickOutside);
-}, []);
+  useEffect(() => {
+    if (user) {
+      setLoggedBy(
+        user.username ||
+          user.fullName ||
+          user.firstName ||
+          user.primaryEmailAddress?.emailAddress ||
+          ""
+      );
+    }
+  }, [user]);
+
+  const personnelRef = useRef<HTMLDivElement>(null);
+  const authorizedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // Close Personnel dropdown if click is outside
+      if (
+        personnelRef.current &&
+        !personnelRef.current.contains(e.target as Node)
+      ) {
+        setShowPersonnelDropdown(false);
+      }
+
+      // Close Authorized dropdown if click is outside
+      if (
+        authorizedRef.current &&
+        !authorizedRef.current.contains(e.target as Node)
+      ) {
+        setShowAuthorizedDropdown(false);
+      }
+    };
+
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   const handleClose = () => {
     // reset all states when close button is clicked (pin modal)
@@ -492,11 +536,13 @@ useEffect(() => {
     setAuthorizedBy("");
     setNote("");
     setPassword("");
-    setLoggedBy(user?.username || user?.emailAddresses[0]?.emailAddress || "Warehouseman");
+    setLoggedBy(
+      user?.username || user?.emailAddresses[0]?.emailAddress || "Warehouseman"
+    );
 
     // navigate back to internal usage log page
     window.history.back();
-  }
+  };
 
   const sanitizeToDigits = (input: string) => {
     const digits = input.replace(/\D+/g, "");
@@ -509,56 +555,64 @@ useEffect(() => {
     <WarehousemanClientComponent>
       <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
-        <section className="p-10 max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-[#173f63] mb-6">Log Internal Usage</h1>
+        <section className="p-4 sm:p-6 md:p-10 max-w-4xl mx-auto">
+          <h1 className="text-xl sm:text-3xl mt-32 sm:mt-[110px] md:mt-26 lg:mt-18 font-bold text-[#173f63] mb-4 sm:mb-6">
+            Log Internal Usage
+          </h1>
 
-          <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
-          {/* Personnel Name */}
-          <div ref={personnelRef} className="relative">
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Personnel Name: <span className="text-red-500"> *</span></label>
-            <input
-              type="text"
-              value={personnelName}
-              placeholder="Enter personnel name..."
-              onFocus={() => setShowPersonnelDropdown(true)}
-              onChange={(e) => {
-                setPersonnelQuery(e.target.value);
-                setPersonnelName(e.target.value);
-              }}
-              className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-            />
-            {showPersonnelDropdown && personnelSuggestions.length > 0 && (
-              <div className="absolute z-50 bg-white border w-full rounded shadow max-h-40 overflow-auto">
-                {personnelSuggestions.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => {
-                      setPersonnelQuery(p.personnelName);
-                      setPersonnelName(p.personnelName);
-                      setDepartment(p.department);
-                      setShowPersonnelDropdown(false);
-                    }}
-                    className="p-2 hover:bg-gray-200 cursor-pointer"
-                  >
-                    {p.personnelName}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <form className="grid grid-cols-1 gap-4 bg-white p-4 sm:p-6 rounded shadow">
+            {/* Personnel Name */}
+            <div ref={personnelRef} className="relative">
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Personnel Name: <span className="text-red-500"> *</span>
+              </label>
+              <input
+                type="text"
+                value={personnelName}
+                placeholder="Enter personnel name..."
+                onFocus={() => setShowPersonnelDropdown(true)}
+                onChange={(e) => {
+                  setPersonnelQuery(e.target.value);
+                  setPersonnelName(e.target.value);
+                }}
+                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+              />
+              {showPersonnelDropdown && personnelSuggestions.length > 0 && (
+                <div className="absolute z-50 bg-white border w-full rounded shadow max-h-40 overflow-auto">
+                  {personnelSuggestions.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => {
+                        setPersonnelQuery(p.personnelName);
+                        setPersonnelName(p.personnelName);
+                        setDepartment(p.department);
+                        setShowPersonnelDropdown(false);
+                      }}
+                      className="p-2 hover:bg-gray-200 cursor-pointer text-sm"
+                    >
+                      {p.personnelName}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Department:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Department:
+              </label>
               <input
                 type="text"
                 value={department}
                 readOnly
                 className="w-full border border-[#d2bda7] p-2 rounded bg-gray-100 capitalize"
               />
-            </div> 
+            </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Purpose: <span className="text-red-500"> *</span></label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Purpose: <span className="text-red-500"> *</span>
+              </label>
               <input
                 type="text"
                 value={purpose}
@@ -568,9 +622,11 @@ useEffect(() => {
               />
             </div>
 
-            {/* Authorized byers */}
+            {/* Authorized by */}
             <div ref={authorizedRef} className="relative">
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Authorized by: <span className="text-red-500"> *</span></label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Authorized by: <span className="text-red-500"> *</span>
+              </label>
               <input
                 type="text"
                 value={authorizedBy}
@@ -589,7 +645,7 @@ useEffect(() => {
                         setAuthorizedBy(p.personnelName);
                         setShowAuthorizedDropdown(false);
                       }}
-                      className="p-2 hover:bg-gray-200 cursor-pointer"
+                      className="p-2 hover:bg-gray-200 cursor-pointer text-sm"
                     >
                       {p.personnelName}
                     </div>
@@ -599,7 +655,9 @@ useEffect(() => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Note:</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Note:
+              </label>
               <input
                 type="text"
                 value={note}
@@ -609,14 +667,18 @@ useEffect(() => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">Logged by: {loggedBy}</label>
+              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                Logged by: {loggedBy}
+              </label>
             </div>
 
             {/* Items Section */}
             <div className="border-t pt-4 mt-4">
-              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">Items to Utilize <span className="text-red-500"> *</span></h2>
+              <h2 className="text-base sm:text-lg font-bold mb-2 text-[#173f63] text-center uppercase">
+                Items to Utilize <span className="text-red-500"> *</span>
+              </h2>
 
-              <div className="grid grid-cols-5 gap-2 items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 items-end">
                 <div>
                   <AutoComplete
                     label="Item Name"
@@ -659,7 +721,9 @@ useEffect(() => {
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-sm font-semibold mb-1 text-[#482b0e]">Quantity</label>
+                  <label className="text-sm font-semibold mb-1 text-[#482b0e]">
+                    Quantity
+                  </label>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -683,7 +747,9 @@ useEffect(() => {
                       let parsed = Number(sanitized);
                       if (parsed < 0) {
                         parsed = 0;
-                        toast.error("Quantity cannot be negative.", { duration: 2000 });
+                        toast.error("Quantity cannot be negative.", {
+                          duration: 2000,
+                        });
                       }
                       setQuantity(String(parsed));
                     }}
@@ -710,7 +776,9 @@ useEffect(() => {
 
                       if (parsed < 0) {
                         parsed = 0;
-                        toast.error("Quantity cannot be negative.", { duration: 2000 });
+                        toast.error("Quantity cannot be negative.", {
+                          duration: 2000,
+                        });
                       }
 
                       setQuantity(String(parsed));
@@ -724,115 +792,197 @@ useEffect(() => {
                 type="button"
                 onClick={handleAddItem}
                 disabled={isAdding}
-                className={`mt-5  px-4 py-2 text-sm rounded-full  text-white font-medium  ${
-                  isAdding ? "bg-gray-200 cursor-not-allowed" : "bg-[#674d33] hover:bg-[#d2bda7] cursor-pointer"}`}
+                className={`mt-5 px-4 py-2 text-sm rounded-full text-white font-medium w-full sm:w-auto ${
+                  isAdding
+                    ? "bg-gray-200 cursor-not-allowed"
+                    : "bg-[#674d33] hover:bg-[#d2bda7] cursor-pointer"
+                }`}
               >
                 {isAdding ? "Adding..." : "Add Item to List"}
               </button>
 
               {items.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-semibold mb-2">Items Added</h3>
-                  <table className="w-full border text-sm">
-                    <thead className="bg-[#f5e6d3] text-[#482b0e]">
-                      <tr>
-                        <th className="border px-2 py-1">Item Name</th>
-                        <th className="border px-2 py-1">Size</th>
-                        <th className="border px-2 py-1">Variant</th>
-                        <th className="border px-2 py-1">Unit</th>
-                        <th className="border px-2 py-1">Qty</th>
-                        <th className="border px-2 py-1">Remove</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item, idx) => (
-                        <tr key={`${item.itemId}-${idx}`}>
-                          <td className="border px-2 py-1">{item.itemName}</td>
-                          <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
-                          <td className="border px-2 py-1">{item.quantity}</td>
-                          <td className="border px-2 py-1">
-                            <button
-                              type="button"
-                              className="text-red-500 text-xs hover:underline cursor-pointer"
-                              onClick={() => setItems(items.filter((_, index) => index !== idx))}
-                            >
+                <div className="mt-4 overflow-x-auto -mx-4 sm:mx-0">
+                  <h3 className="text-sm font-semibold mb-2 px-4 sm:px-0">
+                    Items Added
+                  </h3>
+                  <div className="inline-block min-w-full align-middle">
+                    <div className="overflow-hidden">
+                      <table className="min-w-full border text-xs sm:text-sm">
+                        <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                          <tr>
+                            <th className="border px-2 py-1 min-w-[120px]">
+                              Item Name
+                            </th>
+                            <th className="border px-2 py-1 min-w-[80px]">
+                              Size
+                            </th>
+                            <th className="border px-2 py-1 min-w-[80px]">
+                              Variant
+                            </th>
+                            <th className="border px-2 py-1 min-w-[60px]">
+                              Unit
+                            </th>
+                            <th className="border px-2 py-1 min-w-[50px]">
+                              Qty
+                            </th>
+                            <th className="border px-2 py-1 min-w-[70px]">
                               Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item, idx) => (
+                            <tr key={`${item.itemId}-${idx}`}>
+                              <td className="border px-2 py-1">
+                                {item.itemName}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.sizeName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.variantName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.unitName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.quantity}
+                              </td>
+                              <td className="border px-2 py-1">
+                                <button
+                                  type="button"
+                                  className="text-red-500 text-xs hover:underline cursor-pointer"
+                                  onClick={() =>
+                                    setItems(
+                                      items.filter((_, index) => index !== idx)
+                                    )
+                                  }
+                                >
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="mt-6 flex justify-end gap-4">
+            <div className="mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDone}
-                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700 cursor-pointer"
               >
                 Done
               </button>
             </div>
           </form>
 
+          {/* Summary Modal */}
           {showSummary && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
-              <div className="bg-white w-[600px] p-6 rounded shadow">
-                <h2 className="text-xl font-bold mb-4 text-[#173f63]">Confirm Internal Usage</h2>
-                <p className="mb-2 text-sm text-gray-700">Personnel: {personnelName}</p>
-                <p className="mb-2 text-sm text-gray-700">Department: {department}</p>
-                <p className="mb-2 text-sm text-gray-700">Purpose: {purpose}</p>
-                <p className="mb-2 text-sm text-gray-700">Authorized By: {authorizedBy}</p>
-                <p className="mb-2 text-sm text-gray-700">Note: {note}</p>
+            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40 p-4">
+              <div className="bg-white w-full max-w-[600px] p-4 sm:p-6 rounded shadow max-h-[90vh] overflow-y-auto">
+                <h2 className="text-lg sm:text-xl font-bold mb-4 text-[#173f63]">
+                  Confirm Internal Usage
+                </h2>
+                <div className="space-y-2 mb-4">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">Personnel:</span>{" "}
+                    {personnelName}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">Department:</span>{" "}
+                    {department}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">Purpose:</span> {purpose}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">Authorized By:</span>{" "}
+                    {authorizedBy}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">Note:</span> {note}
+                  </p>
+                </div>
 
-                <table className="w-full mt-4 mb-2 text-sm border">
-                  <thead className="bg-[#f5e6d3] text-[#482b0e]">
-                    <tr>
-                      <th className="border px-2 py-1">Item</th>
-                      <th className="border px-2 py-1">Size</th>
-                      <th className="border px-2 py-1">Variant</th>
-                      <th className="border px-2 py-1">Unit</th>
-                      <th className="border px-2 py-1">Qty</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => (
-                      <tr key={`${item.itemId}-${idx}`}>
-                        <td className="border px-2 py-1">{item.itemName}</td>
-                        <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
-                        <td className="border px-2 py-1">{item.quantity}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="mb-2 text-sm text-gray-700">Logged By: {loggedBy}</p>
+                <div className="overflow-x-auto -mx-4 sm:mx-0 mb-4">
+                  <div className="inline-block min-w-full align-middle">
+                    <div className="overflow-hidden">
+                      <table className="min-w-full text-xs sm:text-sm border">
+                        <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                          <tr>
+                            <th className="border px-2 py-1 min-w-[100px]">
+                              Item
+                            </th>
+                            <th className="border px-2 py-1 min-w-[60px]">
+                              Size
+                            </th>
+                            <th className="border px-2 py-1 min-w-[60px]">
+                              Variant
+                            </th>
+                            <th className="border px-2 py-1 min-w-[50px]">
+                              Unit
+                            </th>
+                            <th className="border px-2 py-1 min-w-[40px]">
+                              Qty
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item, idx) => (
+                            <tr key={`${item.itemId}-${idx}`}>
+                              <td className="border px-2 py-1">
+                                {item.itemName}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.sizeName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.variantName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.unitName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.quantity}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
 
-                <div className="mt-6 flex justify-end gap-3">
+                <p className="text-sm text-gray-700 mb-4">
+                  <span className="font-semibold">Logged By:</span> {loggedBy}
+                </p>
+
+                <div className="mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => setShowSummary(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleSaveUsage}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800 cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800 cursor-pointer"
                   >
                     Confirm
                   </button>
@@ -843,47 +993,52 @@ useEffect(() => {
 
           {/* Password Modal */}
           {showPasswordModal && (
-              <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
-                <div className="bg-white w-[600px] p-6 rounded shadow">
-                  <h2 className="text-xl font-bold mb-4 text-[#173f63]">Enter Password</h2>
-                  <div>
-                    <input
-                      id="passwordInput"
-                      type="password"
-                      placeholder="Enter your account password..."
-                      className={`w-full border p-2 rounded mb-2 hover:bg-gray-100 ${
-                        passwordError ? "border-red-500" : "border-gray-300"
-                      }`}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                  <div className="mt-6 flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={handleClose}
-                      className={`px-4 py-2  text-gray-700 rounded   ${
-                        isSubmitting ? "cursor-not-allowed" : "bg-gray-300 cursor-pointer hover:bg-gray-400"
-                      }`}
-                    >
-                      Close
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handlePasswordSubmit}
-                      disabled={isSubmitting}
-                      className={`px-4 py-2 rounded text-white ${
-                        isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 cursor-pointer"
-                      }`}
-                    >
-                      {isSubmitting ? "Submitting..." : "Submit"}
-                    </button>
-                  </div>
+            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40 p-4">
+              <div className="bg-white w-full max-w-[600px] p-4 sm:p-6 rounded shadow">
+                <h2 className="text-lg sm:text-xl font-bold mb-4 text-[#173f63]">
+                  Enter Password
+                </h2>
+                <div>
+                  <input
+                    id="passwordInput"
+                    type="password"
+                    placeholder="Enter your account password..."
+                    className={`w-full border p-2 rounded mb-2 hover:bg-gray-100 ${
+                      passwordError ? "border-red-500" : "border-gray-300"
+                    }`}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className={`w-full sm:w-auto px-4 py-2 text-gray-700 rounded ${
+                      isSubmitting
+                        ? "cursor-not-allowed"
+                        : "bg-gray-300 cursor-pointer hover:bg-gray-400"
+                    }`}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePasswordSubmit}
+                    disabled={isSubmitting}
+                    className={`w-full sm:w-auto px-4 py-2 rounded text-white ${
+                      isSubmitting
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700 cursor-pointer"
+                    }`}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit"}
+                  </button>
                 </div>
               </div>
-            )}
-
+            </div>
+          )}
         </section>
       </main>
     </WarehousemanClientComponent>
