@@ -60,9 +60,10 @@ export default function AddItemModal({
     status: "",
   });
 
-  const [tempItem, setTempItem] = useState<typeof formData | null>(null);
+  const [, setTempItem] = useState<typeof formData | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const numericStock = Number(formData.stock) || 0;
@@ -112,73 +113,37 @@ export default function AddItemModal({
     return Number.isNaN(parsed) ? "" : parsed;
   };
 
-  const handleDone = async () => {
-    if (!formData.name.trim()) {
-      toast.error("Please enter an item name.", { duration: 2000 });
-      return;
-    }
+const handleDone = () => {
+  // Keep all your validation logic
+  if (!formData.name.trim()) return toast.error("Please enter an item name.", { duration: 2000 });
+  if (!formData.categoryId) return toast.error("Please select a category.", { duration: 2000 });
+  if (!formData.unitId) return toast.error("Please select a unit.", { duration: 2000 });
+  if (formData.reorderLevel === "") return toast.error("Please enter a reorder level.", { duration: 2000 });
+  if (formData.criticalLevel === "") return toast.error("Please enter a critical level.", { duration: 2000 });
+  if (formData.ceilingLevel === "") return toast.error("Please enter a ceiling level.", { duration: 2000 });
+  if (formData.stock === "") return toast.error("Please enter a stock quantity.", { duration: 2000 });
 
-    if (!formData.categoryId) {
-      toast.error("Please select a category.", { duration: 2000 });
-      return;
-    }
+  const isDuplicate = existingItems.some((item) => {
+    const nameMatch = item.name.trim().toLowerCase() === formData.name.trim().toLowerCase();
+    const categoryMatch = String(item.categoryId) === String(formData.categoryId);
+    const unitMatch = String(item.unitId) === String(formData.unitId);
+    const variantMatch = String(item.variantId ?? "") === String(formData.variantId ?? "");
+    const sizeMatch = String(item.sizeId ?? "") === String(formData.sizeId ?? "");
+    return nameMatch && categoryMatch && unitMatch && variantMatch && sizeMatch;
+  });
 
-    if (!formData.unitId) {
-      toast.error("Please select a unit.", { duration: 2000 });
-      return;
-    }
-
-    if (formData.reorderLevel === "") {
-      toast.error("Please enter a reorder level.", { duration: 2000 });
-      return;
-    }
-
-    if (formData.criticalLevel === "") {
-      toast.error("Please enter a critical level.", { duration: 2000 });
-      return;
-    }
-
-    if (formData.ceilingLevel === "") {
-      toast.error("Please enter a ceiling level.", { duration: 2000 });
-      return;
-    }
-
-    if (formData.stock === "") {
-      toast.error("Please enter a stock quantity.", { duration: 2000 });
-      return;
-    }
-
-    const isDuplicate = existingItems.some((item) => {
-  const itemName = item.name.trim().toLowerCase();
-  const formName = formData.name.trim().toLowerCase();
-
-  const nameMatch = itemName === formName;
-  const categoryMatch = String(item.categoryId) === String(formData.categoryId);
-  const unitMatch = String(item.unitId) === String(formData.unitId);
-  const variantMatch = String(item.variantId ?? "") === String(formData.variantId ?? "");
-  const sizeMatch = String(item.sizeId ?? "") === String(formData.sizeId ?? "");
-
-  if (nameMatch && categoryMatch && unitMatch && variantMatch && sizeMatch) {
-    console.log("Duplicate found because all fields matched:", {
-      item,
-      formData
-    });
-  } else {
-    console.log("Checked item but not a full duplicate:", {
-      item,
-      comparisons: { nameMatch, categoryMatch, unitMatch, variantMatch, sizeMatch }
-    });
+  if (isDuplicate) {
+    toast.error("This item already exists in inventory.", { duration: 2000 });
+    return;
   }
 
-  return nameMatch && categoryMatch && unitMatch && variantMatch && sizeMatch;
-});
+  // Show summary modal
+  setShowSummary(true);
+};
 
-if (isDuplicate) {
-  toast.error("This item already exists in inventory.", { duration: 2000 });
-  return;
-}
-
-
+const handleSave = async () => {
+  setSaving(true);
+  try {
     const payload = {
       ...formData,
       stock: Number(formData.stock) || 0,
@@ -187,34 +152,29 @@ if (isDuplicate) {
       ceilingLevel: Number(formData.ceilingLevel),
     };
 
-    try {
-      const response = await fetch("/api/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const response = await fetch("/api/items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      const result = await response.json();
+    const result = await response.json();
 
-      if (response.ok && result.success) {
-        setTempItem(result.data);
-        setShowSummary(true);
-      } else {
-        toast.error(result.message || "Failed to add item.");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Network while adding item.");
-    }
-  };
-
-  const handleSave = async () => {
-    if (!tempItem) return;
+    if (response.ok && result.success) {
       toast.success("Item added successfully.");
-      onItemAdded();
+      onItemAdded(); // notify parent
       setShowSummary(false);
       onClose();
-  };
+    } else {
+      toast.error(result.message || "Failed to add item.");
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Network error while adding item.");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <>
@@ -240,7 +200,7 @@ if (isDuplicate) {
                 placeholder="input name here..."
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100"
+                className="w-full px-2 py-1 border border-gray-200 rounded outline-none mb-2 hover:bg-gray-100 uppercase"
               />
               </div>
             </section>
@@ -438,7 +398,9 @@ if (isDuplicate) {
           <button
                 type="button"
                 onClick={onClose}
-                className="h-7 w-15 bg-gray-300 text-sm text-gray-700 rounded hover:bg-gray-400"
+                disabled={isSubmitting}
+                className={`h-7 w-15 bg-gray-300 text-sm text-gray-700 rounded hover:bg-gray-400 ${
+                  isSubmitting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               >
                 Cancel
               </button>
@@ -446,7 +408,8 @@ if (isDuplicate) {
           <button 
           onClick={handleDone}
           disabled={isSubmitting}
-          className="h-7 w-15 bg-blue-400 text-white rounded hover:bg-blue-700 text-sm">
+          className={`h-7 w-15  text-white rounded  text-sm ${
+            isSubmitting ? "bg-gray-100 cursor-not-allowed" : "bg-blue-400 hover:bg-blue-700 cursor-pointer"}`}>
             {isSubmitting ? "Submitting..." : "Done"}
           </button>
         </div>
@@ -502,15 +465,21 @@ if (isDuplicate) {
           <div className="flex justify-end gap-4 mt-6">
             <button
               onClick={() => setShowSummary(false)}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 cursor-pointer"
+              className={`px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 ${
+                saving ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              }`}
+              disabled={saving}
             >
               Cancel
             </button>
             <button
               onClick={handleSave} // your existing submit function
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer"
+              disabled={saving}
+              className={`px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer ${
+                saving ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              Save
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
           </div>

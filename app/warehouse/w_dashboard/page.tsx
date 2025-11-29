@@ -264,8 +264,8 @@ const WarehouseInventoryReportsPage = () => {
                       const RADIAN = Math.PI / 180;
                       const radius =
                         innerRadius + (outerRadius - innerRadius) * 1.2;
-                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      const x = cx + radius * Math.cos(-(midAngle ?? 0) * RADIAN);
+                      const y = cy + radius * Math.sin(-(midAngle ?? 0) * RADIAN);
 
                       return (
                         <text
@@ -277,7 +277,7 @@ const WarehouseInventoryReportsPage = () => {
                           dominantBaseline="central"
                         >
                           {`${name}: ${(
-                            (value / totalStatusCount) *
+                            ((value ?? 0) / totalStatusCount) *
                             100
                           ).toFixed(1)}%`}
                         </text>

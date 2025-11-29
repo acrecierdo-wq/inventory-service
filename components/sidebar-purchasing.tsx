@@ -5,12 +5,17 @@ import { cn } from "@/lib/utils"
 import Image from "next/image";
 import Link from "next/link";
 import { SidebarItem } from "./sidebar-items";
+import { Button } from "./ui/button";
+import { useState } from "react";
 
 type Props = {
-    className?: string
+  className?: string;
+  onNavigate?: () => void;
 };
 
-export const SideBarPurchasing = ({className}: Props) => {
+export const SideBarPurchasing = ({className, onNavigate}: Props) => {
+    const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+
     //}
     return (
         <div className={cn
@@ -30,11 +35,40 @@ export const SideBarPurchasing = ({className}: Props) => {
                 iconSrc="/board-chart-svgrepo-com.svg"
                 />
                 
-            <SidebarItem
-                    label="Inventory List"
-                    href="/purchasing/p_inventory_list"
-                    iconSrc="/drawer-alt.png"
+            {/* Inventory Dropdown */}
+            <Button
+            variant="ghost"
+            onClick={() => {
+                setIsInventoryOpen(!isInventoryOpen);
+            }}
+            className="justify-start h-[40px] "
+            >
+            <Image
+                src="/supplier-alt.png"
+                height={20}
+                width={20}
+                alt="Inventory"
+                className="mr-2"
             />
+            <span className="flex-1 gap-y-1 flex-col">Inventory</span>
+            </Button>
+
+            {isInventoryOpen && (
+            <div className="pl-2 flex flex-col gap-y-1">
+                <SidebarItem
+                label="Inventory List"
+                href="/purchasing/p_inventory/p_inventory_list"
+                iconSrc="/report-data-svgrepo-com.svg"
+                onClick={onNavigate}
+                />
+                <SidebarItem
+                label="Item Properties"
+                href="/purchasing/p_inventory/p_item_properties"
+                iconSrc="/report-data-svgrepo-com.svg"
+                onClick={onNavigate}
+                />
+            </div>
+            )}
             <SidebarItem
                     label="Purchase Order"
                     href="/purchasing/p_purchase_order"

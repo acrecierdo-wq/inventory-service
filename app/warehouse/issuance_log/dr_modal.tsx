@@ -43,11 +43,15 @@ export default function DRModal({ onClose, onConfirm }: DRModalProps) {
                 </label>
 
                 <div className="flex justify-end gap-2">
-                    <button onClick={onClose} className="text-gray-600 cursor-pointer">Cancel</button>
+                    <button 
+                    onClick={onClose} 
+                    className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded cursor-pointer">
+                        Cancel
+                    </button>
                     <button
                         onClick={() => onConfirm({ drNumber, saveAsDraft })}
                         className={`px-4 py-2 rounded ${
-                         canConfirm ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                         canConfirm ? "bg-blue-600 hover:bg-blue-800 text-white cursor-pointer" : "bg-gray-300 text-gray-500 cursor-not-allowed"
                         }`}
                         disabled={!canConfirm}
                          >

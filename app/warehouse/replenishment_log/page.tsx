@@ -256,7 +256,7 @@ const ReplenishmentPage = () => {
                 </div>
 
                 {/* Draft Tab */}
-                <div className="relative">
+                {/* <div className="relative">
                     <div
                     onClick={() => {
                         setActiveTab("Draft");
@@ -269,7 +269,7 @@ const ReplenishmentPage = () => {
                             Draft
                         </span>
                         </div>
-                </div>
+                </div> */}
 
                 {/* Archived Tab */}
                 <div className="relative">
@@ -373,9 +373,10 @@ const ReplenishmentPage = () => {
                 {/* Replenishment Log Table */}
                 {!loading && ! error && (
                 <>
-                <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+                <div className="grid grid-cols-[2fr_2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
                 <span>DATE | TIME</span>
                 <span>SUPPLIER</span>
+                <span>PO Number</span>
                 <span>DR No.</span>
                 <span>STATUS</span>
                 <span>ACTION</span>
@@ -385,7 +386,7 @@ const ReplenishmentPage = () => {
                 paginatedReplenishments.map((replenishments) => (
                     <div 
                     key={replenishments.id} 
-                    className="grid grid-cols-[2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+                    className="grid grid-cols-[2fr_2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
                     >
                     <span className="text-sm">
                         {format(
@@ -394,6 +395,7 @@ const ReplenishmentPage = () => {
                         )}
                     </span>
                     <span>{replenishments.supplier}</span>
+                    <span>{replenishments.poRefNum || "-"}</span>
                     <span>{replenishments.drRefNum || "-"}</span>
                     <span className={`text-center px-5 text-sm py-1 rounded-4xl
                         ${replenishments.status === 'Replenished' ? 'bg-green-200 text-green-800' :

@@ -3,9 +3,20 @@
 
 import { Header } from "@/components/header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { MoreHorizontal } from "lucide-react";
+
+type PersonnelAccount = {
+  id: number;
+  personnelId: number;
+  username: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+};
 
 type StaffUser = {
   id: string; 
@@ -16,23 +27,25 @@ type StaffUser = {
   createdAt: string;
 };
 
-// type Personnel = {
-//   id?: number | string;
-//   username: string | null;
-//   email?: string | null
-//   status?: "Active" | "Inactive";
-// }
+type Personnel = {
+  id: number;
+  username: string;
+  personnelName: string;
+  email: string;
+};
 
 type CreatedUser = {
   userId: string;
   username: string;
+  personnelName: string;
   tempPassword: string;
   email: string;
+  createdAt: string;
 };
 
 export default function CreateUserPage() {
-  //const [personnels, setPersonnels] = useState<Personnel[]>([]);
-  //const [selectedPersonnelId, setSelectedPersonnelId] = useState<string>("");
+  const [personnels, setPersonnels] = useState<Personnel[]>([]);
+  const [selectedPersonnelId, setSelectedPersonnelId] = useState<number | null>(null);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("role");
@@ -41,15 +54,21 @@ export default function CreateUserPage() {
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const [isCopying, setIsCopying] = useState(false);
-
+  const [isSending, ] = useState(false);
+  const [, setRecentUsers] = useState<CreatedUser[]>([]);
+  
   // new state to show the generated credentials
   const [lastCreated, setLastCreated] = useState<CreatedUser | null>(null);
-  
   const [mustCopy, setMustCopy] = useState(false);
-
   const [mounted, setMounted] = useState(false);
+
+  const [showModal, setShowModal] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<PersonnelAccount | null>(null);
+
+  function openAccountModal(account: PersonnelAccount) {
+    setSelectedAccount(account);
+    setShowModal(true);
+  }
 
   useEffect(() => setMounted(true), []);
 
@@ -67,6 +86,25 @@ export default function CreateUserPage() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [mustCopy]);
+
+  async function fetchPersonnels() {
+    try {
+      const res = await fetch("/api/admin/personnels");
+      const data = await res.json();
+      if (res.ok) {
+        setPersonnels(data.personnels ?? data);
+      } else {
+        toast.error(data.error || "Failed to load personnels");
+      }
+    } catch (error) {
+      console.error("[admin page] fetch personnels error:", error);
+      toast.error("Network error fetching personnels");
+    }
+  }
+
+  useEffect(() => {
+    fetchPersonnels();
+  }, []);
 
   async function fetchStaff() {
     setLoadingStaff(true);
@@ -89,30 +127,54 @@ export default function CreateUserPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+
     try {
+      if (!selectedPersonnelId) {
+        toast.error("Please select a personnel");
+        return;
+      }
+
+      const payload = {
+        personnelId: selectedPersonnelId,
+        username,
+        email,
+        role,
+      };
+
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, role }),
+        body: JSON.stringify(payload),
       });
+
       const data = await res.json();
-      if (res.ok) {
-        toast.success("User created!");
-        setUsername("");
-        setEmail("");
-        setRole("role");
-        // show credentails to admin
-        setLastCreated({
-          userId: data.userId,
-          username: data.username,
-          email: email,
-          tempPassword: data.tempPassword
-        });
-        setMustCopy(true);
-        fetchStaff();
-      } else {
+
+      if (!res.ok) {
         toast.error(data.error || "Error creating user");
+        return;
       }
+
+      const createdUser = {
+        userId: data.userId,
+        username: data.username,
+        personnelName: data.personnelName || "",
+        email: data.email,
+        tempPassword: data.tempPassword,
+        createdAt: data.createdAt || new Date().toISOString(),
+      };
+
+      toast.success("User created!");
+
+      setLastCreated(createdUser);
+      setRecentUsers((prev) => [createdUser, ...prev]);
+      setMustCopy(true);
+
+      setSelectedPersonnelId(null);
+      setUsername("");
+      setEmail("");
+      setRole("role");
+
+      fetchStaff();
     } catch (error) {
       console.error("[admin page] create user error:", error);
       toast.error("Network error creating user");
@@ -153,26 +215,51 @@ export default function CreateUserPage() {
       <section className="flex flex-col gap-6 mt-4 md:flex-row justify-center items-start">
       
       {/* Form */}
-      <div className="w-[600px] h-[300px] bg-white p-4 rounded shadow">
+      <div className="w-[600px] bg-white p-4 rounded shadow">
         <h1 className="text-xl font-bold text-[#173f63] mb-2">Create Accounts</h1>
 
+        <Select
+        value={selectedPersonnelId ? String(selectedPersonnelId) : ""}
+          onValueChange={(value) => {
+            const p = personnels.find((x) => String(x.id) === value);
+            if (p) {
+              setSelectedPersonnelId(p.id);
+              setUsername(p.username);
+              setEmail(p.email);
+            }
+          }}
+        >
+          <label className="text-[#173f63]">Personnel</label>
+          <SelectTrigger className="border p-2 w-full rounded mb-2 hover:bg-gray-100 cursor-pointer">
+            <SelectValue placeholder="Select Personnel" />
+          </SelectTrigger>
+
+          <SelectContent>
+            {personnels.map((p) => (
+              <SelectItem key={p.id} value={String(p.id)}>
+                {p.username} - {p.personnelName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <form  onSubmit={handleSubmit} className="space-y-2 w-full">
+          <label className="text-[#173f63]">Username (Employee Code)</label>
           <input 
-            className="border p-2 w-full rounded hover:bg-gray-100 text-sm"
-            placeholder="Username (Employee Code)"
+            className="border p-2 w-full rounded"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            disabled
           />
 
+          <label className="text-[#173f63]">Email</label>
           <input 
-            className="border p-2 w-full rounded hover:bg-gray-100 text-sm"
-            placeholder="Email"
+            className="border p-2 w-full rounded"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            disabled
           />
  
           <Select onValueChange={setRole} value={role}>
-            <SelectTrigger className="border p-2 w-full rounded hover:bg-gray-100">
+            <SelectTrigger className="border p-2 w-full rounded hover:bg-gray-100 cursor-pointer">
               <SelectValue placeholder="Select a role" />
             </SelectTrigger>
             <SelectContent>
@@ -187,7 +274,7 @@ export default function CreateUserPage() {
         <div className="flex items-center justify-center">
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800 mt-2 cursor-pointer"
+            className={`text-white px-4 py-2 rounded transition ${loading ? "cursor-not-allowed" : "bg-blue-600 hover:bg-blue-800 mt-2 cursor-pointer"} `}
             disabled={loading}
           >
             {loading ? "Creating..." : "Create User"}
@@ -195,77 +282,7 @@ export default function CreateUserPage() {
         </div>
         </form>
       </div>
-      
-      {/* Credentials box */}
-      <div className="w-[600px] h-[250px] p-4 bg-green-100 rounded shadow">
-        <h3 className="text-[#173f63] font-bold">New User Credentials</h3>
-        <div className="border-t border-[#173f63] pt-4 mt-4 w-[550px]"></div>
-        
-        {lastCreated ? (
-          <>
-            <div className="space-y-2">
-            <p><strong>Username:</strong> {lastCreated.username}</p>
-            <p><strong>Temporary Password:</strong> {lastCreated.tempPassword}</p>
-            </div>
-            
-            <div className="flex gap-2 mt-3 mb-5">
-              <button
-                onClick={async () => {
-                  setIsSending(true);
-                  try {
-                    const res = await fetch("/api/admin/users/send-credentials", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        email: lastCreated.email,
-                        username: lastCreated.username,
-                        tempPassword: lastCreated.tempPassword,
-                      }),
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                      toast.success("Credentials emailed!");
-                    } else {
-                      toast.error(data.error || "Failed to send email");
-                    }
-                  } catch (err) {
-                    console.error("send email error", err);
-                    toast.error("Network error sending email");
-                  } finally {
-                    setIsSending(false);
-                  }
-                }}
-                disabled={isSending}
-                className={`bg-blue-600 text-white px-3 py-1 rounded 
-                  ${isSending ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-800 cursor-pointer"}`}
-              >
-                {isSending ? "Sending..." : "Send to Email"}
-              </button>
 
-              <button
-                onClick={async () => {
-                  setIsCopying(true);
-                  await navigator.clipboard.writeText(`Username: ${lastCreated.username}\nPassword: ${lastCreated.tempPassword}`);
-                  toast.success("Credentials copied to clipboard");
-                  setTimeout(() => setIsCopying(false), 500);
-                }}
-                disabled={isCopying}
-                className={`bg-gray-600 text-white px-3 py-1 rounded
-                  ${isCopying ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-800 cursor-pointer"}`}
-              >
-                {isCopying ? "Copying..." : "Copy"}
-              </button>
-            </div>
-
-            <small className="block text-sm text-gray-600 italic">
-              You can send the credentials now or copy them and send via your preferred channel.
-            </small>
-          </>
-        ) : (
-          <p className="text-gray-600 italic">No new account created yet.</p>
-        )}
-
-        </div>
         </section>
         
         <section className="p-5">
@@ -281,6 +298,7 @@ export default function CreateUserPage() {
                   <th className="p-2">Role</th>
                   <th className="p-2">Status</th>
                   <th className="p-2 text-center">Actions</th>
+                  <th className="p-2 text-center">Details</th>
                 </tr>
         </thead>
         <tbody>
@@ -354,16 +372,27 @@ export default function CreateUserPage() {
                         Activate
                       </button>
                     )}
-                    <button
-                      onClick={() =>
-                        updateUser(u.id, "changeRole", u.role === "warehouseman" ? "sales" : "warehouseman")
-                      }
-                      className="w-[100px] bg-blue-600 text-white text-sm font-semibold py-1 rounded-4xl hover:bg-blue-800 cursor-pointer"
-                    >
-                      Change Role
-                    </button>
                     </>
                   )}
+                </div>
+              </td>
+              <td className="p-2 border-b">
+                <div className="flex justify-center">
+                  <MoreHorizontal 
+                    size={20} 
+                    className="cursor-pointer hover:bg-gray-100 rounded-full" 
+                    onClick={() =>
+                      openAccountModal({
+                        id: Number(u.id),
+                        personnelId: 0,
+                        username: u.username ?? "",
+                        email: u.email ?? "",
+                        role: u.role ?? "",
+                        status: u.status,
+                        createdAt: u.createdAt
+                      })
+                    }
+                  />
                 </div>
               </td>
             </tr>
@@ -374,12 +403,79 @@ export default function CreateUserPage() {
     </div>
     <div className="absolute top-[46px] left-0 right-0 border-b-2 border-[#d2bda7] pointer-events-none"></div>
   </ScrollArea>
-
-   
         </section>
+{mustCopy && lastCreated && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+      <h2 className="text-lg font-bold mb-4">New User Created</h2>
+      <p><strong>Username:</strong> {lastCreated.username}</p>
+      <p><strong>Personnel Name:</strong> {lastCreated.personnelName}</p>
+      <p><strong>Temporary Password:</strong> {lastCreated.tempPassword}</p>
+      <p><strong>Created At:</strong> {new Date(lastCreated.createdAt).toLocaleString()}</p>
+      <button
+        onClick={async () => {
+          try {
+            const res = await fetch("/api/admin/users/send-credentials", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: lastCreated.email,
+                username: lastCreated.username,
+                tempPassword: lastCreated.tempPassword
+              }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              toast.success("Credentials sent to user's email!");
+              setMustCopy(false);
+              setLastCreated(null);
+            } else {
+              toast.error(data.error || "Failed to send email.");
+            }
+          } catch (err) {
+            console.error("Send email error:", err);
+            toast.error("Network error sending email");
+          }
+        }}
+        className={`mt-4 px-4 py-2 rounded text-white ${isSending ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-800 cursor-pointer"}`}
+      >
+        {isSending ? "Sending..." : "Send to Email"}
+      </button>
+    </div>
+  </div>
+)}
+
+{showModal && selectedAccount && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 w-[400px] shadow-lg">
+      <h2 className="text-xl font-semibold mb-4 text-[#173f63]">
+        Account Details
+      </h2>
+
+      <div className="space-y-2">
+        <p><strong>Username:</strong> {selectedAccount.username}</p>
+        <p><strong>Email:</strong> {selectedAccount.email}</p>
+        <p><strong>Role:</strong> {selectedAccount.role}</p>
+        <p><strong>Status:</strong> {selectedAccount.status}</p>
+        <p>
+          <strong>Created:</strong>{" "}
+          {new Date(selectedAccount.createdAt).toLocaleString()}
+        </p>
+      </div>
+
+      <div className="mt-5 flex justify-end">
+        <button
+          className="px-4 py-2 bg-[#173f63] text-white rounded-md hover:bg-[#1f4e7a]"
+          onClick={() => setShowModal(false)}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     </div>
-
     </main>
   );
 }

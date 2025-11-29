@@ -41,7 +41,7 @@ export default function SupplierList() {
   const fetchPersonnel = async () => {
     const res = await fetch("/api/admin/personnels");
     const data = await res.json();
-    setPersonnel(data);
+    setPersonnel(data.personnels ?? data);
     setLoading(false);
   };
 
@@ -186,7 +186,7 @@ export default function SupplierList() {
       <div className="flex-1 overflow-y-visible mt-2 rounded relative">
         <div className="bg-white rounded shadow-md mb-2">
 
-        <div className="bg-[#fcd0d0] grid grid-cols-[2fr_2fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+        <div className="bg-[#fcd0d0] grid grid-cols-[1fr_2fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
           <>
             <span>Username</span>
             <span>Name</span>
@@ -202,10 +202,10 @@ export default function SupplierList() {
           paginatedPersonnels.map((p) => (
             <div
               key={p.id}
-              className="grid grid-cols-[2fr_2fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+              className="grid grid-cols-[1fr_2fr_2fr_2fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
             >
               <span>{p.username}</span>
-              <span className="uppercase">{p.personnelName}</span>
+              <span className="uppercase text-sm">{p.personnelName}</span>
               <span>{p.department}</span>
               <span>{p.email}</span>
               <span><span

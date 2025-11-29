@@ -424,16 +424,14 @@ useEffect(() => {
               )}
             </div>
             
-            <div className="relative">
+            {/* <div className="relative">
               <div 
               className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
               onClick={() => setIsAddItemModalOpen(true)}>
-            {/*<Button onClick={() => setIsAddItemModalOpen(true)} className="ml-4 h-10 w-25 bg-[#ffffff] border-0 border-[#d2bda7] rounded-md border-b-[2px] active:border-b-4 hover:bg-[#f0d2ad] text-[#482b0e] font-normal"> */}
                 <Image src="/circle-plus-svgrepo-com.svg" width={20} height={20} alt="Add" />
                 <span className="ml-1 text-sm text-[#482b0e]">Add New</span>
-            {/*</Button> */}
             </div>
-            </div>
+            </div> */}
 
             <div className="relative">
             <DropdownMenu>

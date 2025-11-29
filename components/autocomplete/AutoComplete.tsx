@@ -9,6 +9,7 @@ type Suggestion = {
   name: string 
   supplierName?: string;
   itemName?: string;
+  personnelName?: string;
 };
 
 type AutoCompleteProps = {
@@ -32,7 +33,7 @@ export default function AutoComplete({
   disabled = false,
   parentId = null,
 }: AutoCompleteProps) {
-  const [inputValue, setInputValue] = useState(value?.name || value?.supplierName || value?.itemName ||"");
+  const [inputValue, setInputValue] = useState(value?.name || value?.supplierName || value?.itemName || value?.personnelName || "");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,13 +44,13 @@ export default function AutoComplete({
 
   // keep input synced with external value
   useEffect(() => {
-    const next = value?.name || value?.supplierName || value?.itemName || "";
+    const next = value?.name || value?.supplierName || value?.itemName || value?.personnelName || "";
     setInputValue((prev) => (prev !== next ? next : prev));
   }, [value]);
 
   const handleSelect = useCallback((selected: Suggestion) => {
     justSelectedRef.current = true;
-    setInputValue(selected.name || selected.supplierName || selected.itemName || "");
+    setInputValue(selected.name || selected.supplierName || selected.itemName || selected.personnelName || "");
     onChange(selected);
     setSuggestions([]);
     setShowSuggestions(false);
@@ -66,7 +67,7 @@ export default function AutoComplete({
       inputValue.trim().length === 0
         ? options
         : options.filter(o =>
-            (o.name || o.supplierName || o.itemName || "")
+            (o.name || o.supplierName || o.itemName || o.personnelName || "")
             .toLowerCase()
             .includes(inputValue.toLowerCase())
           );
@@ -131,7 +132,18 @@ export default function AutoComplete({
     return () => window.removeEventListener("pointerdown", handlePointerDown);
   }, [showSuggestions]);
 
-  const getDisplayName = (s: Suggestion) => s.name || s.supplierName || s.itemName || "Unnamed";
+  const getDisplayName = (s: Suggestion) => {
+    if (s.personnelName && s.name) {
+      return `${s.name} - ${s.personnelName}`;
+    }
+    return (
+      s.name ||
+      s.supplierName ||
+      s.itemName ||
+      s.personnelName ||
+      "Unnamed"
+    );
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>

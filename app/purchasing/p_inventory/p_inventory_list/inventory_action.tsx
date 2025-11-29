@@ -1,19 +1,22 @@
 // app/warehouse/w_inventory/w_inventory_list/inventory_action.tsx
 import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Image from "next/image";
-import { InventoryItem } from "@/app/purchasing/p_inventory_list/types/inventory";
+import { InventoryItem } from "@/app/purchasing/p_inventory/p_inventory_list/types/inventory";
 
 type InventoryActionsProps = {
   item: InventoryItem;
   onDelete: (id: number) => void;
 }
 
-const InventoryActions = ({ item }: InventoryActionsProps) => {
+const InventoryActions = ({ item, onDelete }: InventoryActionsProps) => {
   console.log("InventoryActions props.item:", item);
 
   const [openDropdown, setOpenDropdown] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, ] = useState(false);
 
    const dropdownRef = useRef<HTMLDivElement | null>(null);
   
@@ -58,6 +61,15 @@ const InventoryActions = ({ item }: InventoryActionsProps) => {
           >
             View Details
           </div>
+          <div
+            onClick={() => {
+              setConfirmDelete(true);
+              setOpenDropdown(false);
+            }}
+            className="px-4 py-2 hover:bg-red-100 text-red-600 cursor-pointer text-center"
+          >
+            Delete
+          </div>
         </div>
       )}
 
@@ -96,6 +108,35 @@ const InventoryActions = ({ item }: InventoryActionsProps) => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Confirmation */}
+       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+         <AlertDialogTitle>
+         </AlertDialogTitle>
+         <AlertDialogContent>
+           <div className="text-lg font-semibold">Are you sure?</div>
+           <p>This will delete the item permanently.</p>
+           <div className="flex justify-end gap-2 mt-4">
+             <button
+              className={`px-4 py-1 rounded bg-gray-300 hover:bg-gray-400 ${
+                deleting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </button>
+            <button
+              className={`px-4 py-1 rounded bg-red-600 text-white hover:bg-red-700 ${
+                deleting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              }`}
+              onClick={() => onDelete(item.id)}
+              disabled={deleting}
+            >
+              Delete
+            </button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

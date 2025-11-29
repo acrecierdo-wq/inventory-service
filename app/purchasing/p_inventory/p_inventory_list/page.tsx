@@ -12,9 +12,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import InventoryActions from "@/app/purchasing/p_inventory_list/inventory_action";
+import InventoryActions from "@/app/purchasing/p_inventory/p_inventory_list/inventory_action";
 import { toast } from "sonner";
-import { InventoryItem, InventoryCategory, InventoryUnit, InventoryVariant, InventorySize, } from "@/app/purchasing/p_inventory_list/types/inventory";
+import { InventoryItem, InventoryCategory, InventoryUnit, InventoryVariant, InventorySize, } from "@/app/purchasing/p_inventory/p_inventory_list/types/inventory";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -424,6 +424,15 @@ useEffect(() => {
             </div>
 
             <div className="relative">
+              <div 
+              className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-2 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+              onClick={() => setIsAddItemModalOpen(true)}>
+                <Image src="/circle-plus-svgrepo-com.svg" width={20} height={20} alt="Add" />
+                <span className="ml-1 text-sm text-[#482b0e]">Add New</span>
+            </div>
+            </div>
+
+            <div className="relative">
             <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                       <button className={`h-8 px-2 rounded text-white mt-1 ${isExporting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}>
@@ -467,7 +476,7 @@ useEffect(() => {
             {paginatedItems.length > 0 ? (
             paginatedItems.map((item) => (
               <div key={item.id} className="grid grid-cols-[2fr_1.5fr_2fr_2fr_1fr_1fr_1.5fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center">
-                  <span className="text-start">{item.name}</span>
+                  <span className="text-start uppercase">{item.name}</span>
                   <span>{item.category?.name}</span>
                   <span>{item.size?.name || "(None)"}</span>
                   <span>{item.variant?.name || "(None)"}</span>

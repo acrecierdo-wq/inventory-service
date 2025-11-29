@@ -51,9 +51,9 @@ export async function GET() {
         const data = await db
         .select()
         .from(personnels);
-        return NextResponse.json(data);
+        return NextResponse.json({ personnels: data });
     } catch (error) {
-        console.error("Errir fetching personnel:", error);
+        console.error("Error fetching personnel:", error);
         return NextResponse.json({ error: "Failed to fetch personnel." }, { status: 500 });
     }
 }

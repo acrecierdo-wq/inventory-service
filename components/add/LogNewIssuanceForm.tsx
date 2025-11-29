@@ -69,7 +69,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
 
   // Issuance header information
-  const [issuance, setIssuance] = useState<Issuance>({ id: "" });
+  //const [issuance, setIssuance] = useState<Issuance>({ id: "" });
   const [clientName, setClientName] = useState(draftData?.clientName || "");
   const [dispatcherName, setDispatcherName] = useState(
     draftData?.dispatcherName || ""
@@ -904,9 +904,9 @@ async function uploadToCloudinary(file: File) {
       const result = await res.json();
 
       // Update issuance reference if returned
-      if (result.issuanceRef) {
-        setIssuance(result.issuance);
-      }
+      // if (result.issuanceRef) {
+      //   setIssuance(result.issuance);
+      // }
 
       // Display any warnings (e.g., low stock alerts)
       if (result.warning && result.warning.length > 0) {
@@ -980,9 +980,9 @@ async function uploadToCloudinary(file: File) {
         <Header />
         <section className="p-10 max-w-6xl mx-auto">
           {/* Issuance reference number display */}
-          <p className="text-md font-bold text-[#173f63] mb-4">
+          {/* <p className="text-md font-bold text-[#173f63] mb-4">
             Issuance Ref: {issuance.id}
-          </p>
+          </p> */}
 
           <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
             {/* Header information fields */}
@@ -1054,7 +1054,9 @@ async function uploadToCloudinary(file: File) {
                   type="button"
                   onClick={handleScanClick}
                   disabled={isScanning}
-                  className="bg-[#0b74ff] px-3 py-2 text-sm rounded text-white hover:bg-[#0966d6] flex items-center gap-2"
+                  className={`px-3 py-2 text-sm rounded text-white  flex items-center gap-2  ${
+                    isScanning ? "bg-[#0b74ff] opacity-50 cursor-not-allowed" : "bg-[#0b74ff] hover:bg-[#0966d6] cursor-pointer"
+                  }`}
                 >
                   {isScanning ? "Scanning..." : "Scan via OCR"}
                 </button>
@@ -1188,17 +1190,6 @@ async function uploadToCloudinary(file: File) {
 
                       {/* Row action buttons (add/remove) */}
                       <div className="flex gap-2 mt-6">
-                        {/* Show add button only on last row */}
-                        {index === inputRows.length - 1 && (
-                          <button
-                            type="button"
-                            onClick={addEmptyRow}
-                            className="p-2 bg-green-600 text-white rounded hover:bg-green-700"
-                            title="Add Row"
-                          >
-                            <Plus size={20} />
-                          </button>
-                        )}
                         {/* Show remove button if more than one row exists */}
                         {inputRows.length > 1 && (
                           <button
@@ -1210,6 +1201,18 @@ async function uploadToCloudinary(file: File) {
                             <Trash2 size={20} />
                           </button>
                         )}
+                        {/* Show add button only on last row */}
+                        {index === inputRows.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={addEmptyRow}
+                            className="p-2 bg-green-600 text-white rounded hover:bg-green-700"
+                            title="Add Row"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        )}
+                        
                       </div>
                     </div>
                   );
@@ -1244,7 +1247,7 @@ async function uploadToCloudinary(file: File) {
                 type="button"
                 onClick={handleAddAllRows}
                 disabled={isAdding}
-                className="mt-5 bg-[#674d33] px-4 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium cursor-pointer disabled:opacity-50"
+                className="mt-5 bg-[#674d33] px-4 py-2 text-sm rounded-full hover:bg-[#d2bda7] text-white font-medium cursor-pointer disabled:opacity-50"
               >
                 {isAdding ? "Adding..." : "Add Items to List"}
               </button>
@@ -1321,14 +1324,14 @@ async function uploadToCloudinary(file: File) {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDone}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
               >
                 Done
               </button>
@@ -1349,7 +1352,7 @@ async function uploadToCloudinary(file: File) {
 
           {/* Summary confirmation modal before final save */}
           {showSummary && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40">
+            <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
               <div className="bg-white w-[600px] p-6 rounded shadow">
                 <h2 className="text-xl font-bold mb-4 text-[#173f63]">
                   Confirm Issuance
@@ -1366,6 +1369,7 @@ async function uploadToCloudinary(file: File) {
                     <tr>
                       <th className="border px-2 py-1">Item</th>
                       <th className="border px-2 py-1">Size</th>
+                      <th className="border px-2 py-1">Variant</th>
                       <th className="border px-2 py-1">Unit</th>
                       <th className="border px-2 py-1">Qty</th>
                     </tr>
@@ -1376,6 +1380,9 @@ async function uploadToCloudinary(file: File) {
                         <td className="border px-2 py-1">{item.itemName}</td>
                         <td className="border px-2 py-1">
                           {item.sizeName || "(None)"}
+                        </td>
+                        <td className="border px-2 py-1">
+                          {item.variantName || "(None)"}
                         </td>
                         <td className="border px-2 py-1">
                           {item.unitName || "(None)"}
@@ -1389,13 +1396,13 @@ async function uploadToCloudinary(file: File) {
                 <div className="flex justify-end gap-4 mt-6">
                   <button
                     onClick={() => setShowSummary(false)}
-                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSaveIssuance}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer"
                   >
                     Save
                   </button>

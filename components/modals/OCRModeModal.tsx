@@ -50,7 +50,7 @@ export default function OCRModeModal({
               onSelectWebcam(); // Trigger webcam modal
               onClose(); // Close this modal
             }}
-            className="flex items-center gap-4 p-4 border-2 border-[#d2bda7] rounded-lg hover:bg-[#f5e6d3] hover:border-[#674d33] transition group"
+            className="flex items-center gap-4 p-4 border-2 border-[#d2bda7] rounded-lg hover:bg-[#f5e6d3] hover:border-[#674d33] transition group cursor-pointer"
           >
             {/* Camera icon with colored background */}
             <div className="bg-blue-100 p-3 rounded-full group-hover:bg-blue-200">
@@ -73,7 +73,7 @@ export default function OCRModeModal({
               onSelectUpload(); // Trigger file input
               onClose(); // Close this modal
             }}
-            className="flex items-center gap-4 p-4 border-2 border-[#d2bda7] rounded-lg hover:bg-[#f5e6d3] hover:border-[#674d33] transition group"
+            className="flex items-center gap-4 p-4 border-2 border-[#d2bda7] rounded-lg hover:bg-[#f5e6d3] hover:border-[#674d33] transition group cursor-pointer"
           >
             {/* Upload icon with colored background */}
             <div className="bg-green-100 p-3 rounded-full group-hover:bg-green-200">

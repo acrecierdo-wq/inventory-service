@@ -70,6 +70,7 @@ export const items = pgTable("items", {
 
   status: varchar("status", { length: 50 }).notNull().default("No Stock"), // Overstock, In Stock, Reorder Level, Critical Level, No Stock
   isActive: boolean("is_active").default(true),
+  
 });
 
 {
@@ -252,17 +253,6 @@ export const suppliers = pgTable("suppliers", {
 });
 
 {
-  /* Personnel Accounts */
-}
-export const personnelAccounts = pgTable("personnel_accounts", {
-  id: serial("id").primaryKey(),
-  personnelId: integer("personnel_id").references(() => personnels.id, { onDelete: "cascade" }),
-  clerkId: varchar("clerk_id", { length: 255 }).notNull().unique(),
-  role: varchar("role", { length: 50 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-{
   /* Personnels */
 }
 export const personnels = pgTable("personnels", {
@@ -276,6 +266,21 @@ export const personnels = pgTable("personnels", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
+});
+
+{
+  /* Personnel Accounts */
+}
+export const personnelAccounts = pgTable("personnel_accounts", {
+  id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnels.id, { onDelete: "cascade" }),
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  email: varchar("email", { length: 255 }).notNull(),
+  passwordHash: varchar("password_hash").notNull(),
+  status: varchar("status", { enum: ["Active", "Inactive"] }).notNull().default("Active"),
+  role: varchar("role", { length: 50 }).notNull(),
+  clerkId: varchar("clerk_id"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 {
