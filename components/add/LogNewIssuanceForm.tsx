@@ -173,46 +173,46 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
    * Uploads an image file to Cloudinary CDN
    * Required because OCR.space API needs a publicly accessible URL
    */
-async function uploadToCloudinary(file: File) {
-  try {
-    // Use server-side API route instead of direct Cloudinary upload
-    const formData = new FormData();
-    formData.append("file", file);
+  async function uploadToCloudinary(file: File) {
+    try {
+      // Use server-side API route instead of direct Cloudinary upload
+      const formData = new FormData();
+      formData.append("file", file);
 
-    const res = await fetch("/api/cloudinary/upload", {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch("/api/cloudinary/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    if (!res.ok) {
-      let errorMessage = "Cloudinary upload failed";
-      try {
-        const errorJson = await res.json();
-        errorMessage = errorJson.error || errorMessage;
-      } catch {
-        // If response is not JSON, try to get text
-        const errorText = await res.text().catch(() => "");
-        if (errorText) {
-          errorMessage = errorText;
+      if (!res.ok) {
+        let errorMessage = "Cloudinary upload failed";
+        try {
+          const errorJson = await res.json();
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          const errorText = await res.text().catch(() => "");
+          if (errorText) {
+            errorMessage = errorText;
+          }
         }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    const json = await res.json();
+      const json = await res.json();
 
-    if (!json.url) {
-      throw new Error("Cloudinary upload succeeded but no URL was returned");
-    }
+      if (!json.url) {
+        throw new Error("Cloudinary upload succeeded but no URL was returned");
+      }
 
-    return json.url as string;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
+      return json.url as string;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Failed to upload image to Cloudinary");
     }
-    throw new Error("Failed to upload image to Cloudinary");
   }
-}
   /**
    * Main OCR processing function
    * Steps:
@@ -976,7 +976,7 @@ async function uploadToCloudinary(file: File) {
 
   return (
     <WarehousemanClientComponent>
-      <main className="bg-[#ffedce] w-full min-h-screen">
+      <main className="bg-[#ffedce] w-full min-h-screen ">
         <Header />
         <section className="p-10 max-w-6xl mx-auto">
           {/* Issuance reference number display */}
@@ -984,7 +984,7 @@ async function uploadToCloudinary(file: File) {
             Issuance Ref: {issuance.id}
           </p> */}
 
-          <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
+          <form className="grid grid-cols-1 mt-32 gap-4 bg-white p-6 rounded shadow">
             {/* Header information fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1055,7 +1055,9 @@ async function uploadToCloudinary(file: File) {
                   onClick={handleScanClick}
                   disabled={isScanning}
                   className={`px-3 py-2 text-sm rounded text-white  flex items-center gap-2  ${
-                    isScanning ? "bg-[#0b74ff] opacity-50 cursor-not-allowed" : "bg-[#0b74ff] hover:bg-[#0966d6] cursor-pointer"
+                    isScanning
+                      ? "bg-[#0b74ff] opacity-50 cursor-not-allowed"
+                      : "bg-[#0b74ff] hover:bg-[#0966d6] cursor-pointer"
                   }`}
                 >
                   {isScanning ? "Scanning..." : "Scan via OCR"}
@@ -1081,10 +1083,10 @@ async function uploadToCloudinary(file: File) {
                   return (
                     <div
                       key={row.id}
-                      className="grid grid-cols-6 gap-2 items-start p-3 border border-[#d2bda7] rounded bg-gray-50"
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-start p-4 border border-[#d2bda7] rounded bg-gray-50"
                     >
                       {/* Item name autocomplete */}
-                      <div>
+                      <div className="md:col-span-2 lg:col-span-1">
                         <AutoComplete
                           label="Item Name"
                           endpoint="/api/autocomplete/item-name"
@@ -1212,7 +1214,6 @@ async function uploadToCloudinary(file: File) {
                             <Plus size={20} />
                           </button>
                         )}
-                        
                       </div>
                     </div>
                   );
