@@ -52,14 +52,13 @@ type PurchaseOrder = {
     variantName: string | null;
     unitId: number | null;
     unitName: string | null;
-    quantity: number; // Expected
-    receivedQuantity: number; // Already received
-    remainingQuantity: number; // Still needed
+    quantity: number;
+    receivedQuantity: number;
+    remainingQuantity: number;
     unitPrice: number;
   }>;
 };
 
-// ✅ NEW: Type for PO Status Summary
 type POStatusSummary = {
   poNumber: string;
   status: "Pending" | "Partial" | "Complete";
@@ -83,13 +82,13 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const [availablePOs, setAvailablePOs] = useState<PurchaseOrder[]>([]);
   const [selectedPO, setSelectedPO] = useState<string>("");
   const [isLoadingPO, setIsLoadingPO] = useState(false);
+  const [isManualMode, setIsManualMode] = useState(false); // ✅ NEW: Track manual mode
 
   const [supplier, setSupplier] = useState(draftData?.supplier || "");
   const [poRefNum, setPoRefNum] = useState(draftData?.poRefNum || "");
   const [remarks, setRemarks] = useState(draftData?.remarks || "");
   const [recordedBy, setRecordedBy] = useState(draftData?.recordedBy || "");
   const [isSaving, setIsSaving] = useState(false);
-  // ✅ NEW: DR Number is now a regular form field
   const [drRefNum, setDrRefNum] = useState(draftData?.drRefNum || "");
 
   const [showSummary, setShowSummary] = useState(false);
@@ -141,10 +140,11 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     fetchPurchaseOrders();
   }, []);
 
-  // Handle PO selection
-  const handlePOSelection = async (poNumber: string) => {
-    if (!poNumber || poNumber === "none") {
+  // ✅ UPDATED: Handle PO selection with manual mode
+  const handlePOSelection = async (value: string) => {
+    if (!value || value === "none") {
       setSelectedPO("");
+      setIsManualMode(false);
       setSupplier("");
       setPoRefNum("");
       setRemarks("");
@@ -152,11 +152,25 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       return;
     }
 
+    // ✅ NEW: Check if manual mode is selected
+    if (value === "manual") {
+      setSelectedPO("manual");
+      setIsManualMode(true);
+      setSupplier("");
+      setPoRefNum("");
+      setRemarks("");
+      setItems([]);
+      toast.info("Manual mode enabled. Fill out the form manually.");
+      return;
+    }
+
+    // ✅ Existing PO selection logic
     setIsLoadingPO(true);
-    setSelectedPO(poNumber);
+    setSelectedPO(value);
+    setIsManualMode(false);
 
     try {
-      const po = availablePOs.find((p) => p.poNumber === poNumber);
+      const po = availablePOs.find((p) => p.poNumber === value);
       if (!po) {
         toast.error("Purchase order not found");
         return;
@@ -175,16 +189,16 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
         variantName: item.variantName,
         unitId: item.unitId ? String(item.unitId) : null,
         unitName: item.unitName,
-        quantity: 0, // User will enter received quantity
-        expectedQuantity: item.quantity, // ✅ Store expected
-        receivedSoFar: item.receivedQuantity, // ✅ Already received
-        remainingQuantity: item.remainingQuantity, // ✅ Still needed
+        quantity: 0,
+        expectedQuantity: item.quantity,
+        receivedSoFar: item.receivedQuantity,
+        remainingQuantity: item.remainingQuantity,
       }));
 
       setItems(poItems);
 
       toast.success(
-        `Loaded PO ${poNumber} with ${po.items.length} item(s). Enter received quantities.`
+        `Loaded PO ${value} with ${po.items.length} item(s). Enter received quantities.`
       );
     } catch (err) {
       console.error("Error loading PO:", err);
@@ -323,6 +337,85 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   useEffect(() => {
     setSelectedUnit(null);
   }, [selectedVariant]);
+  // OLD ADD ITEMS BEFORE I PUT THE MANUAL ENTRY OPTION
+  // const handleAddItem = async () => {
+  //   if (isAdding) return;
+  //   setIsAdding(true);
+
+  //   if (!selectedItem) {
+  //     toast.error("Please select an item.");
+  //     setIsAdding(false);
+  //     return;
+  //   }
+  //   if (availableSizes.length > 0 && !selectedSize) {
+  //     toast.error("Please select a size.");
+  //     setIsAdding(false);
+  //     return;
+  //   }
+  //   if (availableVariants.length > 0 && !selectedVariant) {
+  //     toast.error("Please select a variant.");
+  //     setIsAdding(false);
+  //     return;
+  //   }
+  //   if (availableUnits.length > 0 && !selectedUnit) {
+  //     toast.error("Please select a unit.");
+  //     setIsAdding(false);
+  //     return;
+  //   }
+  //   if (!quantity || Number(quantity) <= 0) {
+  //     toast.error("Enter a valid quantity.");
+  //     setIsAdding(false);
+  //     return;
+  //   }
+
+  //   try {
+  //     const params = new URLSearchParams({
+  //       itemName: selectedItem.name,
+  //       ...(selectedSize && { size: selectedSize.name }),
+  //       ...(selectedVariant && { variant: selectedVariant.name }),
+  //       ...(selectedUnit && { unit: selectedUnit.name }),
+  //     });
+
+  //     const res = await fetch(`/api/item-find?${params.toString()}`);
+  //     if (!res.ok) throw new Error("Failed to find item combination");
+
+  //     const data = await res.json();
+  //     if (!data.exists) {
+  //       toast.error(
+  //         "That size/variant/unit combination does not exist in inventory."
+  //       );
+  //       setIsAdding(false);
+  //       return;
+  //     }
+
+  //     setItems((prev) => [
+  //       ...prev,
+  //       {
+  //         itemId: String(data.itemId),
+  //         sizeId: selectedSize ? String(selectedSize.id) : null,
+  //         variantId: selectedVariant ? String(selectedVariant.id) : null,
+  //         unitId: selectedUnit ? String(selectedUnit.id) : null,
+  //         quantity: Number(quantity),
+  //         itemName: selectedItem.name,
+  //         sizeName: selectedSize?.name || null,
+  //         variantName: selectedVariant?.name || null,
+  //         unitName: selectedUnit?.name || null,
+  //       },
+  //     ]);
+
+  //     toast.success("Item added to the list.");
+  //     setSelectedItem(null);
+  //     setSelectedSize(null);
+  //     setSelectedVariant(null);
+  //     setSelectedUnit(null);
+  //     setQuantity("");
+  //   } catch (err) {
+  //     console.error("Item-find error:", err);
+  //     toast.error("Something went wrong while adding the item.");
+  //   } finally {
+  //     setIsAdding(false);
+  //   }
+  // };
 
   const handleAddItem = async () => {
     if (isAdding) return;
@@ -355,18 +448,21 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     }
 
     try {
+      // ✅ FIX: Pass IDs instead of names
       const params = new URLSearchParams({
         itemName: selectedItem.name,
-        ...(selectedSize && { size: selectedSize.name }),
-        ...(selectedVariant && { variant: selectedVariant.name }),
-        ...(selectedUnit && { unit: selectedUnit.name }),
+        ...(selectedSize && { sizeId: String(selectedSize.id) }), // ✅ Changed from 'size' to 'sizeId'
+        ...(selectedVariant && { variantId: String(selectedVariant.id) }), // ✅ Changed from 'variant' to 'variantId'
+        ...(selectedUnit && { unitId: String(selectedUnit.id) }), // ✅ Changed from 'unit' to 'unitId'
       });
 
       const res = await fetch(`/api/item-find?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to find item combination");
 
       const data = await res.json();
-      if (!data.exists) {
+
+      // ✅ Check if item exists
+      if (!data || !data.id) {
         toast.error(
           "That size/variant/unit combination does not exist in inventory."
         );
@@ -377,7 +473,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       setItems((prev) => [
         ...prev,
         {
-          itemId: String(data.itemId),
+          itemId: String(data.id),
           sizeId: selectedSize ? String(selectedSize.id) : null,
           variantId: selectedVariant ? String(selectedVariant.id) : null,
           unitId: selectedUnit ? String(selectedUnit.id) : null,
@@ -402,7 +498,6 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       setIsAdding(false);
     }
   };
-
   const handleDone = () => {
     if (!supplier) {
       toast.error("Please enter a supplier.");
@@ -414,7 +509,6 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       return;
     }
 
-    // ✅ Validate DR Number
     if (!drRefNum || drRefNum.trim() === "") {
       toast.error("Please enter a Delivery Receipt number.");
       return;
@@ -433,7 +527,6 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       return;
     }
 
-    // Just show the summary modal for review
     setShowSummary(true);
   };
 
@@ -443,7 +536,6 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       return;
     }
 
-    // ✅ NEW: Set saving state to true
     setIsSaving(true);
 
     const payload = {
@@ -489,7 +581,6 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       console.error("Replenishment error:", err);
       toast.error("Something went wrong while saving the replenishment.");
     } finally {
-      // ✅ NEW: Always reset saving state
       setIsSaving(false);
     }
   };
@@ -533,17 +624,22 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       <main className="bg-[#ffedce] min-h-screen w-full">
         <Header />
         <section className="p-4 sm:p-6 md:p-10 max-w-4xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 mt-30 ">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 mt-30">
             <h1 className="text-xl lg:text-3xl font-bold text-[#173f63]">
               Log Item Replenishment
             </h1>
 
+            {/* ✅ UPDATED: Added Manual Option */}
             <div className="w-full sm:w-64">
               <Select onValueChange={handlePOSelection} value={selectedPO}>
                 <SelectTrigger className="border border-[#d2bda7] bg-white">
-                  <SelectValue placeholder="Select Purchase Order" />
+                  <SelectValue placeholder="Select Mode" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* ✅ NEW: Manual Option */}
+                  <SelectItem value="manual">Manual Entry</SelectItem>
+
+                  {/* Existing PO Options */}
                   {availablePOs.map((po) => (
                     <SelectItem
                       key={po.id}
@@ -559,38 +655,46 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
           </div>
 
           <form className="grid grid-cols-1 gap-4 bg-white p-4 sm:p-6 rounded shadow">
+            {/* ✅ UPDATED: Make fields editable in manual mode */}
             <div>
               <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
-                Supplier:
+                Supplier: <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={supplier}
-                readOnly
                 onChange={(e) => setSupplier(e.target.value)}
-                disabled={!!selectedPO && isLoadingPO}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100 disabled:bg-gray-100"
+                disabled={!isManualMode && !!selectedPO && isLoadingPO}
+                readOnly={!isManualMode && !!selectedPO}
+                placeholder="Enter supplier name..."
+                className={`w-full border border-[#d2bda7] p-2 rounded ${
+                  isManualMode ? "hover:bg-gray-100" : "bg-gray-100"
+                }`}
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
-                  PO Reference Number:
+                  PO Reference Number: <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={poRefNum}
-                  readOnly
                   onChange={(e) => setPoRefNum(e.target.value)}
-                  disabled={!!selectedPO && isLoadingPO}
-                  className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100 disabled:bg-gray-100"
+                  disabled={!isManualMode && !!selectedPO && isLoadingPO}
+                  readOnly={!isManualMode && !!selectedPO}
+                  placeholder="Enter PO number..."
+                  className={`w-full border border-[#d2bda7] p-2 rounded ${
+                    isManualMode ? "hover:bg-gray-100" : "bg-gray-100"
+                  }`}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
-                  Delivery Receipt Number:
+                  Delivery Receipt Number:{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -609,9 +713,14 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
               <input
                 type="text"
                 value={remarks}
-                readOnly
                 onChange={(e) => setRemarks(e.target.value)}
-                className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
+                readOnly={!isManualMode && !!selectedPO}
+                placeholder="Enter remarks..."
+                className={`w-full border border-[#d2bda7] p-2 rounded ${
+                  isManualMode || !selectedPO
+                    ? "hover:bg-gray-100"
+                    : "bg-gray-100"
+                }`}
               />
             </div>
 
@@ -623,10 +732,11 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
 
             <div className="border-t pt-4 mt-4">
               <h2 className="text-base sm:text-lg font-bold mb-2 text-[#173f63] text-center uppercase">
-                Items to Replenish
+                Items to Replenish <span className="text-red-500">*</span>
               </h2>
 
-              {!selectedPO && (
+              {/* ✅ UPDATED: Show item input only when PO is selected or in manual mode */}
+              {(isManualMode || !selectedPO) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 items-end mb-4">
                   <div>
                     <AutoComplete
@@ -698,7 +808,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                 </div>
               )}
 
-              {!selectedPO && (
+              {(isManualMode || !selectedPO) && (
                 <button
                   type="button"
                   onClick={handleAddItem}
@@ -709,7 +819,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                 </button>
               )}
 
-              {/* ✅ UPDATED: Items table with Expected/Received columns */}
+              {/* Items table */}
               {items.length > 0 && (
                 <div className="mt-4 overflow-x-auto -mx-4 sm:mx-0">
                   <h3 className="text-sm font-semibold mb-2">
@@ -723,10 +833,18 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                           <th className="border px-2 py-1">Size</th>
                           <th className="border px-2 py-1">Variant</th>
                           <th className="border px-2 py-1">Unit</th>
-                          <th className="border px-2 py-1">Expected</th>
-                          <th className="border px-2 py-1">Already Received</th>
-                          <th className="border px-2 py-1">Remaining</th>
-                          <th className="border px-2 py-1">Quantity (Now)</th>
+                          {!isManualMode && selectedPO && (
+                            <>
+                              <th className="border px-2 py-1">Expected</th>
+                              <th className="border px-2 py-1">
+                                Already Received
+                              </th>
+                              <th className="border px-2 py-1">Remaining</th>
+                            </>
+                          )}
+                          <th className="border px-2 py-1">
+                            Quantity {isManualMode && "(Received)"}
+                          </th>
                           <th className="border px-2 py-1">Remove</th>
                         </tr>
                       </thead>
@@ -743,7 +861,11 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                             <tr
                               key={`${item.itemId}-${idx}`}
                               className={
-                                willBeComplete ? "bg-green-50" : "bg-yellow-50"
+                                !isManualMode && selectedPO
+                                  ? willBeComplete
+                                    ? "bg-green-50"
+                                    : "bg-yellow-50"
+                                  : "bg-white"
                               }
                             >
                               <td className="border px-2 py-1">
@@ -758,15 +880,19 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                               <td className="border px-2 py-1">
                                 {item.unitName || "(None)"}
                               </td>
-                              <td className="border px-2 py-1 text-center font-semibold">
-                                {expected}
-                              </td>
-                              <td className="border px-2 py-1 text-center text-blue-600">
-                                {alreadyReceived}
-                              </td>
-                              <td className="border px-2 py-1 text-center text-orange-600 font-semibold">
-                                {remaining}
-                              </td>
+                              {!isManualMode && selectedPO && (
+                                <>
+                                  <td className="border px-2 py-1 text-center font-semibold">
+                                    {expected}
+                                  </td>
+                                  <td className="border px-2 py-1 text-center text-blue-600">
+                                    {alreadyReceived}
+                                  </td>
+                                  <td className="border px-2 py-1 text-center text-orange-600 font-semibold">
+                                    {remaining}
+                                  </td>
+                                </>
+                              )}
                               <td className="border px-2 py-1">
                                 <input
                                   type="number"
@@ -782,7 +908,11 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                                       )
                                     );
                                   }}
-                                  max={remaining}
+                                  max={
+                                    !isManualMode && selectedPO
+                                      ? remaining
+                                      : undefined
+                                  }
                                   className="w-20 border border-gray-300 px-2 py-1 rounded text-center"
                                   placeholder="0"
                                 />
@@ -827,6 +957,8 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
               </button>
             </div>
           </form>
+
+          {/* Summary Modal and PO Status Modal remain the same... */}
           {showSummary && (
             <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-2 sm:p-4">
               <div className="bg-[#ffedce] rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
