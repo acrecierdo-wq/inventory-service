@@ -532,13 +532,13 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     <WarehousemanClientComponent>
       <main className="bg-[#ffedce] min-h-screen w-full">
         <Header />
-        <section className="p-10 max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-[#173f63]">
+        <section className="p-4 sm:p-6 md:p-10 max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 mt-30 ">
+            <h1 className="text-xl lg:text-3xl font-bold text-[#173f63]">
               Log Item Replenishment
             </h1>
 
-            <div className="w-64">
+            <div className="w-full sm:w-64">
               <Select onValueChange={handlePOSelection} value={selectedPO}>
                 <SelectTrigger className="border border-[#d2bda7] bg-white">
                   <SelectValue placeholder="Select Purchase Order" />
@@ -558,7 +558,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
             </div>
           </div>
 
-          <form className="grid grid-cols-1 gap-4 bg-white p-6 rounded shadow">
+          <form className="grid grid-cols-1 gap-4 bg-white p-4 sm:p-6 rounded shadow">
             <div>
               <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
                 Supplier:
@@ -573,7 +573,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
                   PO Reference Number:
@@ -622,12 +622,12 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
             </div>
 
             <div className="border-t pt-4 mt-4">
-              <h2 className="text-lg font-bold mb-2 text-[#173f63] text-center uppercase">
+              <h2 className="text-base sm:text-lg font-bold mb-2 text-[#173f63] text-center uppercase">
                 Items to Replenish
               </h2>
 
               {!selectedPO && (
-                <div className="grid grid-cols-5 gap-2 items-end mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 items-end mb-4">
                   <div>
                     <AutoComplete
                       label="Item Name"
@@ -711,134 +711,136 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
 
               {/* ✅ UPDATED: Items table with Expected/Received columns */}
               {items.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-4 overflow-x-auto -mx-4 sm:mx-0">
                   <h3 className="text-sm font-semibold mb-2">
                     Items to Receive
                   </h3>
-                  <table className="w-full border text-sm">
-                    <thead className="bg-[#f5e6d3] text-xs text-[#482b0e]">
-                      <tr>
-                        <th className="border px-2 py-1">Item Name</th>
-                        <th className="border px-2 py-1">Size</th>
-                        <th className="border px-2 py-1">Variant</th>
-                        <th className="border px-2 py-1">Unit</th>
-                        <th className="border px-2 py-1">Expected</th>
-                        <th className="border px-2 py-1">Already Received</th>
-                        <th className="border px-2 py-1">Remaining</th>
-                        <th className="border px-2 py-1">Quantity (Now)</th>
-                        <th className="border px-2 py-1">Remove</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item, idx) => {
-                        const receivingNow = item.quantity || 0;
-                        const expected = item.expectedQuantity || 0;
-                        const alreadyReceived = item.receivedSoFar || 0;
-                        const remaining = item.remainingQuantity || 0;
-                        const willBeComplete =
-                          alreadyReceived + receivingNow >= expected;
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="w-full border text-sm">
+                      <thead className="bg-[#f5e6d3] text-xs text-[#482b0e]">
+                        <tr>
+                          <th className="border px-2 py-1">Item Name</th>
+                          <th className="border px-2 py-1">Size</th>
+                          <th className="border px-2 py-1">Variant</th>
+                          <th className="border px-2 py-1">Unit</th>
+                          <th className="border px-2 py-1">Expected</th>
+                          <th className="border px-2 py-1">Already Received</th>
+                          <th className="border px-2 py-1">Remaining</th>
+                          <th className="border px-2 py-1">Quantity (Now)</th>
+                          <th className="border px-2 py-1">Remove</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item, idx) => {
+                          const receivingNow = item.quantity || 0;
+                          const expected = item.expectedQuantity || 0;
+                          const alreadyReceived = item.receivedSoFar || 0;
+                          const remaining = item.remainingQuantity || 0;
+                          const willBeComplete =
+                            alreadyReceived + receivingNow >= expected;
 
-                        return (
-                          <tr
-                            key={`${item.itemId}-${idx}`}
-                            className={
-                              willBeComplete ? "bg-green-50" : "bg-yellow-50"
-                            }
-                          >
-                            <td className="border px-2 py-1">
-                              {item.itemName}
-                            </td>
-                            <td className="border px-2 py-1">
-                              {item.sizeName || "(None)"}
-                            </td>
-                            <td className="border px-2 py-1">
-                              {item.variantName || "(None)"}
-                            </td>
-                            <td className="border px-2 py-1">
-                              {item.unitName || "(None)"}
-                            </td>
-                            <td className="border px-2 py-1 text-center font-semibold">
-                              {expected}
-                            </td>
-                            <td className="border px-2 py-1 text-center text-blue-600">
-                              {alreadyReceived}
-                            </td>
-                            <td className="border px-2 py-1 text-center text-orange-600 font-semibold">
-                              {remaining}
-                            </td>
-                            <td className="border px-2 py-1">
-                              <input
-                                type="number"
-                                value={item.quantity || ""}
-                                onChange={(e) => {
-                                  const newQty =
-                                    parseInt(e.target.value, 10) || 0;
-                                  setItems((prev) =>
-                                    prev.map((i, index) =>
-                                      index === idx
-                                        ? { ...i, quantity: newQty }
-                                        : i
+                          return (
+                            <tr
+                              key={`${item.itemId}-${idx}`}
+                              className={
+                                willBeComplete ? "bg-green-50" : "bg-yellow-50"
+                              }
+                            >
+                              <td className="border px-2 py-1">
+                                {item.itemName}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.sizeName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.variantName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1">
+                                {item.unitName || "(None)"}
+                              </td>
+                              <td className="border px-2 py-1 text-center font-semibold">
+                                {expected}
+                              </td>
+                              <td className="border px-2 py-1 text-center text-blue-600">
+                                {alreadyReceived}
+                              </td>
+                              <td className="border px-2 py-1 text-center text-orange-600 font-semibold">
+                                {remaining}
+                              </td>
+                              <td className="border px-2 py-1">
+                                <input
+                                  type="number"
+                                  value={item.quantity || ""}
+                                  onChange={(e) => {
+                                    const newQty =
+                                      parseInt(e.target.value, 10) || 0;
+                                    setItems((prev) =>
+                                      prev.map((i, index) =>
+                                        index === idx
+                                          ? { ...i, quantity: newQty }
+                                          : i
+                                      )
+                                    );
+                                  }}
+                                  max={remaining}
+                                  className="w-20 border border-gray-300 px-2 py-1 rounded text-center"
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="border px-2 py-1">
+                                <button
+                                  type="button"
+                                  className="text-red-500 text-xs hover:underline cursor-pointer"
+                                  onClick={() =>
+                                    setItems(
+                                      items.filter((_, index) => index !== idx)
                                     )
-                                  );
-                                }}
-                                max={remaining}
-                                className="w-20 border border-gray-300 px-2 py-1 rounded text-center"
-                                placeholder="0"
-                              />
-                            </td>
-                            <td className="border px-2 py-1">
-                              <button
-                                type="button"
-                                className="text-red-500 text-xs hover:underline cursor-pointer"
-                                onClick={() =>
-                                  setItems(
-                                    items.filter((_, index) => index !== idx)
-                                  )
-                                }
-                              >
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                  }
+                                >
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="mt-6 flex justify-end gap-4">
+            <div className="mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                className="w-full sm:w-auto px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDone}
-                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-700"
               >
                 Done
               </button>
             </div>
           </form>
           {showSummary && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
-              <div className="bg-[#ffedce] rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-                {/* Header Section */}
-                <div className="bg-white border-b-4 border-[#d2bda7] p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-[#173f63] p-3 rounded-lg">
-                      <Package className="text-white" size={28} />
+            <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-2 sm:p-4">
+              <div className="bg-[#ffedce] rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="bg-white border-b-4 border-[#d2bda7] p-4 sm:p-6">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-[#173f63] p-2 sm:p-3 rounded-lg">
+                      <Package className="text-white" size={24} />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-[#173f63]">
+                      <h2 className="text-xl sm:text-2xl font-bold text-[#173f63]">
                         Replenishment Summary
                       </h2>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs sm:text-sm text-gray-600">
                         Review details before confirming
                       </p>
                     </div>
@@ -846,9 +848,9 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                 </div>
 
                 {/* Content Section - Scrollable */}
-                <div className="flex-1 overflow-y-auto p-6 bg-[#ffedce]">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#ffedce]">
                   {/* Info Cards */}
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
                     <div className="bg-white p-4 rounded-lg border border-[#d2bda7] shadow-sm">
                       <label className="text-xs font-semibold text-[#482b0e] uppercase tracking-wide">
                         Supplier
@@ -1016,43 +1018,42 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                     </div>
                   </div>
 
-                  {/* Items Table - WITHOUT Status Column */}
+                  {/* Items Table - */}
                   <div className="bg-white rounded-lg border border-[#d2bda7] shadow-sm overflow-hidden">
-                    <div className="bg-[#f5e6d3] px-4 py-3 border-b border-[#d2bda7]">
-                      <h3 className="text-sm font-bold text-[#482b0e] uppercase tracking-wide">
+                    <div className="bg-[#f5e6d3] px-3 sm:px-4 py-2 sm:py-3 border-b border-[#d2bda7]">
+                      <h3 className="text-xs sm:text-sm font-bold text-[#482b0e] uppercase tracking-wide">
                         Items Summary
                       </h3>
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm table-fixed">
+                      <table className="w-full text-xs sm:text-sm">
                         <thead className="bg-[#f5e6d3] text-[#482b0e]">
                           <tr>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-48">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-left font-semibold min-w-[120px]">
                               Item
                             </th>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-32">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-left font-semibold min-w-[80px]">
                               Size
                             </th>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-32">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-left font-semibold min-w-[80px]">
                               Variant
                             </th>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-left font-semibold w-24">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-left font-semibold min-w-[60px]">
                               Unit
                             </th>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-24">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-center font-semibold min-w-[70px]">
                               Expected
                             </th>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-32">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-center font-semibold min-w-[90px]">
                               Already Received
                             </th>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-28">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-center font-semibold min-w-[80px]">
                               Remaining
                             </th>
-                            <th className="border-b border-[#d2bda7] px-3 py-2 text-center font-semibold w-32">
+                            <th className="border-b border-[#d2bda7] px-2 sm:px-3 py-2 text-center font-semibold min-w-[90px]">
                               Receiving Now
                             </th>
-                            {/* ✅ REMOVED: Status column */}
                           </tr>
                         </thead>
                         <tbody>
@@ -1132,32 +1133,16 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                       </table>
                     </div>
                   </div>
-
-                  {/* Status Legend */}
-                  {/* <div className="mt-4 flex items-center gap-6 text-xs">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="text-green-700" size={16} />
-                      <span className="text-gray-600">
-                        Item Will Be Complete (Expected qty reached)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="text-yellow-700" size={16} />
-                      <span className="text-gray-600">
-                        Over-Receiving (Exceeds expected qty)
-                      </span>
-                    </div>
-                  </div> */}
                 </div>
 
                 {/* Footer Section with Actions */}
-                <div className="bg-white border-t-4 border-[#d2bda7] p-6">
-                  <div className="flex justify-end gap-4">
+                <div className="bg-white border-t-4 border-[#d2bda7] p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
                     <button
                       type="button"
                       onClick={() => setShowSummary(false)}
                       disabled={isSaving}
-                      className="px-6 py-2.5 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full sm:w-auto px-6 py-2.5 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Back
                     </button>
@@ -1165,7 +1150,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                       type="button"
                       onClick={handleSaveReplenishment}
                       disabled={isSaving}
-                      className="px-6 py-2.5 bg-[#674d33] text-white rounded-lg hover:bg-[#d2bda7] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
+                      className="w-full sm:w-auto px-6 py-2.5 bg-[#674d33] text-white rounded-lg hover:bg-[#d2bda7] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
                     >
                       {isSaving && (
                         <svg
@@ -1198,7 +1183,7 @@ const NewReplenishmentPage = ({ draftData, draftId, onSaveSuccess }: Props) => {
           )}
 
           {showPOStatusModal && poStatusSummary && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
+            <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-2 sm:p-4">
               <div className="bg-[#ffedce] rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header Section */}
                 <div className="bg-white border-b-4 border-[#d2bda7] p-6">
