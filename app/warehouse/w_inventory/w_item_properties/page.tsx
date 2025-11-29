@@ -192,7 +192,7 @@ const ItemPropertiesPage = () => {
       <Header />
 
       {/* Tabs and Add Section - Responsive */}
-      <section className="flex flex-col lg:flex-row lg:justify-between mt-16 lg:mt-5 px-3 sm:px-4 lg:px-10 gap-4">
+      <section className="flex flex-col lg:flex-row lg:justify-between lg:mt-24  px-3 sm:px-4 lg:px-10 gap-4 mt-32">
         {/* Tabs */}
         <div className="flex flex-row gap-2 sm:gap-4 overflow-x-auto">
           {/* Category Tab */}

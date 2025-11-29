@@ -151,7 +151,7 @@ const WarehouseInventoryReportsPage = () => {
       <Header />
 
       {/* ✅ FIXED: Added proper padding for mobile */}
-      <div className="p-3 sm:p-4 lg:p-6 space-y-4 w-full">
+      <div className="p-3 mt-20 sm:p-4 lg:p-6 space-y-4 w-full">
         {/* Stats Cards */}
         <div className="flex justify-end w-full">
           {loading ? (
@@ -264,8 +264,10 @@ const WarehouseInventoryReportsPage = () => {
                       const RADIAN = Math.PI / 180;
                       const radius =
                         innerRadius + (outerRadius - innerRadius) * 1.2;
-                      const x = cx + radius * Math.cos(-(midAngle ?? 0) * RADIAN);
-                      const y = cy + radius * Math.sin(-(midAngle ?? 0) * RADIAN);
+                      const x =
+                        cx + radius * Math.cos(-(midAngle ?? 0) * RADIAN);
+                      const y =
+                        cy + radius * Math.sin(-(midAngle ?? 0) * RADIAN);
 
                       return (
                         <text

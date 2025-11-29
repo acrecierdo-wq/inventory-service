@@ -33,8 +33,7 @@ export const Header = ({ className }: Props) => {
   return (
     <div
       className={cn(
-        "z-50 sticky top-0 h-18 sm:h-20",
-
+        "z-[60] fixed top-0 left-0 lg:left-[250px] w-full lg:w-[calc(100%-250px)] h-18 lg:h-20",
         "flex flex-row items-center justify-between",
         "border-b-2 border-slate-200 px-2 sm:px-4 bg-[#ffc922]",
         className
@@ -44,7 +43,6 @@ export const Header = ({ className }: Props) => {
       <div className="flex flex-col flex-1 min-w-0">
         <div className="text-[#642248] font-bold text-sm sm:text-lg lg:text-xl truncate">
           <span className="">Inventory and Service Management System</span>
-          {/* <span className="md:hidden">ISMS</span> */}
           {isSignedIn ? (
             <div className="text-xs lg:text-sm font-bold capitalize truncate">
               - Welcome,{" "}

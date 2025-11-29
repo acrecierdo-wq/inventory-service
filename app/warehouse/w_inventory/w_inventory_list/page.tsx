@@ -270,7 +270,7 @@ const WarehouseInventoryListPage = () => {
     <main className="min-h-screen w-full bg-[#ffedce] flex flex-col">
       <Header />
 
-      <div className="flex flex-col mt-2 px-3 sm:px-4 lg:px-0">
+      <div className="flex flex-col px-3 sm:px-4 mt-24 lg:px-0">
         <AddItemModal
           isOpen={isAddItemModalOpen}
           onClose={() => setIsAddItemModalOpen(false)}
