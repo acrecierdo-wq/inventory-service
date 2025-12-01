@@ -347,6 +347,82 @@ export const replenishmentItems = pgTable("replenishment_items", {
 });
 
 {
+  /* Physical Inventory Sessions */
+}
+
+export const physicalInventorySessions = pgTable("physical_inventory_sessions", {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    createdBy: varchar("created_by", { length: 255 }).notNull(), // warehouseman userId
+    approvedBy: varchar("approved_by", { length: 255 }),
+    rejectedBy: varchar("rejected_by", { length: 255 }),
+
+    status: varchar("status", { length: 50 })
+      .notNull()
+      .default("pending"), // pending, submitted, approved, rejected
+
+    remarks: text("remarks"),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    submittedAt: timestamp("submitted_at"),
+    reviewedAt: timestamp("reviewed_at"), // when purchasing approves/rejects
+});
+
+{
+  /* Physical Inventory Items */
+}
+export const physicalInventoryItems = pgTable("physical_inventory_items", {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => physicalInventorySessions.id, {
+        onDelete: "cascade",
+      }),
+      
+    itemId: integer("item_id").notNull(),
+
+    // warehouseman input
+    physicalQty: integer("physical_qty").notNull(),
+
+    // system values (copied when submitted, warehouseman can't edit or view)
+    systemQty: integer("system_qty").notNull(),
+
+    discrepancy: integer("discrepancy").notNull(), // systemQty - physicalQty
+
+    status: varchar("status", { length: 50 }).notNull(), 
+    // match | shortage | overage
+
+    comments: text("comments"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+{
+  /* Inventory Adjustments */
+}
+export const inventoryAdjustments = pgTable("inventory_adjustments", {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    sessionId: uuid("session_id")
+      .references(() => physicalInventorySessions.id, {
+        onDelete: "set null",
+      }),
+
+    itemId: integer("item_id").notNull(),
+
+    adjustmentQty: integer("adjustment_qty").notNull(), 
+    // + for overage, - for shortage
+
+    reason: varchar("reason", { length: 255 }).notNull(), 
+    // e.g., "Physical Inventory Adjustment"
+
+    approvedBy: varchar("approved_by", { length: 255 }).notNull(),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+{
   /* Quotation Requests */
 }
 
@@ -592,31 +668,33 @@ export const quotationFilesRelations = relations(quotationFiles, ({ one }) => ({
   }),
 }));
 
-  // //relation
-  // export const studentsInformationRelations = relations(applicantsInformationTable, ({ one, many }) => ({
-  //   guardian: one(guardianAndParentsTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [guardianAndParentsTable.applicants_id],
-  //   }),
-  //   education: one(educationalBackgroundTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [educationalBackgroundTable.applicants_id],
-  //   }),
-  //   documents: one(documentsTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [documentsTable.applicants_id],
-  //   }),
-  //   status: one(applicationStatusTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [applicationStatusTable.applicants_id],
-  //   }),
-  //   reservationFee: one(reservationFeeTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [reservationFeeTable.applicants_id],
-  //   }),
+// Phase
+export const request_phase = pgTable("request_phase", {
+  id: serial("id").primaryKey(),
 
+  requestId: integer("request_id")
+    .notNull()
+    .references(() => quotation_requests.id, { onDelete: "cascade" }),
 
-  //   admissionStatus: one(AdmissionStatusTable, {
-  //     fields: [applicantsInformationTable.applicants_id],
-  //     references: [AdmissionStatusTable.applicants_id],
-  //   }),
+  phaseIndex: integer("phase_index").notNull(), // 0 = Phase 1, 1 = Phase 2, etc.
+
+  status: varchar("status", { length: 20 })
+    .$type<"Pending" | "In Progress" | "Completed" | "In Transit" | "Delivered" | "Ready" | "Collected">()
+    .notNull()
+    .default("Pending"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Phase Status
+export const phase_updates = pgTable("phase_updates", {
+  id: serial("id").primaryKey(),
+
+  phaseId: integer("phase_id")
+    .notNull()
+    .references(() => request_phase.id, { onDelete: "cascade" }),
+
+  updateText: text("update_text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedBy: varchar("updated_by", { length: 100 }), // optional: who submitted the update
+});

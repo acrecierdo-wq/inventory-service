@@ -1,331 +1,445 @@
-
 import Image from "next/image";
 import { Header } from "../../header";
 
 const LandingProductsPage = () => {
   return (
-    <div className="relative 
+    <div
+      className="relative 
         min-h-screen 
         overflow-x-hidden 
         bg-gradient-to-t 
         from-[#e3ae01] via-[#fed795] to-[#fcf4d2]
-        flex flex-col items-center">
-        <Header />
-      <h1 className="text-[#173f63] font-extrabold text-5xl text-center mt-5">CONSUMABLE ITEMS</h1>
-        <div className="flex-flex-col items-center justify-center">
-         <div className="flex flex-row mt-10">
-        <div className="text-[#173f63] font-sans font-extrabold text-3xl ml-22">TAPES</div>
-        <hr className="my-4 ml-5 border-t border-[#173f63] w-300" />
-        </div>
-            <div className="flex flex-row ml-50 mt-10">
-        
-        {/* 1st Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-            <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/duct_tape.jpg" height={100} width={100} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Duct Tape</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+        flex flex-col items-center"
+    >
+      <Header />
+      <h1 className="text-[#173f63] font-extrabold text-3xl sm:text-4xl md:text-5xl text-center mt-5 px-4">
+        CONSUMABLE ITEMS
+      </h1>
+      <div className="flex flex-col items-center justify-center w-full px-4 sm:px-6 lg:px-8 pb-10">
+        {/* TAPES SECTION */}
+        <div className="flex flex-col sm:flex-row items-center mt-10 w-full max-w-7xl">
+          <div className="text-[#173f63] font-sans font-extrabold text-2xl sm:text-3xl mb-4 sm:mb-0 sm:mr-5">
+            TAPES
+          </div>
+          <hr className="border-t border-[#173f63] w-full max-w-[300px] sm:max-w-none sm:flex-1" />
         </div>
 
-            {/* 2nd Consumable Item */}
-            <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-            <div className="ml-22 mt-2 mb-3">
-             {/* Item Image */}   
-            <Image src="/masking_tape.jpg" height={100} width={100} alt="ci"/>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-10 w-full max-w-7xl">
+          {/* 1st Item - Duct Tape */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/duct_tape.jpg"
+                height={100}
+                width={100}
+                alt="Duct Tape"
+                className="object-contain"
+              />
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Masking Tape</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Duct Tape
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 2nd Item - Masking Tape */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/masking_tape.jpg"
+                height={100}
+                width={100}
+                alt="Masking Tape"
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Masking Tape
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 3rd Item - Packaging Tape */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/packaging_tape.jpg"
+                height={100}
+                width={100}
+                alt="Packaging Tape"
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Packaging Tape
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 4th Item - Floor Marking Tape */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/floor_marking_tape.jpg"
+                height={100}
+                width={100}
+                alt="Floor Marking Tape"
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Floor Marking Tape
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
         </div>
 
-        {/* 3rd Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-            <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/packaging_tape.jpg" height={100} width={100} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Packaging Tape</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
-        {/* 4th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-            <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/floor_marking_tape.jpg" height={100} width={100} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Floor Marking Tape</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
-            </div>
-
-            <div className="flex flex-row">
-        <div className="text-[#173f63] font-sans font-extrabold text-3xl ml-22">STRAP</div>
-        <hr className="my-4 ml-5 border-t border-[#173f63] w-300" />
-        </div>
-            <div className="flex flex-row ml-50 mt-10">
-        {/* 5th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-25 mt-3 mb-2">
-             {/* Item Image */}   
-            <Image src="/plastic_strap.jpg" height={80} width={80} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Plastic Strap</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+        {/* STRAP SECTION */}
+        <div className="flex flex-col sm:flex-row items-center mt-16 w-full max-w-7xl">
+          <div className="text-[#173f63] font-sans font-extrabold text-2xl sm:text-3xl mb-4 sm:mb-0 sm:mr-5">
+            STRAP
+          </div>
+          <hr className="border-t border-[#173f63] w-full max-w-[300px] sm:max-w-none sm:flex-1" />
         </div>
 
-        {/* 6th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22 mt-9 mb-3">
-             {/* Item Image */}   
-            <Image src="/steel_strap.jpg" height={100} width={100} alt="ci"/>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-10 w-full max-w-7xl">
+          {/* 5th Item - Plastic Strap */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/plastic_strap.jpg"
+                height={80}
+                width={80}
+                alt="Plastic Strap"
+                className="object-contain"
+              />
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Metal Strap</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Plastic Strap
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 6th Item - Metal Strap */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/steel_strap.jpg"
+                height={100}
+                width={100}
+                alt="Metal Strap"
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Metal Strap
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 7th Item - Black Strap */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/black_strap.jpg"
+                height={100}
+                width={100}
+                alt="Black Strap"
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Black Strap
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 8th Item - Polyester Strap */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/polyester_strap.webp"
+                height={100}
+                width={100}
+                alt="Polyester Strap"
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Polyester Strap
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
         </div>
 
-        {/* 7th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/black_strap.jpg" height={100} width={100} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Black Strap</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+        {/* PADS AND TRAYS SECTION */}
+        <div className="flex flex-col sm:flex-row items-center mt-16 w-full max-w-7xl">
+          <div className="text-[#173f63] font-sans font-extrabold text-2xl sm:text-3xl mb-4 sm:mb-0 sm:mr-5">
+            PADS AND TRAYS
+          </div>
+          <hr className="border-t border-[#173f63] w-full max-w-[260px] sm:max-w-none sm:flex-1" />
         </div>
 
-        {/* 8th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/polyester_strap.webp" height={100} width={100} alt="ci"/>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-10 w-full max-w-7xl">
+          {/* 9th Item - Foam Pad */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/foam_pad.jpg"
+                height={100}
+                width={100}
+                alt="Foam Pad"
+                className="object-contain"
+              />
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Polyester Strap</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Foam Pad
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 10th Item - Foam Tray */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/foam_tray.jpg"
+                height={110}
+                width={110}
+                alt="Foam Tray"
+                className="object-contain"
+              />
             </div>
-        
-            <div className="flex flex-row">
-        <div className="text-[#173f63] font-sans font-extrabold text-3xl ml-22">PADS AND TRAYS</div>
-        <hr className="my-4 ml-5 border-t border-[#173f63] w-260" />
-        </div>
-        
-        <div className="flex flex-row ml-50 mt-10">
-        {/* 9th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/foam_pad.jpg" height={100} width={100} alt="ci"/>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Foam Tray
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Foam Pad</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 11th Item - Bubble Sheet */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/bubble_sheet.jpg"
+                height={100}
+                width={100}
+                alt="Bubble Sheet"
+                className="object-contain"
+              />
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Bubble Sheet
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
+
+          {/* 12th Item - Plastic Buckle */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/plastic_buckle.jpg"
+                height={110}
+                width={110}
+                alt="Plastic Buckle"
+                className="object-contain"
+              />
+            </div>
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Plastic Buckle
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
+            </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
         </div>
 
-        {/* 10th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22 mt-5 mb-3">
-             {/* Item Image */}   
-            <Image src="/foam_tray.jpg" height={110} width={110} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Foam Tray</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+        {/* PLASTICS SECTION */}
+        <div className="flex flex-col sm:flex-row items-center mt-16 w-full max-w-7xl">
+          <div className="text-[#173f63] font-sans font-extrabold text-2xl sm:text-3xl mb-4 sm:mb-0 sm:mr-5">
+            PLASTICS
+          </div>
+          <hr className="border-t border-[#173f63] w-full max-w-[290px] sm:max-w-none sm:flex-1" />
         </div>
 
-        {/* 11th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22 mt-2">
-             {/* Item Image */}   
-            <Image src="/bubble_sheet.jpg" height={100} width={100} alt="ci"/>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-10 w-full max-w-7xl">
+          {/* 13th Item - Plastic Box Blue */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/plastic_box_blue.webp"
+                height={120}
+                width={120}
+                alt="Plastic Box Bin - Blue"
+                className="object-contain"
+              />
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Bubble Sheet</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Plastic Box Bin - Blue
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
 
-        {/* 12th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22 mt-4 mb-2">
-             {/* Item Image */}   
-            <Image src="/plastic_buckle.jpg" height={110} width={110} alt="ci"/>
+          {/* 14th Item - Plastic Box Red */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/plastic_box_red.webp"
+                height={100}
+                width={100}
+                alt="Plastic Box Bin - Red"
+                className="object-contain"
+              />
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Plastic Buckle</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Plastic Box Bin - Red
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
-            </div>
-        
-            <div className="flex flex-row">
-        <div className="text-[#173f63] font-sans font-extrabold text-3xl ml-22">PLASTICS</div>
-        <hr className="my-4 ml-5 border-t border-[#173f63] w-290" />
-        </div>
-        <div className="flex flex-row ml-50 mt-10">
-        {/* 13th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22 mt-3">
-             {/* Item Image */}   
-            <Image src="/plastic_box_blue.webp" height={120} width={120} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Plastic Box Bin - Blue</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
 
-        {/* 14th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/plastic_box_red.webp" height={100} width={100} alt="ci"/>
+          {/* 15th Item - Plastic Box Yellow */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/plastic_box_yellow.webp"
+                height={100}
+                width={100}
+                alt="Plastic Box Bin - Yellow"
+                className="object-contain"
+              />
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Plastic Box Bin - Red</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              Plastic Box Bin - Yellow
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
 
-        {/* 13th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/plastic_box_yellow.webp" height={100} width={100} alt="ci"/>
+          {/* 16th Item - PE Plastic Bag */}
+          <div className="h-auto w-full bg-white opacity-90 rounded shadow-md p-5">
+            <div className="flex justify-center">
+              <Image
+                src="/pe_plastic_bag.webp"
+                height={100}
+                width={100}
+                alt="PE Plastic Bag"
+                className="object-contain"
+              />
             </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">Plastic Box Bin - Yellow</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
+            <h1 className="text-center font-sans font-semibold text-neutral-500 mt-4">
+              PE Plastic Bag
+            </h1>
+            <hr className="my-4 border-t border-gray-300" />
+            <div className="text-sm">
+              Lorem ipsum dolor sit amet consectetur adipisicing elit.
+              Voluptatum necessitatibus nisi quos magnam minima numquam
+              aspernatur pariatur quibusdam natus? Delectus dolorem error nobis
+              ut perspiciatis culpa qui quo, eveniet similique.
             </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
+            <hr className="my-4 border-t border-gray-300" />
+          </div>
         </div>
-
-        {/* 14th Consumable Item */}
-        <div className="h-100 w-70 mr-4 mb-5 bg-white opacity-90 rounded">
-        <div className="ml-22">
-             {/* Item Image */}   
-            <Image src="/pe_plastic_bag.webp" height={100} width={100} alt="ci"/>
-            </div>
-            {/* Item Name  */}
-            <h1 className="text-center font-sans font-semibold text-neutral-500">PE Plastic Bag</h1>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-            {/* Item Description  */}
-            <div className="text-sm pl-5 pr-5">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus nisi quos magnam minima numquam aspernatur pariatur quibusdam natus? Delectus dolorem error nobis ut perspiciatis culpa qui quo, eveniet similique.
-            </div>
-            {/* Horizontal Line  */}
-            <hr className="my-4 ml-5 border-t border-gray-300 w-60" />
-        </div>
-            </div>
-        </div>
+      </div>
     </div>
   );
 };
