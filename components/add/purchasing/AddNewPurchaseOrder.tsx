@@ -126,45 +126,45 @@ export default function AddPurchaseOrder() {
   };
 
   async function uploadToCloudinary(file: File) {
-  try {
-    // Use server-side API route instead of direct Cloudinary upload
-    const formData = new FormData();
-    formData.append("file", file);
+    try {
+      // Use server-side API route instead of direct Cloudinary upload
+      const formData = new FormData();
+      formData.append("file", file);
 
-    const res = await fetch("/api/cloudinary/upload", {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch("/api/cloudinary/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    if (!res.ok) {
-      let errorMessage = "Cloudinary upload failed";
-      try {
-        const errorJson = await res.json();
-        errorMessage = errorJson.error || errorMessage;
-      } catch {
-        // If response is not JSON, try to get text
-        const errorText = await res.text().catch(() => "");
-        if (errorText) {
-          errorMessage = errorText;
+      if (!res.ok) {
+        let errorMessage = "Cloudinary upload failed";
+        try {
+          const errorJson = await res.json();
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          const errorText = await res.text().catch(() => "");
+          if (errorText) {
+            errorMessage = errorText;
+          }
         }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    const json = await res.json();
+      const json = await res.json();
 
-    if (!json.url) {
-      throw new Error("Cloudinary upload succeeded but no URL was returned");
-    }
+      if (!json.url) {
+        throw new Error("Cloudinary upload succeeded but no URL was returned");
+      }
 
-    return json.url as string;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
+      return json.url as string;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error("Failed to upload image to Cloudinary");
     }
-    throw new Error("Failed to upload image to Cloudinary");
   }
-}
 
   /**
    * Main OCR processing function for Purchase Orders
@@ -736,12 +736,12 @@ export default function AddPurchaseOrder() {
   return (
     <main className="bg-[#ffedce] min-h-screen w-full">
       <Header />
-      <section className="p-10 max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#173f63] mb-6">
+      <section className="p-5  sm:p-6 lg:p-10 max-w-5xl mx-auto">
+        <h1 className="text-xl mt-30 md:mt-20 sm:text-2xl lg:text-3xl font-bold text-[#173f63] mb-4 sm:mb-6">
           Create Purchase Order
         </h1>
 
-        <form className="bg-white p-6 rounded shadow grid grid-cols-2 gap-4">
+        <form className="bg-white p-3 sm:p-4 lg:p-6 rounded shadow grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {/* Supplier Info */}
           <div>
             <AutoComplete
@@ -752,15 +752,15 @@ export default function AddPurchaseOrder() {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               PO Number
             </label>
-            <div>{poNumber}</div>
+            <div className="text-sm sm:text-base">{poNumber}</div>
           </div>
 
-          {/* ✅ TRULY DISABLED AND READ-ONLY ADDRESS/CONTACT/TIN */}
+          {/* Address */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               Address
             </label>
             <input
@@ -768,13 +768,14 @@ export default function AddPurchaseOrder() {
               onChange={(e) => setSupplierAddress(e.target.value)}
               disabled={!supplier}
               readOnly
-              className="border border-[#d2bda7] p-2 rounded w-full disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
               placeholder={!supplier ? "Select supplier first" : ""}
             />
           </div>
 
+          {/* Contact */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               Contact
             </label>
             <input
@@ -782,13 +783,14 @@ export default function AddPurchaseOrder() {
               onChange={(e) => setSupplierContact(e.target.value)}
               disabled={!supplier}
               readOnly
-              className="border border-[#d2bda7] p-2 rounded w-full disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
               placeholder={!supplier ? "Select supplier first" : ""}
             />
           </div>
 
+          {/* TIN */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               TIN
             </label>
             <input
@@ -796,13 +798,14 @@ export default function AddPurchaseOrder() {
               onChange={(e) => setSupplierTIN(e.target.value)}
               disabled={!supplier}
               readOnly
-              className="border border-[#d2bda7] p-2 rounded w-full disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
               placeholder={!supplier ? "Select supplier first" : ""}
             />
           </div>
 
+          {/* Terms */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               Terms
             </label>
             <input
@@ -810,16 +813,17 @@ export default function AddPurchaseOrder() {
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               placeholder="e.g., 30 days"
-              className="border border-[#d2bda7] p-2 rounded w-full"
+              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm"
             />
           </div>
 
+          {/* Delivery Mode */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               Delivery Mode
             </label>
             <Select onValueChange={setDeliveryMode} value={deliveryMode}>
-              <SelectTrigger className="border border-[#d2bda7] p-2 w-full rounded cursor-pointer">
+              <SelectTrigger className="border border-[#d2bda7] p-2 w-full rounded cursor-pointer text-xs sm:text-sm">
                 <SelectValue placeholder="Select a mode" />
               </SelectTrigger>
               <SelectContent>
@@ -834,15 +838,16 @@ export default function AddPurchaseOrder() {
               <input
                 type="text"
                 placeholder="Please specify other delivery mode"
-                className="w-full border rounded-lg px-4 py-2 hover:bg-gray-100 mt-2"
+                className="w-full border rounded-lg px-3 py-2 hover:bg-gray-100 mt-2 text-xs sm:text-sm"
                 value={otherDeliveryMode}
                 onChange={(e) => setOtherDeliveryMode(e.target.value)}
               />
             )}
           </div>
 
+          {/* Project Name */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               Project Name
             </label>
             <input
@@ -850,12 +855,13 @@ export default function AddPurchaseOrder() {
               value={projectName}
               placeholder="Enter project name..."
               onChange={(e) => setProjectName(e.target.value)}
-              className="border border-[#d2bda7] p-2 rounded w-full"
+              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm"
             />
           </div>
 
+          {/* Remarks */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               Remarks
             </label>
             <input
@@ -863,32 +869,35 @@ export default function AddPurchaseOrder() {
               value={remarks}
               placeholder="Enter remarks..."
               onChange={(e) => setRemarks(e.target.value)}
-              className="border border-[#d2bda7] p-2 rounded w-full"
+              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm"
             />
           </div>
 
+          {/* Prepared By */}
           <div>
-            <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
               Prepared by:
             </label>
-            <span className="capitalize">{preparedBy}</span>
+            <span className="capitalize text-xs sm:text-sm">{preparedBy}</span>
           </div>
 
           {/* Items Section with OCR */}
-          <div className="col-span-2 border-t pt-4 mt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-[#173f63]">Add Items</h2>
+          <div className="col-span-1 sm:col-span-2 border-t pt-3 sm:pt-4 mt-3 sm:mt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2 sm:gap-0">
+              <h2 className="text-base sm:text-lg font-bold text-[#173f63]">
+                Add Items
+              </h2>
               <button
                 type="button"
                 onClick={handleScanClick}
                 disabled={isScanning}
-                className="bg-[#0b74ff] px-3 py-2 text-sm rounded text-white hover:bg-[#0966d6] flex items-center gap-2 disabled:opacity-50"
+                className="bg-[#0b74ff] px-3 py-2 text-xs sm:text-sm rounded text-white hover:bg-[#0966d6] flex items-center gap-2 disabled:opacity-50 w-full sm:w-auto justify-center"
               >
                 {isScanning ? "Scanning..." : "Scan via OCR"}
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {inputRows.map((row) => {
                 const availableSizes = getAvailableSizes(row.combinations);
                 const availableVariants = getAvailableVariants(
@@ -904,7 +913,7 @@ export default function AddPurchaseOrder() {
                 return (
                   <div
                     key={row.id}
-                    className="grid grid-cols-7 gap-2 items-end border p-3 rounded bg-gray-50"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 items-end border p-2 sm:p-3 rounded bg-gray-50"
                   >
                     <AutoComplete
                       label="Item"
@@ -962,7 +971,7 @@ export default function AddPurchaseOrder() {
                       }
                     />
                     <div>
-                      <label className="block text-sm font-medium">
+                      <label className="block text-xs sm:text-sm font-medium">
                         Quantity
                       </label>
                       <input
@@ -978,11 +987,11 @@ export default function AddPurchaseOrder() {
                             )
                           )
                         }
-                        className="w-full border border-[#d2bda7] p-2 rounded"
+                        className="w-full border border-[#d2bda7] p-2 rounded text-xs sm:text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium">
+                      <label className="block text-xs sm:text-sm font-medium">
                         Unit Price
                       </label>
                       <input
@@ -998,26 +1007,26 @@ export default function AddPurchaseOrder() {
                             )
                           )
                         }
-                        className="w-full border border-[#d2bda7] p-2 rounded"
+                        className="w-full border border-[#d2bda7] p-2 rounded text-xs sm:text-sm"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 col-span-1 sm:col-span-2 lg:col-span-1">
                       <button
                         type="button"
                         onClick={handleAddRow}
-                        className="p-2 bg-green-600 text-white rounded hover:bg-green-700"
+                        className="p-2 bg-green-600 text-white rounded hover:bg-green-700 flex-1 sm:flex-none"
                         title="Add Row"
                       >
-                        <Plus size={20} />
+                        <Plus size={18} className="sm:w-5 sm:h-5 mx-auto" />
                       </button>
                       {inputRows.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveRow(row.id)}
-                          className="p-2 bg-red-600 text-white rounded hover:bg-red-700"
+                          className="p-2 bg-red-600 text-white rounded hover:bg-red-700 flex-1 sm:flex-none"
                           title="Remove Row"
                         >
-                          <Trash2 size={20} />
+                          <Trash2 size={18} className="sm:w-5 sm:h-5 mx-auto" />
                         </button>
                       )}
                     </div>
@@ -1026,21 +1035,24 @@ export default function AddPurchaseOrder() {
               })}
             </div>
 
-            {/* ✅ NEW: Display duplicate errors inline */}
+            {/* Duplicate errors inline */}
             {duplicateErrors.length > 0 && (
-              <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+              <div className="my-3 sm:my-4 bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 rounded">
                 <div className="flex items-start gap-2">
                   <AlertTriangle
                     className="text-red-600 mt-0.5 flex-shrink-0"
-                    size={20}
+                    size={18}
                   />
                   <div className="flex-1">
-                    <h4 className="text-sm font-bold text-red-800 mb-2">
+                    <h4 className="text-xs sm:text-sm font-bold text-red-800 mb-2">
                       ⚠️ Duplicate Items Detected
                     </h4>
                     <ul className="space-y-1">
                       {duplicateErrors.map((error, idx) => (
-                        <li key={idx} className="text-sm text-red-700">
+                        <li
+                          key={idx}
+                          className="text-xs sm:text-sm text-red-700"
+                        >
                           {error}
                         </li>
                       ))}
@@ -1053,7 +1065,7 @@ export default function AddPurchaseOrder() {
             <button
               type="button"
               onClick={handleAddAllRows}
-              className="mt-4 bg-[#674d33] px-6 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium"
+              className="mt-3 sm:mt-4 bg-[#674d33] px-4 sm:px-6 py-2 text-xs sm:text-sm rounded hover:bg-[#d2bda7] text-white font-medium w-full sm:w-auto"
             >
               Add Items to List
             </button>
@@ -1069,49 +1081,51 @@ export default function AddPurchaseOrder() {
 
             {/* Final items table */}
             {items.length > 0 && (
-              <div className="mt-4">
-                <table className="w-full border text-sm">
+              <div className="mt-3 sm:mt-4 overflow-x-auto">
+                <table className="w-full border text-xs sm:text-sm">
                   <thead className="bg-[#f5e6d3]">
                     <tr>
-                      <th className="border px-2 py-1">Item</th>
-                      <th className="border px-2 py-1">Size</th>
-                      <th className="border px-2 py-1">Variant</th>
-                      <th className="border px-2 py-1">Unit</th>
-                      <th className="border px-2 py-1">Qty</th>
-                      <th className="border px-2 py-1">Unit Price</th>
-                      <th className="border px-2 py-1">Total</th>
-                      <th className="border px-2 py-1">Remove</th>
+                      <th className="border px-1 sm:px-2 py-1">Item</th>
+                      <th className="border px-1 sm:px-2 py-1">Size</th>
+                      <th className="border px-1 sm:px-2 py-1">Variant</th>
+                      <th className="border px-1 sm:px-2 py-1">Unit</th>
+                      <th className="border px-1 sm:px-2 py-1">Qty</th>
+                      <th className="border px-1 sm:px-2 py-1">Unit Price</th>
+                      <th className="border px-1 sm:px-2 py-1">Total</th>
+                      <th className="border px-1 sm:px-2 py-1">Remove</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((i, idx) => (
                       <tr key={idx}>
-                        <td className="border px-2 py-1">{i.itemName}</td>
-                        <td className="border px-2 py-1">
+                        <td className="border px-1 sm:px-2 py-1">
+                          {i.itemName}
+                        </td>
+                        <td className="border px-1 sm:px-2 py-1">
                           {i.sizeName || "-"}
                         </td>
-                        <td className="border px-2 py-1">
+                        <td className="border px-1 sm:px-2 py-1">
                           {i.variantName || "-"}
                         </td>
-                        <td className="border px-2 py-1">
+                        <td className="border px-1 sm:px-2 py-1">
                           {i.unitName || "-"}
                         </td>
-                        <td className="border px-2 py-1 text-center">
+                        <td className="border px-1 sm:px-2 py-1 text-center">
                           {i.quantity}
                         </td>
-                        <td className="border px-2 py-1 text-right">
+                        <td className="border px-1 sm:px-2 py-1 text-right">
                           {i.unitPrice.toFixed(2)}
                         </td>
-                        <td className="border px-2 py-1 text-right">
+                        <td className="border px-1 sm:px-2 py-1 text-right">
                           {i.totalPrice.toFixed(2)}
                         </td>
-                        <td className="border px-2 py-1 text-center">
+                        <td className="border px-1 sm:px-2 py-1 text-center">
                           <button
                             type="button"
                             onClick={() =>
                               setItems(items.filter((_, x) => x !== idx))
                             }
-                            className="text-red-500 hover:underline text-xs"
+                            className="text-red-500 hover:underline text-[10px] sm:text-xs"
                           >
                             Remove
                           </button>
@@ -1121,25 +1135,26 @@ export default function AddPurchaseOrder() {
                   </tbody>
                 </table>
 
-                <div className="text-right font-semibold mt-2">
+                <div className="text-right font-semibold mt-2 text-xs sm:text-sm lg:text-base">
                   Grand Total: ₱{totalPOAmount.toFixed(2)}
                 </div>
               </div>
             )}
           </div>
 
-          <div className="col-span-2 mt-6 flex justify-end gap-4">
+          {/* Action Buttons */}
+          <div className="col-span-1 sm:col-span-2 mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-4">
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 text-xs sm:text-sm w-full sm:w-auto"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 text-xs sm:text-sm w-full sm:w-auto"
             >
               Save PO
             </button>
