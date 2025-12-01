@@ -79,6 +79,11 @@ export const SideBarPurchasing = ({className, onNavigate}: Props) => {
                     href="/purchasing/p_supplier_list"
                     iconSrc="/drawer-alt.png"
             />
+            <SidebarItem
+                    label="Physical Inventory"
+                    href="/purchasing/physical_inventory"
+                    iconSrc="/drawer-alt.png"
+            />
             </div>
             </div>
     );
