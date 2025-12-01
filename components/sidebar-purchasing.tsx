@@ -87,17 +87,13 @@ export const SideBarPurchasing = ({ className, onNavigate }: Props) => {
           iconSrc="/drawer-alt.png"
           onClick={onNavigate}
         />
+        <SidebarItem
+          label="Physical Inventory"
+          href="/purchasing/physical_inventory"
+          iconSrc="/drawer-alt.png"
+          onClick={onNavigate}
+        />
       </div>
     </aside>
   );
-};
-            <SidebarItem
-                    label="Physical Inventory"
-                    href="/purchasing/physical_inventory"
-                    iconSrc="/drawer-alt.png"
-                    onClick={onNavigate}
-            />
-            </div>
-            </div>
-    );
 };
