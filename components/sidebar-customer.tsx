@@ -1,71 +1,106 @@
 "use client";
-import { cn } from "@/lib/utils";
+
 import Image from "next/image";
 import Link from "next/link";
-import { SidebarItem } from "./sidebar-items";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 type Props = {
   className?: string;
 };
 
-export const SideBarCustomer = ({ className }: Props) => {
-  // Removed isPandSOpen and isMyOrdersOpen since they were unused
+type NavItem = {
+  label: string;
+  href: string;
+  iconSrc: string;
+};
 
-  const closeAllDropdowns = () => {
-    // Currently nothing to close — left here in case you add dropdowns later
-  };
+const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/customer/cus_dashboard", iconSrc: "/board-chart-svgrepo-com.svg" },
+  { label: "Quotation Request", href: "/customer/quotation_request", iconSrc: "/document-add-svgrepo-com.svg" },
+  { label: "My Request", href: "/customer/cus_myrequest", iconSrc: "/document-add-svgrepo-com.svg" },
+  { label: "My Profile", href: "/customer/cus_profile", iconSrc: "/profile-round-1342-svgrepo-com.svg" },
+];
+
+const SidebarItem = ({ label, href, iconSrc }: NavItem) => {
+  const pathname = usePathname();
+  const active = pathname?.startsWith(href);
 
   return (
-    <div
+    <Link
+      href={href}
       className={cn(
-        "flex h-full w-[250px] fixed left-0 top-0 gap-y-2 px-4 flex-col shadow-2xl",
+        "flex items-center gap-3 rounded-xl px-3 py-2 transition",
+        active ? "text-[#4f2d12]" : "text-[#7c4722] hover:text-[#4f2d12]"
+      )}
+    >
+      <Image
+        src={iconSrc}
+        alt={label}
+        width={20}
+        height={20}
+        className={cn(
+          "transition",
+          active ? "brightness-0 invert opacity-90" : "opacity-80 hover:opacity-100"
+        )}
+      />
+      <span className="text-sm font-medium">{label}</span>
+    </Link>
+  );
+};
+
+export const SideBarCustomer = ({ className }: Props) => {
+  const pathname = usePathname();
+
+  return (
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 flex h-full w-[250px] flex-col border-r border-[#f7d9b9] bg-gradient-to-b from-[#fff7ec] via-[#ffe9cd] to-[#fddfbd] text-[#4f2d12] shadow-2xl",
         className
       )}
     >
-      <Link href="/customer/cus_dashboard">
-        <div className="pt-10 pl-5 pb-1 flex items-center justify-center">
-          <Image src="/cticlogo.webp" height={70} width={70} alt="CTIC" />
+      <Link
+        href="/customer/cus_dashboard"
+        className="flex flex-col items-center gap-2 px-6 pt-10 pb-6"
+      >
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-[#f6c66d]/40 blur-3xl" />
+          <Image
+            src="/cticlogo.webp"
+            height={74}
+            width={74}
+            alt="CTIC"
+            className="relative drop-shadow"
+          />
         </div>
+        <p className="text-xs uppercase tracking-[0.45em] text-[#9b5a1f]">
+          CTIC Customer
+        </p>
       </Link>
 
-      <div className="flex flex-col gap-y-1 flex-1">
-        <SidebarItem
-          label="Dashboard"
-          href="/customer/cus_dashboard"
-          iconSrc="/board-chart-svgrepo-com.svg"
-          onClick={closeAllDropdowns}
-        />
-        <SidebarItem
-          label="Quotation Request"
-          href="/customer/quotation_request"
-          iconSrc="/document-add-svgrepo-com.svg"
-          onClick={closeAllDropdowns}
-        />
-        <SidebarItem
-          label="My Request"
-          href="/customer/cus_myrequest"
-          iconSrc="/document-add-svgrepo-com.svg"
-          onClick={closeAllDropdowns}
-        />
-        <SidebarItem
-          label="My Profile"
-          href="/customer/cus_profile"
-          iconSrc="/profile-round-1342-svgrepo-com.svg"
-          onClick={closeAllDropdowns}
-        />
-        {/* <SidebarItem
-          label="Order History"
-          href="/customer/cus_orderhistory"
-          iconSrc="/document-add-svgrepo-com.svg"
-          onClick={closeAllDropdowns}
-        />
-        <SidebarItem
-          label="Services"
-          href="/customer/p&s/non-consumables"
-          iconSrc="/document-add-svgrepo-com.svg"
-          onClick={closeAllDropdowns}
-        /> */}
+      <nav className="flex-1 space-y-1 px-3">
+        {navItems.map((item: NavItem) => {
+          const active = pathname?.startsWith(item.href);
+
+          return (
+            <div
+              key={item.href}
+              className={cn(
+                "rounded-2xl px-2 py-1 transition hover:bg-white/20 hover:shadow-md",
+                active && "bg-white/40 shadow-inner shadow-[#f4d1a5]"
+              )}
+            >
+              <SidebarItem {...item} />
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="m-4 rounded-2xl border border-[#f7d9b9] bg-white/20 p-4 text-xs text-[#6f3e1b] shadow-inner">
+        <p className="text-sm font-semibold text-[#4f2d12]">Need help?</p>
+        <p className="mt-1">https://inventory-service-omega.vercel.app/</p>
+        <p className="text-sm font-semibold text-[#4f2d12]">(049) 252-8988</p>
       </div>
-    </div>
+    </aside>
   );
 };

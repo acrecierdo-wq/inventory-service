@@ -1,124 +1,120 @@
-// app/customer/cus_profile/page.tsx
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation"; // ✅ import router
+import { useRouter } from "next/navigation";
 import { CustomerHeader } from "@/components/header-customer";
 import { toast } from "sonner";
-import { Mail, User, Phone, MapPin, Building2 } from "lucide-react";
+import {
+  Mail,
+  User,
+  Phone,
+  MapPin,
+  Building2,
+  Hash,
+  ShieldCheck,
+  Info,
+} from "lucide-react";
 
-export default function CustomerProfile() {
+type Profile = {
+  companyName: string;
+  tinNumber: string;
+  contactPerson: string;
+  role: string;
+  email: string;
+  phone: string;
+  address: string;
+  clientCode: string;
+};
+
+const initialProfile: Profile = {
+  companyName: "",
+  tinNumber: "",
+  contactPerson: "",
+  role: "",
+  email: "",
+  phone: "",
+  address: "",
+  clientCode: "",
+};
+
+const CustomerProfile = () => {
   const { user } = useUser();
-  const router = useRouter(); // ✅ initialize router
+  const router = useRouter();
 
-  const [profile, setProfile] = useState({
-    companyName: "",
-    tinNumber: "",
-    contactPerson: "",
-    role: "",
-    email: "",
-    phone: "",
-    address: "",
-    clientCode: "",
-  });
-
-  const [originalProfile, setOriginalProfile] = useState(profile);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [profile, setProfile] = useState<Profile>(initialProfile);
+  const [originalProfile, setOriginalProfile] = useState<Profile>(initialProfile);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(true);
 
-  // Load profile from Clerk
   useEffect(() => {
     if (user) {
-      const newProfile = {
-        companyName: "",
+      const newProfile: Profile = {
+        ...initialProfile,
         contactPerson: user.fullName || "",
         email: user.primaryEmailAddress?.emailAddress || "",
-        role: "",
-        phone: "",
-        address: "",
-        tinNumber: "",
-        clientCode: "",
       };
       setProfile(newProfile);
       setOriginalProfile(newProfile);
     }
   }, [user]);
 
-  // Fetch existing profile from DB
   useEffect(() => {
-  async function fetchProfile() {
-    try {
-      const res = await fetch("/api/customer");
-      if (!res.ok) return;
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("/api/customer");
+        if (!res.ok) return;
 
-      const result = await res.json();
-
-      if (result.status === "ok" && result.data) {
-        setProfile(result.data);          // fill entire profile
-        setOriginalProfile(result.data);  // keep original for cancel
-        setIsFirstTime(false);
-      } else {
-        setIsFirstTime(true);
+        const result = await res.json();
+        if (result.status === "ok" && result.data) {
+          setProfile(result.data);
+          setOriginalProfile(result.data);
+          setIsFirstTime(false);
+        } else {
+          setIsFirstTime(true);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
       }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    }
-  }
-  fetchProfile();
-}, []);
+    };
 
+    fetchProfile();
+  }, []);
 
   const validate = () => {
-    const newErrors: { [key: string]: string } = {};
+    const newErrors: Record<string, string> = {};
 
-    if (!profile.companyName || profile.companyName.trim().length < 2) {
-      newErrors.companyName = "Company name is required.";
-    }
-
-    if (!profile.tinNumber || profile.tinNumber.trim().length < 2) {
-      newErrors.tinNumber = "TIN number is required.";
-    }
-
-    if (!profile.contactPerson || profile.contactPerson.trim().length < 2) {
-      newErrors.contactPerson = "Contact person is required.";
-    }
-
-    if (!profile.role || profile.role.trim().length < 2) {
-      newErrors.role = "Contact person's role is required.";
-    }
+    if (!profile.companyName.trim()) newErrors.companyName = "Required field.";
+    if (!profile.tinNumber.trim()) newErrors.tinNumber = "Required field.";
+    if (!profile.contactPerson.trim())
+      newErrors.contactPerson = "Required field.";
+    if (!profile.role.trim()) newErrors.role = "Required field.";
 
     if (!profile.phone) {
       newErrors.phone = "Phone number is required.";
     } else if (!/^09\d{9}$/.test(profile.phone) && !/^63\d{10}$/.test(profile.phone)) {
-      newErrors.phone =
-        "Phone number must be 11 digits (e.g., 09XXXXXXXXX or 63XXXXXXXXXX).";
+      newErrors.phone = "Format must be 09XXXXXXXXX or 63XXXXXXXXXX.";
     }
 
-    if (!profile.address || profile.address.length < 5) {
-      newErrors.address = "Address must be at least 5 characters.";
-    }
-
-    if (!profile.clientCode || profile.clientCode.length < 2) {
-      newErrors.clientCode = "Client code is required (Min. of 2 characters).";
-    } else if (!profile.clientCode || profile.clientCode.length > 5) {
-      newErrors.clientCode = "Client code is required (Max. of 5 characters).";
+    if (!profile.address.trim()) newErrors.address = "Address is required.";
+    if (!profile.clientCode.trim()) {
+      newErrors.clientCode = "Client code required.";
+    } else if (profile.clientCode.length > 5) {
+      newErrors.clientCode = "Max 5 characters.";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const editable = isEditing || isFirstTime;
+
   const handlePhoneChange = (value: string) => {
     let sanitized = value.replace(/\D/g, "");
-    if (sanitized.startsWith("63")) {
-      if (sanitized.length > 12) sanitized = sanitized.slice(0, 12);
-    } else {
-      if (sanitized.length > 11) sanitized = sanitized.slice(0, 11);
-    }
+    if (sanitized.startsWith("63")) sanitized = sanitized.slice(0, 12);
+    else sanitized = sanitized.slice(0, 11);
     setProfile((prev) => ({ ...prev, phone: sanitized }));
   };
 
@@ -134,19 +130,17 @@ export default function CustomerProfile() {
       });
 
       if (res.ok) {
-        toast.success("Profile updated!");
+        toast.success("Profile saved");
         setOriginalProfile(profile);
         setIsEditing(false);
-        setIsFirstTime(false); // After saving, no longer first time
-
-        // ✅ Redirect to dashboard after save
+        setIsFirstTime(false);
         router.push("/customer/cus_dashboard");
       } else {
-        toast.error("❌ Failed to save profile.");
+        toast.error("Failed to save profile.");
       }
     } catch (err) {
       console.error(err);
-      toast.error("❌ Something went wrong.");
+      toast.error("Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -158,213 +152,192 @@ export default function CustomerProfile() {
     setIsEditing(false);
   };
 
+  const statusChip = useMemo(() => {
+    if (isFirstTime) return { label: "Setup required", color: "bg-[#ffca99]/60 text-[#7c3a00]" };
+    if (isEditing) return { label: "Editing", color: "bg-[#fef3c7] text-[#92400e]" };
+    return { label: "Profile up to date", color: "bg-[#d1fae5] text-[#065f46]" };
+  }, [isFirstTime, isEditing]);
+
   return (
-    <main className="bg-[#ffedce] h-full">
+    <div className="min-h-screen bg-[#ffedce] text-[#4f2d12]">
       <CustomerHeader />
-      <section className="p-2">
-        <div className="p-8 bg-white shadow-xl rounded-2xl max-w-2xl mx-auto">
-        <h1 className="text-2xl font-extrabold mb-4 text-[#173f63] text-center">
-          Customer Profile
-        </h1>
 
-        <div className="space-y-6">
-          {/* Company Name */}
-          <div className="relative">
-            <Building2 className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={profile.companyName}
-              onChange={(e) => setProfile({ ...profile, companyName: e.target.value })}
-              placeholder="Enter company name"
-              className={`w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-2 focus:ring-[#173f63] focus:outline-none`}
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Company Name
-            </label>
-            {errors.companyName && (
-              <p className="text-red-500 text-sm mt-1">{errors.companyName}</p>
-            )}
-          </div>
-          {/* TIN Number */}
-          <div className="relative">
-            <Building2 className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={profile.tinNumber}
-              onChange={(e) => setProfile({ ...profile, tinNumber: e.target.value })}
-              placeholder="Enter TIN number"
-              className={`w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-2 focus:ring-[#173f63] focus:outline-none`}
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              TIN Number
-            </label>
-            {errors.tinNumber && (
-              <p className="text-red-500 text-sm mt-1">{errors.tinNumber}</p>
-            )}
+      <main className="px-4 py-6 lg:px-8">
+        <section className="max-w-4xl mx-auto space-y-6">
+          {/* Header card */}
+          <div className="rounded-[30px] border border-white/50 bg-gradient-to-r from-[#fff4dd] to-[#ffe0c2] p-6 shadow-xl">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.4em] text-[#be7424]">
+                  Profile
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold">
+                  Account & company information
+                </h1>
+                <p className="mt-2 text-[#7b4c23] text-sm">
+                  Keep your profile complete to ensure faster processing of quotation
+                  requests and order schedules.
+                </p>
+              </div>
+              <div className={`inline-flex items-center rounded-full px-4 py-1 text-xs font-semibold ${statusChip.color}`}>
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                {statusChip.label}
+              </div>
+            </div>
           </div>
 
-          {/* Full Name */}
-          <div className="relative">
-            <User className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={profile.contactPerson}
-              readOnly={!!user?.fullName}
-              onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })}
-              placeholder="Enter your full name"
-              className={`w-full pl-10 pr-3 py-3 border rounded-lg ${
-                user?.fullName
-                  ? "bg-gray-100 cursor-not-allowed"
-                  : "focus:ring-2 focus:ring-[#173f63] focus:outline-none"
-              }`}
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Contact Person
-            </label>
-            {errors.contactPerson && (
-              <p className="text-red-500 text-sm mt-1">{errors.contactPerson}</p>
-            )}
-          </div>
+          {/* Info + form */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Sidebar */}
+            <div className="rounded-3xl bg-white border border-white/70 p-5 shadow-md space-y-4">
+              <div className="rounded-2xl bg-[#fff7ed] border border-[#ffe2c0] p-4">
+                <h3 className="text-lg font-semibold text-[#7b4c23]">Account details</h3>
+                <p className="mt-2 text-sm text-[#a26b37]">
+                  Logged in as <strong>{profile.contactPerson || "Customer"}</strong>
+                </p>
+                <p className="text-sm text-[#a26b37]">{profile.email}</p>
+              </div>
+              <div className="rounded-2xl bg-[#fff7ed] border border-[#ffe2c0] p-4">
+                <h3 className="text-lg font-semibold text-[#7b4c23]">Need help?</h3>
+                <p className="mt-2 text-sm text-[#a26b37]">
+                  Call or message CTIC support at{" "}
+                  <span className="font-semibold">central@canlubangtechno.com.ph</span>
+                  <br />or dial (049) 252-8988.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-[#fff7ed] border border-[#ffe2c0] p-4 flex items-start gap-3 text-sm text-[#a26b37]">
+                <Info className="h-5 w-5 text-[#e48a2d]" />
+                <p>
+                  Your client code helps our sales team quickly identify your account during
+                  quotation and purchase order processing.
+                </p>
+              </div>
+            </div>
 
-          {/* Role */}
-          <div className="relative">
-            <User className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={profile.role}
-              onChange={(e) => setProfile({ ...profile, role: e.target.value })}
-              placeholder="Enter your company role"
-              className={`w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-2 focus:ring-[#173f63] focus:outline-none`}
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Role
-            </label>
-            {errors.role && (
-              <p className="text-red-500 text-sm mt-1">{errors.role}</p>
-            )}
-          </div>
+            {/* Form fields */}
+            <div className="lg:col-span-2 rounded-3xl bg-white border border-white/70 shadow-xl p-6 space-y-6">
+              {[
+                {
+                  label: "Company Name",
+                  value: profile.companyName,
+                  onChange: (val: string) => setProfile((prev) => ({ ...prev, companyName: val })),
+                  icon: Building2,
+                  key: "companyName",
+                },
+                {
+                  label: "TIN Number",
+                  value: profile.tinNumber,
+                  onChange: (val: string) => setProfile((prev) => ({ ...prev, tinNumber: val })),
+                  icon: Hash,
+                  key: "tinNumber",
+                },
+                {
+                  label: "Contact Person",
+                  value: profile.contactPerson,
+                  onChange: (val: string) => setProfile((prev) => ({ ...prev, contactPerson: val })),
+                  icon: User,
+                  key: "contactPerson",
+                  readOnly: !!user?.fullName,
+                },
+                {
+                  label: "Role",
+                  value: profile.role,
+                  onChange: (val: string) => setProfile((prev) => ({ ...prev, role: val })),
+                  icon: User,
+                  key: "role",
+                },
+                {
+                  label: "Email",
+                  value: profile.email,
+                  onChange: () => {},
+                  icon: Mail,
+                  key: "email",
+                  readOnly: true,
+                },
+                {
+                  label: "Phone",
+                  value: profile.phone,
+                  onChange: handlePhoneChange,
+                  icon: Phone,
+                  key: "phone",
+                },
+                {
+                  label: "Address",
+                  value: profile.address,
+                  onChange: (val: string) => setProfile((prev) => ({ ...prev, address: val })),
+                  icon: MapPin,
+                  key: "address",
+                },
+                {
+                  label: "Client Code",
+                  value: profile.clientCode,
+                  onChange: (val: string) =>
+                    setProfile((prev) => ({ ...prev, clientCode: val.toUpperCase() })),
+                  icon: Building2,
+                  key: "clientCode",
+                },
+              ].map(({ label, value, onChange, icon: Icon, key, readOnly }) => {
+                const isDisabled = key === "email" ? true : readOnly ? true : !editable;
+                return (
+                  <div key={key}>
+                    <label className="text-sm font-semibold text-[#825233]">{label}</label>
+                    <div className="relative mt-1">
+                      <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c79b69]" size={18} />
+                      <input
+                        value={value}
+                        readOnly={isDisabled}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder={`Enter ${label.toLowerCase()}`}
+                        className={`w-full rounded-2xl border px-10 py-3 text-sm ${
+                          isDisabled
+                            ? "bg-[#f5f2ed] cursor-not-allowed"
+                            : "bg-white focus:ring-2 focus:ring-[#d6a25b] focus:outline-none"
+                        } ${errors[key] ? "border-red-400" : "border-[#f1dfc6]"}`}
+                      />
+                    </div>
+                    {errors[key] && (
+                      <p className="mt-1 text-xs text-red-500">{errors[key]}</p>
+                    )}
+                  </div>
+                );
+              })}
 
-          {/* Email */}
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input
-              type="email"
-              value={profile.email}
-              readOnly
-              className="w-full pl-10 pr-3 py-3 border rounded-lg bg-gray-100 cursor-not-allowed"
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Email
-            </label>
-          </div>
-
-          {/* Phone */}
-          <div className="relative">
-            <Phone className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={profile.phone}
-              readOnly={!isEditing && !isFirstTime}
-              onChange={(e) => handlePhoneChange(e.target.value)}
-              placeholder="09XXXXXXXXX or 63XXXXXXXXXX"
-              className={`w-full pl-10 pr-3 py-3 border rounded-lg ${
-                isEditing || isFirstTime
-                  ? "focus:ring-2 focus:ring-[#173f63] focus:outline-none"
-                  : "bg-gray-100 cursor-not-allowed"
-              } ${errors.phone ? "border-red-500" : ""}`}
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Phone
-            </label>
-            {errors.phone && (
-              <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-            )}
-          </div>
-
-          {/* Address */}
-          <div className="relative">
-            <MapPin className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input
-              type="text"
-              value={profile.address}
-              readOnly={!isEditing && !isFirstTime}
-              onChange={(e) =>
-                setProfile({ ...profile, address: e.target.value })
-              }
-              placeholder="Enter your address"
-              className={`w-full pl-10 pr-3 py-3 border rounded-lg ${
-                isEditing || isFirstTime
-                  ? "focus:ring-2 focus:ring-[#173f63] focus:outline-none"
-                  : "bg-gray-100 cursor-not-allowed"
-              } ${errors.address ? "border-red-500" : ""}`}
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Address
-            </label>
-            {errors.address && (
-              <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-            )}
-          </div>
-          {/* Client Code (eg. SPX for shopee, LAZ for lazada)*/}
-          <div className="relative">
-            <Building2 className="absolute left-3 top-3 text-gray-400" size={20} />
-            <input 
-              type="text"
-              value={profile.clientCode || ""}
-              readOnly={!isEditing && !isFirstTime}
-              onChange={(e) => setProfile({ ...profile, clientCode: e.target.value.toUpperCase() })}
-              placeholder="Enter your client code (e.g. LV for Luis Vuitton)"
-              className={`w-full pl-10 pr-3 py-3 border rounded-lg ${
-                isEditing || isFirstTime
-                  ? "focus:ring-2 focus:ring-[#173f63] focus:outline-none}"
-                  : "bg-gray-100 cursor-not-allowed"
-              } ${errors.clientCode ? "border-red-500" : ""}`}
-            />
-            <label className="text-xs text-gray-500 absolute left-10 -top-2 bg-white px-1">
-              Client Code
-            </label>
-            {errors.clientCode && (
-              <p className="text-red-500 text-sm mt-1">{errors.clientCode}</p>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3">
-            {(!isEditing && !isFirstTime) && (
-              <button
-                onClick={() => setIsEditing(true)}
-                disabled={loading}
-                className="h-8 w-15 text-center gap-2 px-2 rounded-lg bg-[#173f63] hover:bg-[#0f2b45] text-white font-semibold shadow-md transition cursor-pointer"
-              >
-                Edit
-              </button>
-            )}
-            {(isEditing || isFirstTime) && (
-              <>
-                {!isFirstTime && (
+              {/* Actions */}
+              <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-[#f4e1c8]">
+                {!editable && (
                   <button
-                    onClick={handleCancel}
-                    disabled={loading}
-                    className="h-8 w-15 text-center gap-2 px-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold transition cursor-pointer"
+                    onClick={() => setIsEditing(true)}
+                    className="rounded-xl bg-[#173f63] px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-[#0f2b45]"
                   >
-                    Cancel
+                    Edit Profile
                   </button>
                 )}
-                <button
-                  onClick={handleSave}
-                  disabled={loading}
-                  className={`h-8 w-15 text-center gap-2 px-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md transition cursor-pointer ${
-                    loading ? "cursor-not-allowed bg-gray-200" : ""
-                  }`}
-                >
-                  {loading ? "Saving..." : "Save"}
-                </button>
-              </>
-            )}
+                {editable && (
+                  <>
+                    {!isFirstTime && (
+                      <button
+                        onClick={handleCancel}
+                        className="rounded-xl border border-[#d5b89c] px-5 py-2 text-sm font-semibold text-[#7b4c23] hover:bg-[#fff4e3]"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSave}
+                      disabled={loading}
+                      className="rounded-xl bg-[#1f8a4b] px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-[#166136] disabled:bg-[#9bc4ae]"
+                    >
+                      {loading ? "Saving..." : "Save Profile"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
   );
-}
+};
+
+export default CustomerProfile;

@@ -1,13 +1,7 @@
 // db/schema.ts
 
-import {
-  pgTable,
-  serial,
-  varchar,
-  integer,
-  boolean,
-  timestamp,
-} from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, boolean, timestamp, foreignKey } from "drizzle-orm/pg-core";
+
 
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -33,14 +27,10 @@ export const items = pgTable("items", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
 
-  categoryId: integer("category_id")
-    .notNull()
-    .references(() => categories.id), // FK to categories table
-  unitId: integer("unit_id")
-    .notNull()
-    .references(() => units.id), // FK to units table
-  variantId: integer("variant_id").references(() => variants.id), // color or type
-  sizeId: integer("size_id").references(() => sizes.id), // mm/cm/large/small
+  categoryId: integer("category_id").notNull().references(() => categories.id),   // FK to categories table
+  unitId: integer("unit_id").notNull().references(() => units.id),           // FK to units table
+  variantId: integer("variant_id").references(() => variants.id),   // color or type
+  sizeId: integer("size_id").references(() => sizes.id),         // mm/cm/large/small
 
   stock: integer("stock").notNull().default(0),
   reorderLevel: integer("reorder_level").notNull().default(30),
@@ -54,43 +44,31 @@ export const items = pgTable("items", {
 export const itemIssuances = pgTable("item_issuances", {
   id: serial("id").primaryKey(),
 
-  clientName: varchar("client_name", { length: 255 }).notNull(),
-  dispatcherName: varchar("dispatcher_name", { length: 255 }).notNull(),
+clientName: varchar("client_name", { length: 255 }).notNull(),
+dispatcherName: varchar("dispatcher_name", { length: 255 }).notNull(),
 
-  issuedAt: timestamp("issued_at"),
+issuedAt: timestamp("issued_at", ),
 
-  customerPoNumber: varchar("customer_po_number", { length: 100 }).notNull(),
-  prfNumber: varchar("prf_number", { length: 100 }).notNull(),
+customerPoNumber: varchar("customer_po_number", { length: 100 }).notNull(),
+prfNumber: varchar("prf_number", { length: 100 }).notNull(),
 
-  drNumber: varchar("dr_number", { length: 100 }),
-  saveAsDraft: boolean("save_as_draft").default(false),
+drNumber: varchar("dr_number", { length: 100 }),
+saveAsDraft: boolean("save_as_draft").default(false),
 
-  status: varchar("status", { enum: ["Issued", "Draft", "Archived"] })
-    .notNull()
-    .default("Draft"), // Issued, Draft, Archived
-  restocked: boolean("restocked").default(false),
+status: varchar("status", { enum: ["Issued", "Draft", "Archived"] }).notNull().default("Draft"), // Issued, Draft, Archived
+restocked: boolean("restocked").default(false),
 });
 
 export const itemIssuanceItems = pgTable("item_issuance_items", {
   id: serial("id").primaryKey(),
 
-  issuanceId: integer("issuance_id")
-    .notNull()
-    .references(() => itemIssuances.id, { onDelete: "cascade" }),
+  issuanceId: integer("issuance_id").notNull().references(() => itemIssuances.id, { onDelete: "cascade" }),
 
-  itemId: integer("item_id")
-    .notNull()
-    .references(() => items.id, { onDelete: "restrict" }),
+  itemId: integer("item_id").notNull().references(() => items.id, { onDelete: "restrict" }),
 
-  sizeId: integer("size_id").references(() => sizes.id, {
-    onDelete: "restrict",
-  }),
-  variantId: integer("variant_id").references(() => variants.id, {
-    onDelete: "restrict",
-  }),
-  unitId: integer("unit_id").references(() => units.id, {
-    onDelete: "restrict",
-  }),
+  sizeId: integer("size_id").references(() => sizes.id, { onDelete: "restrict" }),
+  variantId: integer("variant_id").references(() => variants.id, { onDelete: "restrict" }),
+  unitId: integer("unit_id").references(() => units.id, { onDelete: "restrict" }),
 
   quantity: integer("quantity").notNull(),
 });
