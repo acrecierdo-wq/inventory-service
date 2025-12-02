@@ -984,7 +984,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
             Issuance Ref: {issuance.id}
           </p> */}
 
-          <form className="grid grid-cols-1 mt-32 gap-4 bg-white p-6 rounded shadow">
+          <form className="grid grid-cols-1 mt-18 gap-4 bg-white p-6 rounded shadow">
             {/* Header information fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>

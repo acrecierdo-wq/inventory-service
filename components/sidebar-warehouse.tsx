@@ -3,8 +3,6 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { SidebarItem } from "./sidebar-items";
-import { Button } from "./ui/button";
-import { useState } from "react";
 
 type Props = {
   className?: string;
@@ -12,12 +10,12 @@ type Props = {
 };
 
 export const SideBarWarehouse = ({ className, onNavigate }: Props) => {
-  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  //const [isInventoryOpen, setIsInventoryOpen] = useState(false);
 
   return (
     <aside
       className={cn(
-        "h-full w-full bg-gradient-to-t from-[#fff6f5] to-[#ffffff]",
+        "h-full w-[250px] bg-gradient-to-t from-[#fff6f5] to-[#ffffff]",
         "flex flex-col overflow-y-auto shadow-2xl",
         className
       )}
@@ -39,7 +37,7 @@ export const SideBarWarehouse = ({ className, onNavigate }: Props) => {
         />
 
         {/* Inventory Dropdown */}
-        <Button
+        {/* <Button
           variant="ghost"
           onClick={() => {
             setIsInventoryOpen(!isInventoryOpen);
@@ -71,7 +69,13 @@ export const SideBarWarehouse = ({ className, onNavigate }: Props) => {
               onClick={onNavigate}
             />
           </div>
-        )}
+        )} */}
+        <SidebarItem
+          label="Inventory List"
+          href="/warehouse/w_inventory/w_inventory_list"
+          iconSrc="/report-data-svgrepo-com.svg"
+          onClick={onNavigate}
+        />
 
         <SidebarItem
           label="Issuance Log"

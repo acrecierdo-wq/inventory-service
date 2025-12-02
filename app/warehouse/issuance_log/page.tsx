@@ -2,14 +2,6 @@
 
 "use client";
 import { Header } from "@/components/header";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -42,7 +34,7 @@ function normalizeEnd(
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 }
 
-const ITEMS_PER_PAGE = 10;
+//const ITEMS_PER_PAGE = 10;
 
 const IssuanceLogPage = () => {
   const [loading, setLoading] = useState(false);
@@ -56,6 +48,7 @@ const IssuanceLogPage = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const recordsPerPage = 10;
 
   useEffect(() => {
     const fetchIssuances = async () => {
@@ -248,18 +241,32 @@ const IssuanceLogPage = () => {
       return true;
     });
 
-  const totalPages = Math.ceil(filteredIssuances.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredIssuances.length / recordsPerPage);
   const paginatedIssuances = filteredIssuances.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
   );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
+  // const totalPages = Math.ceil(filteredIssuances.length / ITEMS_PER_PAGE);
+  // const paginatedIssuances = filteredIssuances.slice(
+  //   (currentPage - 1) * ITEMS_PER_PAGE,
+  //   currentPage * ITEMS_PER_PAGE
+  // );
 
   return (
     <main className="min-h-screen w-full bg-[#ffedce] flex flex-col">
       <Header />
 
       {/* Tabs and Controls Section - Responsive */}
-      <section className="flex flex-col lg:flex-row lg:justify-between mt-32 lg:mt-30 px-3 sm:px-4 lg:px-6 gap-4">
+      <section className="flex flex-col lg:flex-row lg:justify-between mt-32 lg:mt-22 px-3 sm:px-4 lg:px-6 gap-4">
         {/* Tabs */}
         <div className="flex flex-row gap-2 sm:gap-4 overflow-x-auto">
           <div className="relative flex-shrink-0">
@@ -426,7 +433,7 @@ const IssuanceLogPage = () => {
       </section>
 
       {/* Table Section */}
-      <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-6 mt-5 pb-24">
+      <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-6 mt-2 pb-15">
         <div className="bg-[#fffcf6] rounded shadow-md min-w-full">
           {loading && <div className="text-center py-8">Loading...</div>}
           {error && (
@@ -436,10 +443,10 @@ const IssuanceLogPage = () => {
           {!loading && !error && (
             <>
               {/* Desktop/Tablet Table Header */}
-              <div className="hidden md:grid grid-cols-[2fr_2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center text-sm">
+              <div className="hidden md:grid grid-cols-[2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center text-sm">
                 <span>DATE | TIME</span>
                 <span>CLIENT</span>
-                <span>DISPATCHER</span>
+                {/* <span>DISPATCHER</span> */}
                 <span>DR No.</span>
                 <span>STATUS</span>
                 <span>ACTION</span>
@@ -464,9 +471,9 @@ const IssuanceLogPage = () => {
                           <p className="font-semibold text-sm">
                             {issuance.clientName}
                           </p>
-                          <p className="text-xs text-gray-600">
+                          {/* <p className="text-xs text-gray-600">
                             {issuance.dispatcherName}
-                          </p>
+                          </p> */}
                           <p className="text-xs text-gray-600">
                             DR: {issuance.drNumber || "-"}
                           </p>
@@ -474,18 +481,18 @@ const IssuanceLogPage = () => {
                         <div className="flex flex-col items-end gap-2">
                           <span
                             className={`text-center px-3 text-xs py-1 rounded-full
-                                                        ${
-                                                          issuance.status ===
-                                                          "Issued"
-                                                            ? "bg-green-200 text-green-800"
-                                                            : issuance.status ===
-                                                              "Archived"
-                                                            ? "bg-red-200 text-red-800"
-                                                            : issuance.status ===
-                                                              "Draft"
-                                                            ? "bg-slate-300 text-white"
-                                                            : ""
-                                                        }`}
+                            ${
+                              issuance.status ===
+                              "Issued"
+                                ? "bg-green-200 text-green-800"
+                                : issuance.status ===
+                                  "Archived"
+                                ? "bg-red-200 text-red-800"
+                                : issuance.status ===
+                                  "Draft"
+                                ? "bg-slate-300 text-white"
+                                : ""
+                            }`}
                           >
                             {issuance.status}
                           </span>
@@ -546,7 +553,7 @@ const IssuanceLogPage = () => {
                   paginatedIssuances.map((issuance) => (
                     <div
                       key={issuance.id}
-                      className="grid grid-cols-[2fr_2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center items-center"
+                      className="grid grid-cols-[2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center items-center"
                     >
                       <span className="text-sm">
                         {format(
@@ -555,7 +562,7 @@ const IssuanceLogPage = () => {
                         )}
                       </span>
                       <span className="text-sm">{issuance.clientName}</span>
-                      <span>{issuance.dispatcherName}</span>
+                      {/* <span>{issuance.dispatcherName}</span> */}
                       <span>{issuance.drNumber || "-"}</span>
                       <span
                         className={`text-center px-5 text-sm py-1 rounded-4xl
@@ -621,7 +628,46 @@ const IssuanceLogPage = () => {
       </section>
 
       {/* Pagination */}
-      <div className="fixed bottom-0 left-0 lg:left-[250px] w-full lg:w-[calc(100%-250px)] bg-[#ffedce] py-3 flex justify-center shadow-lg z-10">
+      <div className="
+      fixed bottom-0 left-0 
+      lg:left-[250px] 
+      w-full lg:w-[calc(100%-250px)] 
+      bg-transparent py-3 
+      flex justify-center items-center gap-2 
+      z-10
+    ">
+
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 1}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === 1
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Prev
+        </button>
+
+        <span className="text-[#5a4632] text-sm">
+          <strong>Page {currentPage} of {totalPages}</strong>
+        </span>
+
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === totalPages}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === totalPages
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Next
+        </button>
+      </div>
+
+      {/* Pagination */}
+      {/* <div className="fixed bottom-0 left-0 lg:left-[250px] w-full lg:w-[calc(100%-250px)] bg-[#ffedce] py-3 flex justify-center shadow-lg z-10">
         <Pagination>
           <PaginationContent className="flex-wrap gap-1">
             <PaginationPrevious
@@ -647,9 +693,9 @@ const IssuanceLogPage = () => {
                   {index + 1}
                 </PaginationLink>
               </PaginationItem>
-            ))}
+            ))} */}
             {/* Show current page on mobile */}
-            <div className="sm:hidden flex items-center px-2 text-sm">
+            {/* <div className="sm:hidden flex items-center px-2 text-sm">
               Page {currentPage} of {totalPages}
             </div>
             <PaginationNext
@@ -662,7 +708,7 @@ const IssuanceLogPage = () => {
             />
           </PaginationContent>
         </Pagination>
-      </div>
+      </div> */}
     </main>
   );
 };

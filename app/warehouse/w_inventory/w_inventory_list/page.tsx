@@ -4,14 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Header } from "@/components/header";
 import AddItemModal from "@/components/add/AddItemModal";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import InventoryActions from "./inventory_action";
 import { toast } from "sonner";
 import {
@@ -30,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const ITEMS_PER_PAGE = 10;
+//const ITEMS_PER_PAGE = 10;
 
 const WarehouseInventoryListPage = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -52,6 +44,7 @@ const WarehouseInventoryListPage = () => {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const recordsPerPage = 10;
 
   const fetchDropdownData = async () => {
     const [cats, uns, vars, sizs] = await Promise.all([
@@ -90,28 +83,6 @@ const WarehouseInventoryListPage = () => {
     fetchDropdownData();
     fetchItems();
   }, []);
-
-  const filteredItems = items
-    .filter(
-      (item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        (!selectedCategory || item.category?.name === selectedCategory) &&
-        (!selectedStatus || item.status === selectedStatus)
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "name":
-          return a.name.localeCompare(b.name);
-        case "reverseName":
-          return b.name.localeCompare(a.name);
-        case "stocks":
-          return (b.stock ?? 0) - (a.stock ?? 0);
-        case "reverseStocks":
-          return (a.stock ?? 0) - (b.stock ?? 0);
-        default:
-          return 0;
-      }
-    });
 
   const exportToCSV = () => {
     return new Promise<void>((resolve) => {
@@ -235,11 +206,47 @@ const WarehouseInventoryListPage = () => {
     }
   };
 
-  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const filteredItems = items
+    .filter(
+      (item) =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        (!selectedCategory || item.category?.name === selectedCategory) &&
+        (!selectedStatus || item.status === selectedStatus)
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "reverseName":
+          return b.name.localeCompare(a.name);
+        case "stocks":
+          return (b.stock ?? 0) - (a.stock ?? 0);
+        case "reverseStocks":
+          return (a.stock ?? 0) - (b.stock ?? 0);
+        default:
+          return 0;
+      }
+    });
+
+  const totalPages = Math.ceil(filteredItems.length / recordsPerPage);
   const paginatedItems = filteredItems.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
   );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
+  // const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  // const paginatedItems = filteredItems.slice(
+  //   (currentPage - 1) * ITEMS_PER_PAGE,
+  //   currentPage * ITEMS_PER_PAGE
+  // );
 
   const categoryRef = useRef<HTMLDivElement | null>(null);
   const statusRef = useRef<HTMLDivElement | null>(null);
@@ -270,7 +277,7 @@ const WarehouseInventoryListPage = () => {
     <main className="min-h-screen w-full bg-[#ffedce] flex flex-col">
       <Header />
 
-      <div className="flex flex-col px-3 sm:px-4 mt-24 lg:px-0">
+      <div className="flex flex-col px-3 sm:px-4 mt-20 lg:px-0">
         <AddItemModal
           isOpen={isAddItemModalOpen}
           onClose={() => setIsAddItemModalOpen(false)}
@@ -314,7 +321,7 @@ const WarehouseInventoryListPage = () => {
           {/* Category Filter */}
           <div className="relative w-full sm:w-auto" ref={categoryRef}>
             <div
-              className="h-10 w-full sm:w-auto sm:min-w-[140px] bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+              className="h-10 w-full sm:w-auto sm:min-w-[100px] bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
               onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
             >
               <div className="flex items-center gap-2">
@@ -360,7 +367,7 @@ const WarehouseInventoryListPage = () => {
           {/* Status Filter */}
           <div className="relative w-full sm:w-auto" ref={statusRef}>
             <div
-              className="h-10 w-full sm:w-auto sm:min-w-[120px] bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+              className="h-10 w-full sm:w-auto sm:min-w-[100px] bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
               onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
             >
               <div className="flex items-center gap-2">
@@ -412,7 +419,7 @@ const WarehouseInventoryListPage = () => {
           {/* Sort */}
           <div className="relative w-full sm:w-auto" ref={sortRef}>
             <div
-              className="h-10 w-full sm:w-auto sm:min-w-[160px] rounded-md border-[#d2bda7] border-b-2 bg-white flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+              className="h-10 w-full sm:w-auto sm:min-w-[100px] rounded-md border-[#d2bda7] border-b-2 bg-white flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
               onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
             >
               <div className="flex items-center gap-2">
@@ -516,9 +523,9 @@ const WarehouseInventoryListPage = () => {
       </div>
 
       {/* Table Section - Responsive */}
-      <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-10 mt-4 pb-20">
+      <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-10 mt-4 pb-15">
         <div className="bg-[#fffcf6] rounded shadow-md min-w-[800px]">
-          {loading && <div className="text-center py-8">Loading...</div>}
+          {loading && <div className="text-center py-8 animate-pulse italic">Loading...</div>}
           {error && (
             <div className="text-red-500 text-center py-8">{error}</div>
           )}
@@ -547,7 +554,7 @@ const WarehouseInventoryListPage = () => {
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="font-semibold text-[#1e1d1c]">
+                          <div className="font-semibold text-[#1e1d1c] uppercase">
                             {item.name}
                           </div>
                           <div className="text-sm text-gray-600">
@@ -636,7 +643,7 @@ const WarehouseInventoryListPage = () => {
                       key={item.id}
                       className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1.5fr_0.8fr] gap-2 lg:gap-4 px-3 lg:px-5 py-3 bg-white border-b border-gray-200 text-[#1e1d1c] text-center items-center text-xs lg:text-sm"
                     >
-                      <span className="text-left truncate">{item.name}</span>
+                      <span className="text-left truncate uppercase">{item.name}</span>
                       <span className="truncate">{item.category?.name}</span>
                       <span className="truncate">
                         {item.size?.name || "(None)"}
@@ -700,8 +707,47 @@ const WarehouseInventoryListPage = () => {
         </div>
       </section>
 
+      {/* Pagination */}
+      <div className="
+      fixed bottom-0 left-0 
+      lg:left-[250px] 
+      w-full lg:w-[calc(100%-250px)] 
+      bg-transparent py-3 
+      flex justify-center items-center gap-2 
+      z-10
+    ">
+
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 1}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === 1
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Prev
+        </button>
+
+        <span className="text-[#5a4632] text-sm">
+          <strong>Page {currentPage} of {totalPages}</strong>
+        </span>
+
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === totalPages}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === totalPages
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Next
+        </button>
+      </div>
+
       {/* Pagination - Responsive */}
-      <div className="fixed bottom-0 left-0 lg:left-[250px] w-full lg:w-[calc(100%-250px)] bg-[#ffedce] py-3 flex justify-center shadow-lg z-10">
+      {/* <div className="fixed bottom-0 left-0 lg:left-[250px] w-full lg:w-[calc(100%-250px)] bg-[#ffedce] py-3 flex justify-center shadow-lg z-10">
         <Pagination>
           <PaginationContent className="flex-wrap gap-1">
             <PaginationPrevious
@@ -727,9 +773,9 @@ const WarehouseInventoryListPage = () => {
                   {index + 1}
                 </PaginationLink>
               </PaginationItem>
-            ))}
+            ))} */}
             {/* Show current page on mobile */}
-            <div className="sm:hidden flex items-center px-2 text-sm">
+            {/* <div className="sm:hidden flex items-center px-2 text-sm">
               Page {currentPage} of {totalPages}
             </div>
             <PaginationNext
@@ -742,7 +788,7 @@ const WarehouseInventoryListPage = () => {
             />
           </PaginationContent>
         </Pagination>
-      </div>
+      </div> */}
     </main>
   );
 };

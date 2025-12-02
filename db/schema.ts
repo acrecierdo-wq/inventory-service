@@ -81,14 +81,14 @@ export const itemIssuances = pgTable("item_issuances", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
   clientName: varchar("client_name", { length: 255 }).notNull(),
-  dispatcherName: varchar("dispatcher_name", { length: 255 }).notNull(),
+  dispatcherName: varchar("dispatcher_name", { length: 255 }),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   issuedAt: timestamp("issued_at"),
   issuedBy: varchar("issued_by", { length: 255 }).notNull(),
 
   customerPoNumber: varchar("customer_po_number", { length: 100 }).notNull(),
-  prfNumber: varchar("prf_number", { length: 100 }).notNull(),
+  prfNumber: varchar("prf_number", { length: 100 }),
 
   drNumber: varchar("dr_number", { length: 100 }),
   saveAsDraft: boolean("save_as_draft").default(false),
@@ -668,33 +668,20 @@ export const quotationFilesRelations = relations(quotationFiles, ({ one }) => ({
   }),
 }));
 
-// Phase
-export const request_phase = pgTable("request_phase", {
+export const phase_statuses = pgTable("phase_statuses", {
   id: serial("id").primaryKey(),
-
-  requestId: integer("request_id")
-    .notNull()
-    .references(() => quotation_requests.id, { onDelete: "cascade" }),
-
-  phaseIndex: integer("phase_index").notNull(), // 0 = Phase 1, 1 = Phase 2, etc.
-
-  status: varchar("status", { length: 20 })
-    .$type<"Pending" | "In Progress" | "Completed" | "In Transit" | "Delivered" | "Ready" | "Collected">()
-    .notNull()
-    .default("Pending"),
-
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  phaseIndex: integer("phase_index").notNull(),
+  mode: text("mode"), // nullable by default
+  status: text("status").notNull(),
 });
 
-// Phase Status
 export const phase_updates = pgTable("phase_updates", {
   id: serial("id").primaryKey(),
-
-  phaseId: integer("phase_id")
-    .notNull()
-    .references(() => request_phase.id, { onDelete: "cascade" }),
-
-  updateText: text("update_text").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedBy: varchar("updated_by", { length: 100 }), // optional: who submitted the update
+  requestId: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
+  phaseIndex: integer("phase_index").notNull(),
+  status: varchar("status", { length: 20 }).$type<
+    "Pending" | "In-Progress" | "Complete" | "In-Transit" | "Delivered" | "Ready" | "Collected"
+  >().notNull(),
+  notes: text("notes"),
+  created_at: timestamp("created_at").defaultNow(),
 });
