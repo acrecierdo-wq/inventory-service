@@ -47,6 +47,20 @@ interface QuotationData {
   status: string;
 }
 
+interface PhaseUpdate {
+  id: number;
+  phaseIndex: number;
+  status: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PhaseUpdateResponse {
+  success: boolean;
+  data: PhaseUpdate[];
+}
+
 const statusColors: Record<string, string> = {
   Pending: "text-yellow-600 bg-yellow-100",
   Accepted: "text-green-700 bg-green-100",
@@ -185,8 +199,8 @@ const openPhaseModal = (phase: string) => {
     }
   }, [customerId, requestId]);
 
-    const fetchPhaseUpdates = async () => {
-  if (!request?.id) return;
+  const fetchPhaseUpdates = useCallback(async () => {
+    if (!request?.id) return;
 
   try {
     const res = await fetch(`/api/sales/phase_updates?requestId=${request.id}`);
@@ -195,24 +209,24 @@ const openPhaseModal = (phase: string) => {
       return;
     }
     
-    const data = await res.json();
+    const data: PhaseUpdateResponse= await res.json();
 
     if (data.success) {
       const latestPerPhase: Record<string, { status: string; notes: string; timestamp: string }> = {};
 
       data.data
-        .sort((a: any, b: any) => b.id - a.id) // newest first
-        .forEach((update: any) => {
+        .sort((a, b) => b.id - a.id) // newest first
+        .forEach((update) => {
           // Phase1,2,3 = index + 1, Phase4 = all others
           const key = update.phaseIndex < 3 ? `Phase${update.phaseIndex + 1}` : "Phase4";
 
           // Store only the first (latest) update per phase
           if (!latestPerPhase[key]) {
             latestPerPhase[key] = { 
-  status: update.status, 
-  notes: update.notes || "",
-  timestamp: update.created_at || update.updated_at || "" 
-};
+            status: update.status, 
+            notes: update.notes || "",
+            timestamp: update.created_at || update.updated_at || "" 
+          };
           }
         });
 
@@ -221,7 +235,7 @@ const openPhaseModal = (phase: string) => {
   } catch (err) {
     console.error("Failed to fetch phase updates:", err);
   }
-};
+  }, [request?.id]);
 
 //USEEFFECTS
   // Fetch Customer by customerId
@@ -265,10 +279,9 @@ const openPhaseModal = (phase: string) => {
   }, [fetchPurchaseOrders]);
 
   useEffect(() => {
-    if (request?.id) {
-      fetchPhaseUpdates();
-    }
-  }, [request?.id]);
+    if (!request?.id) return;
+    fetchPhaseUpdates();
+  }, [request?.id, fetchPhaseUpdates]);
 
   const handleDotClick = (po: PurchaseOrder) => {
     setSelectedPO(po);

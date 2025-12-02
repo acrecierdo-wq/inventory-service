@@ -43,7 +43,7 @@ const SPendingCustomerRequestPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
-  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  const [, setOpenDropdownId] = useState<number | null>(null);
 
   const [actionRequestId, setActionRequestId] = useState<number | null>(null);
   const [actionType, setActionType] = useState<"Accepted" | "Rejected" | "Cancelled" | null>(null);

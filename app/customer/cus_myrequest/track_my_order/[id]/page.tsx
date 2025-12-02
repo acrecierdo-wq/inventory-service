@@ -45,6 +45,13 @@ type QuotationDetail = {
   quotationNumber: string;
 };
 
+interface PhaseUpdate {
+  phaseIndex: number;
+  status: string;
+  notes?: string;
+  created_at: string;
+}
+
 // Colors ----------------------------------------------------------
 const statusColors: Record<string, string> = {
   Pending: "bg-gray-200 text-gray-700",
@@ -54,14 +61,14 @@ const statusColors: Record<string, string> = {
 };
 
 // The NEW simplified progress steps ------------------------------
-const steps = ["Processing", "Out for Delivery", "Completed"];
+//const steps = ["Processing", "Out for Delivery", "Completed"];
 
 // MAIN COMPONENT --------------------------------------------------
 const TrackMyOrderPage = () => {
   const { id } = useParams();
   const router = useRouter();
   const [request, setRequest] = useState<QuotationRequest | null>(null);
-  const [activeStep, setActiveStep] = useState("Processing");
+  const [, setActiveStep] = useState("Processing");
   const [showQuotationTable, setShowQuotationTable] = useState(false);
   const [showPOTable, setShowPOTable] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -79,7 +86,7 @@ const fetchPhaseUpdates = useCallback(async () => {
 
     // Create a map with arrays of updates per phase
     const updatesMap: Record<number, { status: string; notes?: string; created_at: string }[]> = {};
-    data.data.forEach((update: any) => {
+    data.data.forEach((update: PhaseUpdate) => {
       if (!updatesMap[update.phaseIndex]) updatesMap[update.phaseIndex] = [];
       updatesMap[update.phaseIndex].push(update);
     });
@@ -117,22 +124,22 @@ const getPhaseIndex = (phase: string): number => {
   }
 };
 
-  const modePhaseLabel: Record<string, string> = {
-  Delivery: "Out for Delivery",
-  Pickup: "Ready for Pickup",
-  Other: "Out for Delivery",
-  // add more modes if needed
-};
+//   const modePhaseLabel: Record<string, string> = {
+//   Delivery: "Out for Delivery",
+//   Pickup: "Ready for Pickup",
+//   Other: "Out for Delivery",
+//   // add more modes if needed
+// };
 
-const lastPhase = request?.mode ? modePhaseLabel[request.mode] || "Out for Delivery" : "Out for Delivery";
+// const lastPhase = request?.mode ? modePhaseLabel[request.mode] || "Out for Delivery" : "Out for Delivery";
 
-const phases = ["Material Procurement", "Fabrication Process", "Finalization", lastPhase];
+// const phases = ["Material Procurement", "Fabrication Process", "Finalization", lastPhase];
 
 
 
-  const phaseByMode: Record<string, string[]> = {
+//   const phaseByMode: Record<string, string[]> = {
 
-  };
+//   };
 
 // Expanded steps for the modal
 const [expandedPhase, setExpandedPhase] = useState<string | null>(null);
@@ -194,43 +201,43 @@ const togglePhase = (phase: string) => {
   const po = request.purchaseOrder;
 
   // Helper: renders small stepper for processing/delivery/completed
-  const renderStepper = () => {
-    return (
-      <div className="flex items-center justify-between w-full max-w-3xl mx-auto">
-        {steps.map((s, idx) => {
-          const isActive = activeStep === s;
-          // Completed if activeStep is later in array
-          const activeIndex = steps.indexOf(activeStep);
-          const isCompleted = activeIndex > idx;
+//   const renderStepper = () => {
+//     return (
+//       <div className="flex items-center justify-between w-full max-w-3xl mx-auto">
+//         {steps.map((s, idx) => {
+//           const isActive = activeStep === s;
+//           // Completed if activeStep is later in array
+//           const activeIndex = steps.indexOf(activeStep);
+//           const isCompleted = activeIndex > idx;
 
-          return (
-            <div key={s} className="flex-1 text-center relative px-2">
-              <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center shadow-md transition cursor-pointer z-10
-  ${isCompleted ? "bg-green-500 text-white" : isActive ? "bg-[#f59e0b] text-white" : "bg-gray-300 text-gray-600"}`}>
-  {isCompleted ? <CheckCircle2 className="w-6 h-6" /> 
-   : s === "Processing" ? <LucidePersonStanding className="w-6 h-6" /> 
-   : s === "Out for Delivery" ? <Truck className="w-6 h-6" /> 
-   : <LucidePersonStanding className="w-6 h-6" />}
-</div>
+//           return (
+//             <div key={s} className="flex-1 text-center relative px-2">
+//               <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center shadow-md transition cursor-pointer z-10
+//   ${isCompleted ? "bg-green-500 text-white" : isActive ? "bg-[#f59e0b] text-white" : "bg-gray-300 text-gray-600"}`}>
+//   {isCompleted ? <CheckCircle2 className="w-6 h-6" /> 
+//    : s === "Processing" ? <LucidePersonStanding className="w-6 h-6" /> 
+//    : s === "Out for Delivery" ? <Truck className="w-6 h-6" /> 
+//    : <LucidePersonStanding className="w-6 h-6" />}
+// </div>
 
-              <div className={`mt-3 text-sm font-semibold ${isActive ? "text-gray-700" : "text-gray-500"}`}>{s}</div>
+//               <div className={`mt-3 text-sm font-semibold ${isActive ? "text-gray-700" : "text-gray-500"}`}>{s}</div>
 
-              {idx < steps.length - 1 && (
-                <div className={`absolute top-6 right-0 left-0 mx-auto h-1 w-full -translate-x-1/2 z-0`}
-                     style={{
-                       left: "50%",
-                       transform: "translateX(50%)",
-                     }}
-                >
-                  <div className={`h-1 rounded-full ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}></div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+//               {idx < steps.length - 1 && (
+//                 <div className={`absolute top-6 right-0 left-0 mx-auto h-1 w-full -translate-x-1/2 z-0`}
+//                      style={{
+//                        left: "50%",
+//                        transform: "translateX(50%)",
+//                      }}
+//                 >
+//                   <div className={`h-1 rounded-full ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}></div>
+//                 </div>
+//               )}
+//             </div>
+//           );
+//         })}
+//       </div>
+//     );
+//   };
 
   // UI START ------------------------------------------------------
   return (
