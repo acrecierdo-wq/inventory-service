@@ -70,7 +70,6 @@ export const items = pgTable("items", {
 
   status: varchar("status", { length: 50 }).notNull().default("No Stock"), // Overstock, In Stock, Reorder Level, Critical Level, No Stock
   isActive: boolean("is_active").default(true),
-  
 });
 
 {
@@ -91,6 +90,7 @@ export const itemIssuances = pgTable("item_issuances", {
   prfNumber: varchar("prf_number", { length: 100 }),
 
   drNumber: varchar("dr_number", { length: 100 }),
+  drDate: varchar("dr_date", { length: 50 }),
   saveAsDraft: boolean("save_as_draft").default(false),
 
   status: varchar("status", { enum: ["Issued", "Draft", "Archived"] })
@@ -262,9 +262,14 @@ export const personnels = pgTable("personnels", {
   department: varchar("department", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull(),
   contactNumber: varchar("contact_number", { length: 20 }).notNull(),
-  status: varchar("status", { enum: ["Active", "Inactive"]}).notNull().default("Active"),
+  status: varchar("status", { enum: ["Active", "Inactive"] })
+    .notNull()
+    .default("Active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
 });
 
@@ -273,11 +278,15 @@ export const personnels = pgTable("personnels", {
 }
 export const personnelAccounts = pgTable("personnel_accounts", {
   id: serial("id").primaryKey(),
-  personnelId: integer("personnel_id").notNull().references(() => personnels.id, { onDelete: "cascade" }),
+  personnelId: integer("personnel_id")
+    .notNull()
+    .references(() => personnels.id, { onDelete: "cascade" }),
   username: varchar("username", { length: 50 }).notNull().unique(),
   email: varchar("email", { length: 255 }).notNull(),
   passwordHash: varchar("password_hash").notNull(),
-  status: varchar("status", { enum: ["Active", "Inactive"] }).notNull().default("Active"),
+  status: varchar("status", { enum: ["Active", "Inactive"] })
+    .notNull()
+    .default("Active"),
   role: varchar("role", { length: 50 }).notNull(),
   clerkId: varchar("clerk_id"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -350,76 +359,76 @@ export const replenishmentItems = pgTable("replenishment_items", {
   /* Physical Inventory Sessions */
 }
 
-export const physicalInventorySessions = pgTable("physical_inventory_sessions", {
+export const physicalInventorySessions = pgTable(
+  "physical_inventory_sessions",
+  {
     id: uuid("id").primaryKey().defaultRandom(),
 
     createdBy: varchar("created_by", { length: 255 }).notNull(), // warehouseman userId
     approvedBy: varchar("approved_by", { length: 255 }),
     rejectedBy: varchar("rejected_by", { length: 255 }),
 
-    status: varchar("status", { length: 50 })
-      .notNull()
-      .default("pending"), // pending, submitted, approved, rejected
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, submitted, approved, rejected
 
     remarks: text("remarks"),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
     submittedAt: timestamp("submitted_at"),
     reviewedAt: timestamp("reviewed_at"), // when purchasing approves/rejects
-});
+  }
+);
 
 {
   /* Physical Inventory Items */
 }
 export const physicalInventoryItems = pgTable("physical_inventory_items", {
-    id: uuid("id").primaryKey().defaultRandom(),
+  id: uuid("id").primaryKey().defaultRandom(),
 
-    sessionId: uuid("session_id")
-      .notNull()
-      .references(() => physicalInventorySessions.id, {
-        onDelete: "cascade",
-      }),
-      
-    itemId: integer("item_id").notNull(),
+  sessionId: uuid("session_id")
+    .notNull()
+    .references(() => physicalInventorySessions.id, {
+      onDelete: "cascade",
+    }),
 
-    // warehouseman input
-    physicalQty: integer("physical_qty").notNull(),
+  itemId: integer("item_id").notNull(),
 
-    // system values (copied when submitted, warehouseman can't edit or view)
-    systemQty: integer("system_qty").notNull(),
+  // warehouseman input
+  physicalQty: integer("physical_qty").notNull(),
 
-    discrepancy: integer("discrepancy").notNull(), // systemQty - physicalQty
+  // system values (copied when submitted, warehouseman can't edit or view)
+  systemQty: integer("system_qty").notNull(),
 
-    status: varchar("status", { length: 50 }).notNull(), 
-    // match | shortage | overage
+  discrepancy: integer("discrepancy").notNull(), // systemQty - physicalQty
 
-    comments: text("comments"),
+  status: varchar("status", { length: 50 }).notNull(),
+  // match | shortage | overage
 
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+  comments: text("comments"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 {
   /* Inventory Adjustments */
 }
 export const inventoryAdjustments = pgTable("inventory_adjustments", {
-    id: uuid("id").primaryKey().defaultRandom(),
+  id: uuid("id").primaryKey().defaultRandom(),
 
-    sessionId: uuid("session_id")
-      .references(() => physicalInventorySessions.id, {
-        onDelete: "set null",
-      }),
+  sessionId: uuid("session_id").references(() => physicalInventorySessions.id, {
+    onDelete: "set null",
+  }),
 
-    itemId: integer("item_id").notNull(),
+  itemId: integer("item_id").notNull(),
 
-    adjustmentQty: integer("adjustment_qty").notNull(), 
-    // + for overage, - for shortage
+  adjustmentQty: integer("adjustment_qty").notNull(),
+  // + for overage, - for shortage
 
-    reason: varchar("reason", { length: 255 }).notNull(), 
-    // e.g., "Physical Inventory Adjustment"
+  reason: varchar("reason", { length: 255 }).notNull(),
+  // e.g., "Physical Inventory Adjustment"
 
-    approvedBy: varchar("approved_by", { length: 255 }).notNull(),
+  approvedBy: varchar("approved_by", { length: 255 }).notNull(),
 
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 {
@@ -677,11 +686,34 @@ export const phase_statuses = pgTable("phase_statuses", {
 
 export const phase_updates = pgTable("phase_updates", {
   id: serial("id").primaryKey(),
-  requestId: integer("request_id").notNull().references(() => quotation_requests.id, { onDelete: "cascade" }),
+  requestId: integer("request_id")
+    .notNull()
+    .references(() => quotation_requests.id, { onDelete: "cascade" }),
   phaseIndex: integer("phase_index").notNull(),
-  status: varchar("status", { length: 20 }).$type<
-    "Pending" | "In-Progress" | "Complete" | "In-Transit" | "Delivered" | "Ready" | "Collected"
-  >().notNull(),
+  status: varchar("status", { length: 20 })
+    .$type<
+      | "Pending"
+      | "In-Progress"
+      | "Complete"
+      | "In-Transit"
+      | "Delivered"
+      | "Ready"
+      | "Collected"
+    >()
+    .notNull(),
   notes: text("notes"),
   created_at: timestamp("created_at").defaultNow(),
 });
+
+// NEW SCHEMA FOR MATERIAL LIST
+export const materials = pgTable("materials", {
+  id: serial("id").primaryKey(),
+  materialName: varchar("material_name", { length: 255 }).notNull(),
+  specifications: text("specifications"),
+  pricePerKg: numeric("price_per_kg", { precision: 10, scale: 2 }).notNull(),
+  addedBy: varchar("added_by", { length: 255 }).notNull(), // User who added it
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const materialsRelations = relations(materials, ({}) => ({}));

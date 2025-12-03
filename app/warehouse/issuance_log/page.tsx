@@ -435,6 +435,7 @@ const IssuanceLogPage = () => {
       {/* Table Section */}
       <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-6 mt-2 pb-15">
         <div className="bg-[#fffcf6] rounded shadow-md min-w-full">
+          
           {loading && <div className="text-center py-8">Loading...</div>}
           {error && (
             <div className="text-red-500 text-center py-8">{error}</div>
@@ -665,50 +666,6 @@ const IssuanceLogPage = () => {
           Next
         </button>
       </div>
-
-      {/* Pagination */}
-      {/* <div className="fixed bottom-0 left-0 lg:left-[250px] w-full lg:w-[calc(100%-250px)] bg-[#ffedce] py-3 flex justify-center shadow-lg z-10">
-        <Pagination>
-          <PaginationContent className="flex-wrap gap-1">
-            <PaginationPrevious
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setCurrentPage((prev) => Math.max(prev - 1, 1));
-              }}
-              className="text-xs sm:text-sm"
-            />
-            {Array.from({ length: totalPages }, (_, index) => (
-              <PaginationItem key={index} className="hidden sm:inline-block">
-                <PaginationLink
-                  href="#"
-                  className={`text-xs sm:text-sm ${
-                    currentPage === index + 1 ? "bg-[#d2bda7] text-white" : ""
-                  }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setCurrentPage(index + 1);
-                  }}
-                >
-                  {index + 1}
-                </PaginationLink>
-              </PaginationItem>
-            ))} */}
-            {/* Show current page on mobile */}
-            {/* <div className="sm:hidden flex items-center px-2 text-sm">
-              Page {currentPage} of {totalPages}
-            </div>
-            <PaginationNext
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-              }}
-              className="text-xs sm:text-sm"
-            />
-          </PaginationContent>
-        </Pagination>
-      </div> */}
     </main>
   );
 };
