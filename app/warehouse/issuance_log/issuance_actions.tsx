@@ -1,13 +1,21 @@
 // app/warehouse/issuance_log/issuance_action.tsx
 
 import { useEffect, useRef, useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AlertDialog, AlertDialogContent, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { IssuanceItem, IssuanceItemDetail } from "./types/issuance";
-
 
 type IssuanceActionsProps = {
   item: IssuanceItem;
@@ -15,7 +23,11 @@ type IssuanceActionsProps = {
   onRestore: (id: number) => void;
 };
 
-const IssuanceActions = ({ item, onDelete, onRestore }: IssuanceActionsProps) => {
+const IssuanceActions = ({
+  item,
+  onDelete,
+  onRestore,
+}: IssuanceActionsProps) => {
   console.log("IssuanceActions props.item:", item);
 
   const [openDropdown, setOpenDropdown] = useState(false);
@@ -28,7 +40,6 @@ const IssuanceActions = ({ item, onDelete, onRestore }: IssuanceActionsProps) =>
   const router = useRouter();
 
   const handleDelete = async (id: number) => {
-
     try {
       await onDelete(id);
       setConfirmDelete(false);
@@ -38,7 +49,7 @@ const IssuanceActions = ({ item, onDelete, onRestore }: IssuanceActionsProps) =>
     }
   };
 
-const handleRestore = async (id: number) => {
+  const handleRestore = async (id: number) => {
     try {
       const res = await fetch(`/api/issuances/${id}`, { method: "PATCH" });
       if (!res.ok) throw new Error("Failed to restore issuance log.");
@@ -50,13 +61,11 @@ const handleRestore = async (id: number) => {
 
       // ✅ close dialog
       setConfirmRestore(false);
-
     } catch (err) {
       console.error(err);
       toast.error("Error restoring issuance log.");
     }
   };
-
 
   const handleContinueIssuance = () => {
     router.push(`/warehouse/issuance_log/continue/${item.id}`);
@@ -72,7 +81,10 @@ const handleRestore = async (id: number) => {
 
   useEffect(() => {
     const handleMouseDown = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setOpenDropdown(false);
       }
     };
@@ -81,22 +93,33 @@ const handleRestore = async (id: number) => {
     return () => window.removeEventListener("mousedown", handleMouseDown);
   }, []);
 
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-          setOpenDropdown(false);
-        }
-      };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setOpenDropdown(false);
+      }
+    };
 
-      window.addEventListener("click", handleClickOutside);
-      return () => window.removeEventListener("click", handleClickOutside);
-    }, []);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Dots Icon */}
-      <div onClick={() => setOpenDropdown(!openDropdown)} className="cursor-pointer">
-        <Image src="/dots-vertical-rounded-svgrepo-com.svg" width={24} height={24} alt="Actions"/>
+      <div
+        onClick={() => setOpenDropdown(!openDropdown)}
+        className="cursor-pointer"
+      >
+        <Image
+          src="/dots-vertical-rounded-svgrepo-com.svg"
+          width={24}
+          height={24}
+          alt="Actions"
+        />
       </div>
 
       {/* Dropdown Options */}
@@ -116,15 +139,15 @@ const handleRestore = async (id: number) => {
 
           {item.status === "Issued" && (
             <>
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                setSheetOpen(true);
-                setOpenDropdown(false);
-              }}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-            >
-              View Details
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSheetOpen(true);
+                  setOpenDropdown(false);
+                }}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+              >
+                View Details
               </div>
               <div
                 onClick={() => {
@@ -134,31 +157,32 @@ const handleRestore = async (id: number) => {
                 className="px-4 py-2 hover:bg-red-100 text-red-600 cursor-pointer"
               >
                 Archive
-                </div></>
+              </div>
+            </>
           )}
 
           {item.status === "Archived" && (
             <>
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                setSheetOpen(true);
-                setOpenDropdown(false);
-              }}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-            >
-              View Details
-            </div>
-            
-            <div
-              onClick={() => {
-                setConfirmRestore(true);
-                setOpenDropdown(false);
-              }}
-              className="px-4 py-2 hover:bg-green-100 text-green-700 cursor-pointer"
-            >
-              Restore
-            </div>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSheetOpen(true);
+                  setOpenDropdown(false);
+                }}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+              >
+                View Details
+              </div>
+
+              <div
+                onClick={() => {
+                  setConfirmRestore(true);
+                  setOpenDropdown(false);
+                }}
+                className="px-4 py-2 hover:bg-green-100 text-green-700 cursor-pointer"
+              >
+                Restore
+              </div>
             </>
           )}
         </div>
@@ -168,63 +192,94 @@ const handleRestore = async (id: number) => {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle className="text-center font-bold text-2xl underline">Issuance Details</SheetTitle>
+            <SheetTitle className="text-center font-bold text-2xl underline">
+              Issuance Details
+            </SheetTitle>
           </SheetHeader>
           <div className="ml-4 space-y-2">
-          <div><strong>Client Name:</strong> {item.clientName}</div>
-          <div><strong>Dispatcher Name:</strong> {item.dispatcherName}</div>
-          <div><strong>DR Number:</strong> {item.drNumber || "-"}</div>
-          <div><strong>Customer PO Number:</strong> {item.customerPoNumber || "-"}</div>
-          <div className="flex items-center gap-2"><span><strong>Status:</strong></span>
-            <span
-            className={`px-2 py-0.5 rounded text-sm font-medium ${
-              item.status === 'Issued' ? 'bg-green-200 text-green-800' :
-              item.status === 'Archived' ? 'bg-red-200 text-red-800' :
-              item.status === 'Draft' ? 'bg-slate-300 text-white' : ''
-            }`}
-            >{item.status}
-            </span>
-          </div>
-          <div><strong>Date | Time:</strong> {item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "Draft (Not Yet Issued)" }</div>
-          <div><strong>Logged by:</strong> {item.issuedBy}</div>
-          
-          <div className="border-t pt-4 mt-4 w-[350px]">
-            <div className="text-center"><strong>ITEMS</strong></div>
-          <table className=" w-[350px] mt-4 text-sm border">
-                                    <thead className="bg-[#f5e6d3] text-[#482b0e]">
-                                        <tr>
-                                            <th className=" border px-2 py-1">Item</th>
-                                            <th className=" border px-2 py-1">Size</th>
-                                            <th className=" border px-2 py-1">Variant</th>
-                                            <th className=" border px-2 py-1">Unit</th>
-                                            <th className=" border px-2 py-1">Qty</th>
-                                        </tr>
-                                    </thead>
+            <div>
+              <strong>Client Name:</strong> {item.clientName}
+            </div>
+            {/* <div><strong>Dispatcher Name:</strong> {item.dispatcherName}</div> */}
+            <div>
+              <strong>DR Number:</strong> {item.drNumber || "-"}
+            </div>
+            <div>
+              <strong>Customer PO Number:</strong>{" "}
+              {item.customerPoNumber || "-"}
+            </div>
+            <div className="flex items-center gap-2">
+              <span>
+                <strong>Status:</strong>
+              </span>
+              <span
+                className={`px-2 py-0.5 rounded text-sm font-medium ${
+                  item.status === "Issued"
+                    ? "bg-green-200 text-green-800"
+                    : item.status === "Archived"
+                    ? "bg-red-200 text-red-800"
+                    : item.status === "Draft"
+                    ? "bg-slate-300 text-white"
+                    : ""
+                }`}
+              >
+                {item.status}
+              </span>
+            </div>
+            <div>
+              <strong>Date | Time:</strong>{" "}
+              {item.issuedAt
+                ? new Date(item.issuedAt).toLocaleString()
+                : "Draft (Not Yet Issued)"}
+            </div>
+            <div>
+              <strong>Logged by:</strong> {item.issuedBy}
+            </div>
 
-                                    <tbody>
-                                        {items.map((item, idx) => (
-                                            <tr key={ idx }>
-                                                <td className="border px-2 py-1">{item.itemName}</td>
-                                                <td className="border px-2 py-1">{item.sizeName || "(None)"}</td>
-                                                <td className="border px-2 py-1">{item.variantName || "(None)"}</td>
-                                                <td className="border px-2 py-1">{item.unitName || "(None)"}</td>
-                                                <td className="border px-2 py-1">{item.quantity}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-          {/* <div>Issuance Reference: {item.issuanceRef}</div> */}
-          </div>
+            <div className="border-t pt-4 mt-4 w-[350px]">
+              <div className="text-center">
+                <strong>ITEMS</strong>
+              </div>
+              <table className=" w-[350px] mt-4 text-sm border">
+                <thead className="bg-[#f5e6d3] text-[#482b0e]">
+                  <tr>
+                    <th className=" border px-2 py-1">Item</th>
+                    <th className=" border px-2 py-1">Size</th>
+                    <th className=" border px-2 py-1">Variant</th>
+                    <th className=" border px-2 py-1">Unit</th>
+                    <th className=" border px-2 py-1">Qty</th>
+                  </tr>
+                </thead>
 
-          {/* Add more item details here */}
+                <tbody>
+                  {items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="border px-2 py-1">{item.itemName}</td>
+                      <td className="border px-2 py-1">
+                        {item.sizeName || "(None)"}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {item.variantName || "(None)"}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {item.unitName || "(None)"}
+                      </td>
+                      <td className="border px-2 py-1">{item.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {/* <div>Issuance Reference: {item.issuanceRef}</div> */}
+            </div>
+
+            {/* Add more item details here */}
           </div>
         </SheetContent>
       </Sheet>
 
       {/* Delete Confirmation */}
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogTitle>
-        </AlertDialogTitle>
+        <AlertDialogTitle></AlertDialogTitle>
         <AlertDialogContent>
           <div className="text-lg font-semibold">Are you sure?</div>
           <p>This will archive the selected issuance log record.</p>
@@ -247,8 +302,7 @@ const handleRestore = async (id: number) => {
 
       {/* Restore Confirmation */}
       <AlertDialog open={confirmRestore} onOpenChange={setConfirmRestore}>
-        <AlertDialogTitle>
-        </AlertDialogTitle>
+        <AlertDialogTitle></AlertDialogTitle>
         <AlertDialogContent>
           <div className="text-lg font-semibold">Are you sure?</div>
           <p>This will restore the selected issuance log record.</p>

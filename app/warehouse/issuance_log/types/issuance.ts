@@ -15,13 +15,14 @@ export type IssuanceItemDetail = {
 export type IssuanceItem = {
   id: number;
   clientName: string;
-  dispatcherName: string;
+  clientAddress: string;
+  referenceNumber: string | number;
+  deliveryDate: string;
   customerPoNumber: string;
-  prfNumber: string;
   drNumber: string;
   status: string;
   createdAt: string; // ISO date string
-  issuedAt: string;  // ISO date string
+  issuedAt: string; // ISO date string
   issuedBy: string;
   items: IssuanceItemDetail[];
   issuanceRef: string;
@@ -30,13 +31,16 @@ export type IssuanceItem = {
 export type DraftIssuance = {
   id: number;
   clientName: string;
-  dispatcherName: string;
+  // dispatcherName: string;
+  clientAddress?: string; // ✅ NEW
+  referenceNumber?: string; // ✅ NEW
+  deliveryDate?: string; // ✅ NEW
   createdAt: string;
   issuedAt: string | null;
   issuedBy: string;
   customerPoNumber: string;
   drNumber: string;
-  prfNumber: string;
+  // prfNumber: string;
   isDraft: boolean;
   restocked: boolean;
   saveAsDraft: boolean;
@@ -69,4 +73,3 @@ export type FormItem = {
   variantName: string | null;
   unitName: string | null;
 };
-
