@@ -77,25 +77,22 @@ export const items = pgTable("items", {
 }
 
 export const itemIssuances = pgTable("item_issuances", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(), // ✅ FIXED
   clientName: varchar("client_name", { length: 255 }).notNull(),
-  dispatcherName: varchar("dispatcher_name", { length: 255 }),
-
+  clientAddress: varchar("client_address", { length: 500 }),
+  referenceNumber: varchar("reference_number", { length: 100 }),
+  deliveryDate: varchar("delivery_date", { length: 100 }),
+  customerPoNumber: varchar("customer_po_number", { length: 255 }).notNull(),
+  drNumber: varchar("dr_number", { length: 255 }),
+  drDate: varchar("dr_date", { length: 50 }),
+  saveAsDraft: boolean("save_as_draft").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   issuedAt: timestamp("issued_at"),
   issuedBy: varchar("issued_by", { length: 255 }).notNull(),
 
-  customerPoNumber: varchar("customer_po_number", { length: 100 }).notNull(),
-  prfNumber: varchar("prf_number", { length: 100 }),
-
-  drNumber: varchar("dr_number", { length: 100 }),
-  drDate: varchar("dr_date", { length: 50 }),
-  saveAsDraft: boolean("save_as_draft").default(false),
-
   status: varchar("status", { enum: ["Issued", "Draft", "Archived"] })
     .notNull()
-    .default("Draft"), // Issued, Draft, Archived
+    .default("Draft"),
   restocked: boolean("restocked").default(false),
 });
 

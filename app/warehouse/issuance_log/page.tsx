@@ -80,9 +80,10 @@ const IssuanceLogPage = () => {
     return new Promise<void>((resolve) => {
       const headers = [
         "Client Name",
-        "Dispatcher Name",
+        "Address", // ✅ NEW
+        "Reference No.", // ✅ NEW
         "Customer PO No.",
-        "PRF No.",
+        "Delivery Date", // ✅ NEW
         "DR No.",
         "Created At",
         "Issued At",
@@ -91,9 +92,10 @@ const IssuanceLogPage = () => {
       ];
       const rows = filteredIssuances.map((item) => [
         item.clientName,
-        item.dispatcherName,
+        item.clientAddress || "-", // ✅ NEW
+        item.referenceNumber || "-", // ✅ NEW
         item.customerPoNumber,
-        item.prfNumber,
+        item.deliveryDate || "-", // ✅ NEW
         item.drNumber,
         item.createdAt,
         item.issuedAt,
@@ -147,9 +149,10 @@ const IssuanceLogPage = () => {
 
     const headers = [
       "Client Name",
-      "Dispatcher Name",
+      "Address", // ✅ NEW
+      "Reference No.", // ✅ NEW
       "Customer PO No.",
-      "PRF No.",
+      "Delivery Date", // ✅ NEW
       "DR No.",
       "Created At",
       "Issued At",
@@ -159,9 +162,10 @@ const IssuanceLogPage = () => {
 
     const rows = filteredIssuances.map((item) => [
       item.clientName,
-      item.dispatcherName,
+      item.clientAddress || "-", // ✅ NEW
+      item.referenceNumber || "-", // ✅ NEW
       item.customerPoNumber,
-      item.prfNumber,
+      item.deliveryDate || "-", // ✅ NEW
       item.drNumber,
       item.createdAt,
       item.issuedAt,
@@ -215,10 +219,7 @@ const IssuanceLogPage = () => {
         ? issuance.clientName
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          issuance.drNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          issuance.dispatcherName
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
+          issuance.drNumber.toLowerCase().includes(searchTerm.toLowerCase())
         : true
     )
     .filter((issuance) => {
@@ -241,7 +242,7 @@ const IssuanceLogPage = () => {
       return true;
     });
 
-    const totalPages = Math.ceil(filteredIssuances.length / recordsPerPage);
+  const totalPages = Math.ceil(filteredIssuances.length / recordsPerPage);
   const paginatedIssuances = filteredIssuances.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
@@ -435,7 +436,6 @@ const IssuanceLogPage = () => {
       {/* Table Section */}
       <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-6 mt-2 pb-15">
         <div className="bg-[#fffcf6] rounded shadow-md min-w-full">
-          
           {loading && <div className="text-center py-8">Loading...</div>}
           {error && (
             <div className="text-red-500 text-center py-8">{error}</div>
@@ -483,14 +483,11 @@ const IssuanceLogPage = () => {
                           <span
                             className={`text-center px-3 text-xs py-1 rounded-full
                             ${
-                              issuance.status ===
-                              "Issued"
+                              issuance.status === "Issued"
                                 ? "bg-green-200 text-green-800"
-                                : issuance.status ===
-                                  "Archived"
+                                : issuance.status === "Archived"
                                 ? "bg-red-200 text-red-800"
-                                : issuance.status ===
-                                  "Draft"
+                                : issuance.status === "Draft"
                                 ? "bg-slate-300 text-white"
                                 : ""
                             }`}
@@ -629,15 +626,16 @@ const IssuanceLogPage = () => {
       </section>
 
       {/* Pagination */}
-      <div className="
+      <div
+        className="
       fixed bottom-0 left-0 
       lg:left-[250px] 
       w-full lg:w-[calc(100%-250px)] 
       bg-transparent py-3 
       flex justify-center items-center gap-2 
       z-10
-    ">
-
+    "
+      >
         <button
           onClick={handlePrevPage}
           disabled={currentPage === 1}
@@ -651,7 +649,9 @@ const IssuanceLogPage = () => {
         </button>
 
         <span className="text-[#5a4632] text-sm">
-          <strong>Page {currentPage} of {totalPages}</strong>
+          <strong>
+            Page {currentPage} of {totalPages}
+          </strong>
         </span>
 
         <button

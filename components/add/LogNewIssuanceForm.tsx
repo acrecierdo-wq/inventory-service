@@ -18,11 +18,6 @@ import { Trash2, Plus, AlertTriangle, CheckCircle } from "lucide-react";
 // Type definitions for selections (dropdowns)
 type Selection = { id: string | number; name: string };
 
-// Basic issuance structure
-// type Issuance = {
-//   id: string;
-// };
-
 // Combination of item attributes (size, variant, unit) available in inventory
 type Combination = {
   itemId: number;
@@ -69,16 +64,20 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const { user } = useUser();
 
   // Issuance header information
-  //const [issuance, setIssuance] = useState<Issuance>({ id: "" });
   const [clientName, setClientName] = useState(draftData?.clientName || "");
-  const [dispatcherName, setDispatcherName] = useState(
-    draftData?.dispatcherName || ""
-  );
   const [customerPoNumber, setCustomerPoNumber] = useState(
     draftData?.customerPoNumber || ""
   );
-  const [prfNumber, setPrfNumber] = useState(draftData?.prfNumber || "");
   const [issuedBy, setIssuedBy] = useState(draftData?.issuedBy || "");
+  const [deliveryDate, setDeliveryDate] = useState(
+    draftData?.deliveryDate || ""
+  );
+  const [clientAddress, setClientAddress] = useState(
+    draftData?.clientAddress || ""
+  );
+  const [referenceNumber, setReferenceNumber] = useState(
+    draftData?.referenceNumber || ""
+  );
 
   // Modal states
   const [showDRModal, setShowDRModal] = useState(false);
@@ -249,10 +248,29 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       // Step 4: Auto-populate header fields if detected
       if (fields.clientName) {
         setClientName(fields.clientName);
+        console.log("✅ Auto-filled Client Name:", fields.clientName);
+      }
+
+      // ✅ NEW: Auto-populate address
+      if (fields.clientAddress) {
+        setClientAddress(fields.clientAddress);
+        console.log("✅ Auto-filled Address:", fields.clientAddress);
+      }
+
+      // ✅ NEW: Auto-populate reference number
+      if (fields.referenceNumber) {
+        setReferenceNumber(fields.referenceNumber);
+        console.log("✅ Auto-filled Reference Number:", fields.referenceNumber);
       }
 
       if (fields.customerPoNumber) {
         setCustomerPoNumber(fields.customerPoNumber);
+        console.log("✅ Auto-filled PO Number:", fields.customerPoNumber);
+      }
+
+      if (fields.date) {
+        setDeliveryDate(fields.date);
+        console.log("✅ Auto-filled Date:", fields.date);
       }
 
       // Step 5: Create input rows for each detected item
@@ -555,6 +573,17 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     if (isAdding) return;
     setIsAdding(true);
 
+    // ✅ NEW: Check if there are any non-empty rows first
+    const hasNonEmptyRows = inputRows.some((row) => row.selectedItem !== null);
+
+    if (!hasNonEmptyRows) {
+      toast.error("Please select at least one item before adding to list.", {
+        duration: 3000,
+      });
+      setIsAdding(false);
+      return; // ✅ STOP HERE - No items selected
+    }
+
     // **PHASE 1: VALIDATION PASS - Check ALL items before adding ANY**
     const validatedRows: Array<{
       row: InputRow;
@@ -562,7 +591,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       qty: number;
     }> = [];
     const validationErrors: string[] = [];
-    const duplicateErrors: string[] = []; // ✅ Separate array for duplicate errors
+    const duplicateErrors: string[] = [];
 
     for (const row of inputRows) {
       // Skip empty rows
@@ -695,10 +724,9 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     const allErrors = [...validationErrors, ...duplicateErrors];
 
     if (allErrors.length > 0) {
-      // ✅ NEW: Store duplicate errors in state to display inline
+      // Store duplicate errors in state to display inline
       setDuplicateErrors(duplicateErrors);
 
-      // ✅ CHANGED: Only show summary toast
       toast.error(
         `⚠️ Cannot add items: ${allErrors.length} item(s) failed validation. Please fix all issues before adding.`,
         { duration: 8000 }
@@ -706,6 +734,18 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
 
       setIsAdding(false);
       return; // **STOP HERE - Don't add ANY items**
+    }
+
+    // ✅ NEW: Check if we actually have valid items after filtering
+    if (validatedRows.length === 0) {
+      toast.warning(
+        "No valid items to add. Please complete all item details.",
+        {
+          duration: 4000,
+        }
+      );
+      setIsAdding(false);
+      return; // ✅ STOP HERE - No valid items found
     }
 
     // **PHASE 3: ALL VALIDATIONS PASSED - Add ALL items**
@@ -813,18 +853,8 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       return;
     }
 
-    if (!dispatcherName) {
-      toast.error("Please enter a dispatcher name.");
-      return;
-    }
-
     if (!customerPoNumber) {
       toast.error("Please enter a customer PO number.");
-      return;
-    }
-
-    if (!prfNumber) {
-      toast.error("Please enter a PRF number.");
       return;
     }
 
@@ -845,13 +875,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     if (!drInfo) return;
 
     // Final validation
-    if (
-      !clientName ||
-      !dispatcherName ||
-      !customerPoNumber ||
-      !prfNumber ||
-      items.length === 0
-    ) {
+    if (!clientName || !customerPoNumber || items.length === 0) {
       toast.error("Please fill in all the required fields.");
       return;
     }
@@ -859,9 +883,10 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     // Build the request payload
     const payload = {
       clientName,
-      dispatcherName,
+      clientAddress,
+      referenceNumber,
       customerPoNumber,
-      prfNumber,
+      deliveryDate,
       issuedBy,
       drNumber: drInfo.drNumber,
       saveAsDraft: drInfo.saveAsDraft ? "draft" : "issued",
@@ -934,14 +959,15 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   };
 
   /**
-   * Load draft data when component mounts or draftData changes
+   * Load draft data when component mounts
    */
   useEffect(() => {
     if (draftData) {
       setClientName(draftData.clientName || "");
-      setDispatcherName(draftData.dispatcherName || "");
+      setClientAddress(draftData.clientAddress || "");
+      setReferenceNumber(draftData.referenceNumber || "");
       setCustomerPoNumber(draftData.customerPoNumber || "");
-      setPrfNumber(draftData.prfNumber || "");
+      setDeliveryDate(draftData.deliveryDate || "");
       setIssuedBy(draftData.issuedBy || "");
       setItems(
         draftData.items.map((i) => ({
@@ -979,14 +1005,10 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       <main className="bg-[#ffedce] w-full min-h-screen ">
         <Header />
         <section className="p-10 max-w-6xl mx-auto">
-          {/* Issuance reference number display */}
-          {/* <p className="text-md font-bold text-[#173f63] mb-4">
-            Issuance Ref: {issuance.id}
-          </p> */}
-
           <form className="grid grid-cols-1 mt-18 gap-4 bg-white p-6 rounded shadow">
-            {/* Header information fields */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* ✅ UPDATED: Reduced to 3 columns per row (removed dispatcher and PRF) */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Row 1: Client Name, Client Address, Reference Number */}
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
                   Client Name:
@@ -1001,16 +1023,31 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
 
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
-                  Dispatcher Name:
+                  Client Address:
                 </label>
                 <input
                   type="text"
-                  value={dispatcherName}
-                  onChange={(e) => setDispatcherName(e.target.value)}
+                  value={clientAddress}
+                  onChange={(e) => setClientAddress(e.target.value)}
                   className="w-full border border-[#d2bda7] p-2 rounded"
+                  placeholder="e.g., LOT C2-1A BRGY PUNTA..."
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+                  Reference Number:
+                </label>
+                <input
+                  type="text"
+                  value={referenceNumber}
+                  onChange={(e) => setReferenceNumber(e.target.value)}
+                  className="w-full border border-[#d2bda7] p-2 rounded"
+                  placeholder="e.g., 0036535"
+                />
+              </div>
+
+              {/* Row 2: Customer PO Number, Delivery Date, (empty space) */}
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
                   Customer PO Number:
@@ -1025,36 +1062,38 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
 
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
-                  PRF Number:
+                  Delivery Date:
                 </label>
                 <input
                   type="text"
-                  value={prfNumber}
-                  onChange={(e) => setPrfNumber(e.target.value)}
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
                   className="w-full border border-[#d2bda7] p-2 rounded"
+                  placeholder="e.g., November 20, 2024"
                 />
               </div>
+
+              {/* Empty third column to maintain grid */}
+              <div></div>
             </div>
 
-            {/* Display who is logging this issuance */}
             <div>
               <label className="block text-sm font-semibold text-[#482b0e]">
                 Logged by: {issuedBy}
               </label>
             </div>
 
-            {/* Items section - main area for adding items */}
+            {/* Items section */}
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-[#173f63]">
                   ITEMS TO ISSUE
                 </h2>
-                {/* OCR scan button - allows scanning receipts/documents */}
                 <button
                   type="button"
                   onClick={handleScanClick}
                   disabled={isScanning}
-                  className={`px-3 py-2 text-sm rounded text-white  flex items-center gap-2  ${
+                  className={`px-3 py-2 text-sm rounded text-white flex items-center gap-2 ${
                     isScanning
                       ? "bg-[#0b74ff] opacity-50 cursor-not-allowed"
                       : "bg-[#0b74ff] hover:bg-[#0966d6] cursor-pointer"
@@ -1064,17 +1103,15 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                 </button>
               </div>
 
-              {/* Dynamic input rows for item selection */}
+              {/* Dynamic input rows */}
               <div className="space-y-4">
                 {inputRows.map((row, index) => {
-                  // Get available options based on current selections
                   const availableSizes = getAvailableSizes(row.combinations);
                   const availableUnits = getAvailableUnits(
                     row.combinations,
                     row.selectedSize
                   );
 
-                  // Calculate stock validation states
                   const qty = Number(row.quantity) || 0;
                   const hasStock = row.availableStock !== null;
                   const isOverStock = hasStock && qty > row.availableStock!;
@@ -1085,7 +1122,6 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                       key={row.id}
                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 items-start p-4 border border-[#d2bda7] rounded bg-gray-50"
                     >
-                      {/* Item name autocomplete */}
                       <div className="md:col-span-2 lg:col-span-1">
                         <AutoComplete
                           label="Item Name"
@@ -1095,7 +1131,6 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         />
                       </div>
 
-                      {/* Size selector - disabled if no sizes available */}
                       <div>
                         <AutoComplete
                           label="Size"
@@ -1106,7 +1141,6 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         />
                       </div>
 
-                      {/* Variant selector - currently disabled (not implemented) */}
                       <div>
                         <AutoComplete
                           label="Variant"
@@ -1119,7 +1153,6 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         />
                       </div>
 
-                      {/* Unit selector - disabled if no units available */}
                       <div>
                         <AutoComplete
                           label="Unit"
@@ -1130,7 +1163,6 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         />
                       </div>
 
-                      {/* Quantity input with stock validation feedback */}
                       <div className="relative">
                         <label className="text-sm font-semibold mb-1 text-[#482b0e]">
                           Quantity
@@ -1190,7 +1222,6 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         )}
                       </div>
 
-                      {/* Row action buttons (add/remove) */}
                       <div className="flex gap-2 mt-6">
                         {/* Show remove button if more than one row exists */}
                         {inputRows.length > 1 && (
@@ -1252,16 +1283,6 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
               >
                 {isAdding ? "Adding..." : "Add Items to List"}
               </button>
-
-              {/* Button to add all input rows to the final items list */}
-              {/* <button
-                type="button"
-                onClick={handleAddAllRows}
-                disabled={isAdding}
-                className="mt-4 bg-[#674d33] px-6 py-2 text-sm rounded hover:bg-[#d2bda7] text-white font-medium"
-              >
-                {isAdding ? "Adding..." : "Add Items to List"}
-              </button> */}
 
               {/* Hidden file input for OCR image upload */}
               <input
@@ -1351,20 +1372,43 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
             />
           )}
 
-          {/* Summary confirmation modal before final save */}
+          {/* ✅ UPDATED: Removed dispatcher from summary modal */}
           {showSummary && (
             <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
               <div className="bg-white w-[600px] p-6 rounded shadow">
                 <h2 className="text-xl font-bold mb-4 text-[#173f63]">
                   Confirm Issuance
                 </h2>
-                <p className="mb-2 text-sm">Client: {clientName}</p>
-                <p className="mb-2 text-sm">Dispatcher: {dispatcherName}</p>
                 <p className="mb-2 text-sm">
-                  DR Number: {drInfo?.drNumber || "Draft"}
+                  <span className="font-semibold">Client:</span> {clientName}
+                </p>
+                {clientAddress && (
+                  <p className="mb-2 text-sm">
+                    <span className="font-semibold">Address:</span>{" "}
+                    {clientAddress}
+                  </p>
+                )}
+                {referenceNumber && (
+                  <p className="mb-2 text-sm">
+                    <span className="font-semibold">Reference No:</span>{" "}
+                    {referenceNumber}
+                  </p>
+                )}
+                <p className="mb-2 text-sm">
+                  <span className="font-semibold">PO Number:</span>{" "}
+                  {customerPoNumber}
+                </p>
+                {deliveryDate && (
+                  <p className="mb-2 text-sm">
+                    <span className="font-semibold">Delivery Date:</span>{" "}
+                    {deliveryDate}
+                  </p>
+                )}
+                <p className="mb-2 text-sm">
+                  <span className="font-semibold">DR Number:</span>{" "}
+                  {drInfo?.drNumber || "Draft"}
                 </p>
 
-                {/* Summary table of all items */}
                 <table className="w-full mt-4 text-sm border">
                   <thead className="bg-[#f5e6d3]">
                     <tr>

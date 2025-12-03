@@ -5,14 +5,16 @@ import {
   itemIssuances,
   itemIssuanceItems,
   items as itemsTable,
-  sizes, variants, units,
+  sizes,
+  variants,
+  units,
 } from "@/db/schema";
 import { NextResponse, NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
-}
+};
 
 export async function PUT(req: NextRequest, context: RouteContext) {
   try {
@@ -21,18 +23,26 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     const issuanceId = Number(id);
 
     if (!issuanceId || isNaN(issuanceId)) {
-      return NextResponse.json({ error: "Invalid issuance ID." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid issuance ID." },
+        { status: 400 }
+      );
     }
 
     if (!body || !Array.isArray(body.items) || body.items.length === 0) {
-      return NextResponse.json({ error: "Invalid or missing items array." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid or missing items array." },
+        { status: 400 }
+      );
     }
 
     const {
       clientName,
-      dispatcherName,
+      clientAddress, // ✅ NEW
+      referenceNumber, // ✅ NEW
+      deliveryDate, // ✅ NEW
       customerPoNumber,
-      prfNumber,
+
       drNumber,
       saveAsDraft,
       items: updatedItems,
@@ -40,14 +50,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     // normalize saveAsDraft
     const isDraft =
-      saveAsDraft === true || saveAsDraft === "draft" || saveAsDraft === "Draft";
+      saveAsDraft === true ||
+      saveAsDraft === "draft" ||
+      saveAsDraft === "Draft";
 
     console.log("Incoming PUT /api/issuances payload:", {
       issuanceId,
       clientName,
-      dispatcherName,
       customerPoNumber,
-      prfNumber,
       drNumber,
       saveAsDraft,
       isDraft,
@@ -55,7 +65,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     });
 
     const warning: string[] = [];
-    const validatedItems: Map<string, typeof itemsTable.$inferSelect> = new Map();
+    const validatedItems: Map<string, typeof itemsTable.$inferSelect> =
+      new Map();
 
     // Validate items
     const mismatchesOverall: Record<
@@ -79,29 +90,55 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         continue;
       }
 
-      const mismatches: { field: string; expected: unknown; received: unknown }[] = [];
+      const mismatches: {
+        field: string;
+        expected: unknown;
+        received: unknown;
+      }[] = [];
 
       const sizeId =
-        item.sizeId !== undefined && Number(item.sizeId) !== 0 ? Number(item.sizeId) : null;
+        item.sizeId !== undefined && Number(item.sizeId) !== 0
+          ? Number(item.sizeId)
+          : null;
       const variantId =
-        item.variantId !== undefined && Number(item.variantId) !== 0 ? Number(item.variantId) : null;
+        item.variantId !== undefined && Number(item.variantId) !== 0
+          ? Number(item.variantId)
+          : null;
       const unitId =
-        item.unitId !== undefined && Number(item.unitId) !== 0 ? Number(item.unitId) : null;
+        item.unitId !== undefined && Number(item.unitId) !== 0
+          ? Number(item.unitId)
+          : null;
 
       if (item.name && itemData.name !== item.name) {
-        mismatches.push({ field: "name", expected: itemData.name, received: item.name });
+        mismatches.push({
+          field: "name",
+          expected: itemData.name,
+          received: item.name,
+        });
       }
 
       if ((itemData.sizeId ?? null) !== sizeId) {
-        mismatches.push({ field: "sizeId", expected: itemData.sizeId, received: sizeId });
+        mismatches.push({
+          field: "sizeId",
+          expected: itemData.sizeId,
+          received: sizeId,
+        });
       }
 
       if ((itemData.variantId ?? null) !== variantId) {
-        mismatches.push({ field: "variantId", expected: itemData.variantId, received: variantId });
+        mismatches.push({
+          field: "variantId",
+          expected: itemData.variantId,
+          received: variantId,
+        });
       }
 
       if ((itemData.unitId ?? null) !== unitId) {
-        mismatches.push({ field: "unitId", expected: itemData.unitId, received: unitId });
+        mismatches.push({
+          field: "unitId",
+          expected: itemData.unitId,
+          received: unitId,
+        });
       }
 
       if (mismatches.length > 0) {
@@ -110,7 +147,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
       if (!isDraft && itemData.stock < item.quantity) {
         return NextResponse.json(
-          { error: `Not enough stock for "${itemData.name}". Current: ${itemData.stock}, Needed: ${item.quantity}` },
+          {
+            error: `Not enough stock for "${itemData.name}". Current: ${itemData.stock}, Needed: ${item.quantity}`,
+          },
           { status: 400 }
         );
       } else {
@@ -127,20 +166,24 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     }
 
     // Update main issuance record
-    await db.update(itemIssuances)
+    await db
+      .update(itemIssuances)
       .set({
         clientName,
-        dispatcherName,
         customerPoNumber,
-        prfNumber,
         drNumber,
+        clientAddress,
+        referenceNumber,
+        deliveryDate,
         status: isDraft ? "Draft" : "Issued",
-        issuedAt: isDraft ? null : new Date(),
+        // ❌ REMOVE: issuedAt from here - let database handle it via trigger or default
       })
       .where(eq(itemIssuances.id, issuanceId));
 
     // Clear old issuance items
-    await db.delete(itemIssuanceItems).where(eq(itemIssuanceItems.issuanceId, issuanceId));
+    await db
+      .delete(itemIssuanceItems)
+      .where(eq(itemIssuanceItems.issuanceId, issuanceId));
 
     // Insert new issuance items + stock updates
     for (const item of updatedItems) {
@@ -148,11 +191,17 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       if (!itemData) continue;
 
       const sizeId =
-        item.sizeId !== undefined && Number(item.sizeId) !== 0 ? Number(item.sizeId) : null;
+        item.sizeId !== undefined && Number(item.sizeId) !== 0
+          ? Number(item.sizeId)
+          : null;
       const variantId =
-        item.variantId !== undefined && Number(item.variantId) !== 0 ? Number(item.variantId) : null;
+        item.variantId !== undefined && Number(item.variantId) !== 0
+          ? Number(item.variantId)
+          : null;
       const unitId =
-        item.unitId !== undefined && Number(item.unitId) !== 0 ? Number(item.unitId) : null;
+        item.unitId !== undefined && Number(item.unitId) !== 0
+          ? Number(item.unitId)
+          : null;
 
       await db.insert(itemIssuanceItems).values({
         issuanceId,
@@ -181,7 +230,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
           warning.push(`⚠️${itemData.name} is now overstocked.`);
         }
 
-        await db.update(itemsTable)
+        await db
+          .update(itemsTable)
           .set({ stock: newStock, status: stockStatus })
           .where(eq(itemsTable.id, item.itemId));
       }
@@ -210,7 +260,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     return NextResponse.json(
       {
-        message: isDraft ? "Issuance updated as draft." : "Issuance updated successfully!",
+        message: isDraft
+          ? "Issuance updated as draft."
+          : "Issuance updated successfully!",
         warning,
         issuanceId,
         status: isDraft ? "Draft" : "Issued",
@@ -230,32 +282,36 @@ export async function PUT(req: NextRequest, context: RouteContext) {
   }
 }
 
-
 // DELETE — Archive/Delete Issuance
-export async function DELETE(_req: NextRequest, context: RouteContext ) {
-    try {
-      const { id } = await context.params;
-      // const body = await req.jason(); req is _
-      const issuanceId = Number(id);
+export async function DELETE(_req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    // const body = await req.jason(); req is _
+    const issuanceId = Number(id);
 
-        // Delete line items
-       // await db.delete(itemIssuanceItems)
-       //     .where(eq(itemIssuanceItems.issuanceId, issuanceId)).returning();
+    // Delete line items
+    // await db.delete(itemIssuanceItems)
+    //     .where(eq(itemIssuanceItems.issuanceId, issuanceId)).returning();
 
-        // Delete header
-        await db.update(itemIssuances)
-            .set({ status: "Archived" })
-            .where(eq(itemIssuances.id, issuanceId)).returning();
+    // Delete header
+    await db
+      .update(itemIssuances)
+      .set({ status: "Archived" })
+      .where(eq(itemIssuances.id, issuanceId))
+      .returning();
 
-        return NextResponse.json({ message: "Issuance archived successfully." });
-    } catch (error) {
-        console.error("DELETE /api/issuances/[id] error:", error);
-        return NextResponse.json({ error: "Failed to archive issuance." }, { status: 500 });
-    }
+    return NextResponse.json({ message: "Issuance archived successfully." });
+  } catch (error) {
+    console.error("DELETE /api/issuances/[id] error:", error);
+    return NextResponse.json(
+      { error: "Failed to archive issuance." },
+      { status: 500 }
+    );
+  }
 }
 
 // GET - Fetch Issuance by ID (including line items + item details)
-export async function GET(_req: NextRequest, context: RouteContext ) {
+export async function GET(_req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const issuanceId = Number(id);
@@ -267,7 +323,10 @@ export async function GET(_req: NextRequest, context: RouteContext ) {
       .where(eq(itemIssuances.id, issuanceId));
 
     if (!issuance) {
-      return NextResponse.json({ error: "Issuance not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Issuance not found." },
+        { status: 404 }
+      );
     }
 
     // Fetch line items with joins
@@ -322,7 +381,10 @@ export async function PATCH(_req: NextRequest, context: RouteContext) {
     const issuanceId = Number(id);
 
     if (!issuanceId || isNaN(issuanceId)) {
-      return NextResponse.json({ error: "Invalid issuance ID." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid issuance ID." },
+        { status: 400 }
+      );
     }
 
     const [existing] = await db
@@ -330,23 +392,32 @@ export async function PATCH(_req: NextRequest, context: RouteContext) {
       .from(itemIssuances)
       .where(eq(itemIssuances.id, issuanceId));
 
-      if (!existing) {
-        return NextResponse.json({ error: "Issuance not found." }, { status: 404 });
-      }
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Issuance not found." },
+        { status: 404 }
+      );
+    }
 
-      if (existing.status !== "Archived") {
-        return NextResponse.json({ error: "Only archived issuances can be restored." }, { status: 400 });
-      }
+    if (existing.status !== "Archived") {
+      return NextResponse.json(
+        { error: "Only archived issuances can be restored." },
+        { status: 400 }
+      );
+    }
 
-      await db
-        .update(itemIssuances)
-        .set({ status: "Issued" })
-        .where(eq(itemIssuances.id, issuanceId))
-        .returning();
+    await db
+      .update(itemIssuances)
+      .set({ status: "Issued" })
+      .where(eq(itemIssuances.id, issuanceId))
+      .returning();
 
-      return NextResponse.json({ message: "Issuance restored successfully. "});
+    return NextResponse.json({ message: "Issuance restored successfully. " });
   } catch (error) {
     console.error("PATCH /api/issuances/[id] restore error:", error);
-    return NextResponse.json({ error: "Failed to restore issuance." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to restore issuance." },
+      { status: 500 }
+    );
   }
 }
