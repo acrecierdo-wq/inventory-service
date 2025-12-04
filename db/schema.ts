@@ -80,7 +80,7 @@ export const itemIssuances = pgTable("item_issuances", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(), // ✅ FIXED
   clientName: varchar("client_name", { length: 255 }).notNull(),
   clientAddress: varchar("client_address", { length: 500 }),
-  referenceNumber: varchar("reference_number", { length: 100 }),
+  referenceNumber: varchar("reference_number", { length: 100 }).unique(),
   deliveryDate: varchar("delivery_date", { length: 100 }),
   customerPoNumber: varchar("customer_po_number", { length: 255 }).notNull(),
   drNumber: varchar("dr_number", { length: 255 }),

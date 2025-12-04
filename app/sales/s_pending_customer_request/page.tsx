@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/header";
 import { MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -43,7 +43,10 @@ const SPendingCustomerRequestPage = () => {
   const [loading, ] = useState(false);
   const [error, ] = useState<string | null>(null);
 
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
   const recordsPerPage = 10;
 
   const router = useRouter();
@@ -146,6 +149,8 @@ const SPendingCustomerRequestPage = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+   const statusRef = useRef<HTMLDivElement | null>(null);
+
   const totalPages = Math.ceil(filteredRequests.length / recordsPerPage);
   const paginatedRequests = filteredRequests.slice(
     (currentPage - 1) * recordsPerPage,
@@ -166,7 +171,7 @@ const SPendingCustomerRequestPage = () => {
       <div className="">
 
         {/* Search & Buttons */}
-        <div className="flex flex-row justify-end mt-5 gap-4">
+        <div className="flex flex-row justify-end mt-2 gap-4">
           
           <div className="flex flex-row gap-4">
 
@@ -183,15 +188,55 @@ const SPendingCustomerRequestPage = () => {
           </div>
           </div>
 
-          {/* Filter */}
-          <div className="flex flex-row gap-4">
-            <div className="relative">
-            <button className="h-10 w-25 bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center px-4 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4">
-              <Image src="/filter-svgrepo-com.svg" width={20} height={20} alt="Filter" className="" />
-              <span className="text-sm text-[#482b0e] ml-2">Filter</span>
-              {/* <ChevronDown className="ml-2 text-[#482b0e]" size={20} /> */}
-            </button>
-          </div>
+          {/* Status Filter */}
+          <div className="relative w-full sm:w-auto" ref={statusRef}>
+            <div
+              className="h-10 w-full sm:w-auto sm:min-w-[100px] bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
+              onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+            >
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/filter-svgrepo-com.svg"
+                  width={20}
+                  height={20}
+                  alt="Filter"
+                />
+                <span className="text-sm text-[#482b0e]">
+                  {selectedStatus || "Filter"}
+                </span>
+              </div>
+            </div>
+
+            {statusDropdownOpen && (
+              <div className="absolute z-20 bg-white border border-gray-200 mt-1 w-full sm:min-w-[180px] rounded shadow-lg">
+                <div
+                  className="py-2 px-3 hover:bg-gray-100 cursor-pointer text-sm font-medium"
+                  onClick={() => {
+                    setSelectedStatus("");
+                    setStatusDropdownOpen(false);
+                  }}
+                >
+                  All Status
+                </div>
+                {[
+                  "Pending",
+                  "Accepted",
+                  "Cancelled",
+                  "Rejected"
+                ].map((status) => (
+                  <div
+                    key={status}
+                    className="py-2 px-3 hover:bg-gray-100 cursor-pointer text-sm"
+                    onClick={() => {
+                      setSelectedStatus(status);
+                      setStatusDropdownOpen(false);
+                    }}
+                  >
+                    {status}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Sort */}

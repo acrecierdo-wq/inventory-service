@@ -57,7 +57,7 @@ export default function PurchasingSessions() {
   return (
     <main>
         <Header />
-        <div className="p-10 max-w-7xl mx-auto mt-20">
+        <div className="p-10 max-w-7xl mx-auto mt-20 bg-[#ffedce]">
       <h1 className="text-3xl font-bold mb-6">Physical Inventory Review</h1>
       {loading ? (
         <p>Loading sessions...</p>

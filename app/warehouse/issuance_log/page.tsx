@@ -84,7 +84,6 @@ const IssuanceLogPage = () => {
         "Reference No.", // ✅ NEW
         "Customer PO No.",
         "Delivery Date", // ✅ NEW
-        "DR No.",
         "Created At",
         "Issued At",
         "Status",
@@ -96,7 +95,7 @@ const IssuanceLogPage = () => {
         item.referenceNumber || "-", // ✅ NEW
         item.customerPoNumber,
         item.deliveryDate || "-", // ✅ NEW
-        item.drNumber,
+        //item.drNumber,
         item.createdAt,
         item.issuedAt,
         item.status,
@@ -129,74 +128,100 @@ const IssuanceLogPage = () => {
     });
   };
 
-  const exportToPDF = () => {
-    if (typeof window === "undefined") return;
+const exportToPDF = () => {
+  if (typeof window === "undefined") return;
 
-    const doc = new jsPDF("p", "pt", "a4");
+  const now = new Date();
 
-    doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80);
+  // Format for display inside PDF
+  const formattedDisplay = now.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-    doc.setFontSize(18);
-    doc.setFont("garamond", "bold");
-    doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
+  // Format for filename (safe for file systems)
+  const formattedFileName = now
+    .toISOString()
+    .replace(/[:]/g, "-")
+    .replace("T", "_")
+    .slice(0, 16); // YYYY-MM-DD_HH-MM
 
-    doc.setFontSize(12);
-    doc.text("Issuance Report", 40, 60);
+  const doc = new jsPDF("p", "pt", "a4");
 
-    doc.setDrawColor(150);
-    doc.setLineWidth(0.5);
-    doc.line(40, 80, 420, 80);
+  // --- HEADER ---
+  doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80);
 
-    const headers = [
-      "Client Name",
-      "Address", // ✅ NEW
-      "Reference No.", // ✅ NEW
-      "Customer PO No.",
-      "Delivery Date", // ✅ NEW
-      "DR No.",
-      "Created At",
-      "Issued At",
-      "Status",
-      "Items",
-    ];
+  doc.setFontSize(18);
+  doc.setFont("garamond", "bold");
+  doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
 
-    const rows = filteredIssuances.map((item) => [
-      item.clientName,
-      item.clientAddress || "-", // ✅ NEW
-      item.referenceNumber || "-", // ✅ NEW
-      item.customerPoNumber,
-      item.deliveryDate || "-", // ✅ NEW
-      item.drNumber,
-      item.createdAt,
-      item.issuedAt,
-      item.status,
-      item.items
-        .map(
-          (i) =>
-            `${i.itemName} (${i.sizeName || "No Size"} | ${
-              i.variantName || "No variant"
-            } | ${i.unitName || "No Unit"}) = ${i.quantity}`
-        )
-        .join(", "),
-    ]);
+  doc.setFontSize(12);
+  doc.text("Issuance Report", 40, 60);
 
-    autoTable(doc, {
-      head: [headers],
-      body: rows,
-      startY: 100,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [166, 124, 82] },
-    });
+  // Export date & time
+  doc.setFontSize(10);
+  doc.text(`Exported: ${formattedDisplay}`, 40, 75);
 
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(9);
-      doc.text(`Page ${i} of ${pageCount}`, 500, 820, { align: "right" });
-    }
+  doc.setDrawColor(150);
+  doc.setLineWidth(0.5);
+  doc.line(40, 85, 420, 85);
 
-    doc.save("Issuance_Report.pdf");
-  };
+  const headers = [
+    "Client Name",
+    "Address",
+    "Customer PO No.",
+    "Reference No.",
+    "Delivery Date",
+    "Created At",
+    "Issued At",
+    "Status",
+    "Items",
+  ];
+
+  const rows = filteredIssuances.map((item) => [
+    item.clientName,
+    item.clientAddress,
+    item.customerPoNumber,
+    item.referenceNumber,
+    item.deliveryDate,
+    item.createdAt,
+    item.issuedAt,
+    item.status,
+    item.items
+      .map(
+        (i) =>
+          `${i.itemName} (${i.sizeName || "No Size"} | ${
+            i.variantName || "No variant"
+          } | ${i.unitName || "No Unit"}) = ${i.quantity}`
+      )
+      .join(", "),
+  ]);
+
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 100,
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      overflow: "linebreak",
+    },
+    headStyles: {
+      fillColor: [166, 124, 82],
+    },
+    columnStyles: {
+      5: { cellWidth: 60 }, // Created At
+      6: { cellWidth: 60 }, // Issued At
+      8: { cellWidth: 160 }, // Items
+    },
+  });
+
+  // Save PDF with date & time in filename
+  doc.save(`Issuance_Report_${formattedFileName}.pdf`);
+};
 
   const handleExport = async (format: string) => {
     setIsExporting(true);
@@ -219,9 +244,9 @@ const IssuanceLogPage = () => {
         ? issuance.clientName
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          issuance.drNumber.toLowerCase().includes(searchTerm.toLowerCase())
-        : true
-    )
+          (typeof issuance.referenceNumber === 'string' && issuance.referenceNumber.includes(searchTerm.toLowerCase()))
+      : true
+  )
     .filter((issuance) => {
       const raw = issuance.issuedAt || issuance.createdAt;
       if (!raw) return false;
@@ -267,7 +292,7 @@ const IssuanceLogPage = () => {
       <Header />
 
       {/* Tabs and Controls Section - Responsive */}
-      <section className="flex flex-col lg:flex-row lg:justify-between mt-32 lg:mt-22 px-3 sm:px-4 lg:px-6 gap-4">
+      <section className="flex flex-col lg:flex-row lg:justify-between mt-2 lg:mt-2 px-3 sm:px-4 lg:px-6 gap-4">
         {/* Tabs */}
         <div className="flex flex-row gap-2 sm:gap-4 overflow-x-auto">
           <div className="relative flex-shrink-0">
@@ -434,7 +459,7 @@ const IssuanceLogPage = () => {
       </section>
 
       {/* Table Section */}
-      <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-6 mt-2 pb-15">
+      <section className="flex-1 overflow-x-auto px-3 sm:px-4 lg:px-6 mt-1 pb-15">
         <div className="bg-[#fffcf6] rounded shadow-md min-w-full">
           {loading && <div className="text-center py-8">Loading...</div>}
           {error && (
@@ -476,7 +501,7 @@ const IssuanceLogPage = () => {
                             {issuance.dispatcherName}
                           </p> */}
                           <p className="text-xs text-gray-600">
-                            DR: {issuance.drNumber || "-"}
+                            DR: {issuance.referenceNumber}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -561,20 +586,20 @@ const IssuanceLogPage = () => {
                       </span>
                       <span className="text-sm">{issuance.clientName}</span>
                       {/* <span>{issuance.dispatcherName}</span> */}
-                      <span>{issuance.drNumber || "-"}</span>
+                      <span>{issuance.referenceNumber || "-"}</span>
                       <span
                         className={`text-center px-5 text-sm py-1 rounded-4xl
-                                                ${
-                                                  issuance.status === "Issued"
-                                                    ? "bg-green-200 text-green-800"
-                                                    : issuance.status ===
-                                                      "Archived"
-                                                    ? "bg-red-200 text-red-800"
-                                                    : issuance.status ===
-                                                      "Draft"
-                                                    ? "bg-slate-300 text-white"
-                                                    : ""
-                                                }`}
+                        ${
+                          issuance.status === "Issued"
+                              ? "bg-green-200 text-green-800"
+                            : issuance.status ===
+                              "Archived"
+                            ? "bg-red-200 text-red-800"
+                            : issuance.status ===
+                              "Draft"
+                            ? "bg-slate-300 text-white"
+                            : ""
+                        }`}
                       >
                         {issuance.status}
                       </span>

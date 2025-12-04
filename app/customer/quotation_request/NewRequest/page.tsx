@@ -210,7 +210,7 @@ const NewRequest = () => {
 
   const isSubmitDisabled =
     projectName.trim() === "" ||
-    mode === ""
+    mode === "" || mode === "Mode"
 
   // Submit handler
   const handleSubmit = async () => {

@@ -127,7 +127,7 @@ const handleDelete = async () => {
           <div><strong>Department:</strong> {item.department}</div>
           <div><strong>Email:</strong> {item.email}</div>
           <div><strong>Contact Number:</strong> {item.contactNumber}</div>
-          <div><strong>Address:</strong> {item.address}</div>
+          {/* <div><strong>Address:</strong> {item.address}</div> */}
           <div className="flex items-center gap-2"><span><strong>Status:</strong></span>
             <span
             className={`px-2 py-0.5 rounded text-sm font-medium ${

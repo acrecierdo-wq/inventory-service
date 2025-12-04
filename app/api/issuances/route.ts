@@ -80,6 +80,21 @@ export async function POST(req: Request) {
       validatedItems.set(item.itemId, itemData);
     }
 
+    // --- Insert this before creating newIssuance ---
+if (!isDraft && referenceNumber) {
+  const existingRef = await db
+    .select()
+    .from(itemIssuances)
+    .where(eq(itemIssuances.referenceNumber, referenceNumber));
+
+  if (existingRef.length > 0) {
+    return NextResponse.json(
+      { error: `Reference Number "${referenceNumber}" already exists.` },
+      { status: 400 }
+    );
+  }
+}
+
     // Insert into database
     const [newIssuance] = await db
       .insert(itemIssuances)

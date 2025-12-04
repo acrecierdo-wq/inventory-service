@@ -181,7 +181,7 @@ const sortRef = useRef<HTMLDivElement | null>(null);
       <div className="flex-1 overflow-y-visible mt-2 rounded relative">
         <div className="bg-white rounded shadow-md mb-2">
 
-        <div className="bg-[#fcd0d0] grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
+        <div className="bg-[#fcd0d0] grid grid-cols-[2fr_1fr_2fr_2fr_0.5fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
           <>
             <span>Name</span>
             <span>Email</span>
@@ -196,12 +196,12 @@ const sortRef = useRef<HTMLDivElement | null>(null);
           paginatedClients.map((c) => (
             <div
               key={c.id}
-              className="grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
+              className="grid grid-cols-[2fr_1fr_2fr_2fr_0.5fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center"
             >
-              <span>{c.clientName}</span>
-              <span className="">{c.email}</span>
-              <span>{c.contact}</span>
-              <span>{c.address}</span>
+              <span className="text-xs">{c.clientName}</span>
+              <span className="text-xs">{c.email}</span>
+              <span className="text-sm">{c.contact}</span>
+              <span className="text-xs">{c.address}</span>
               <div className="flex items-center justify-center">
                 {/* <ClientActions
                 item={c}
@@ -220,7 +220,7 @@ const sortRef = useRef<HTMLDivElement | null>(null);
     </div>
 
       {/* Pagination */}
-      <div className="absolute bottom-0 left-0 w-full bg-[#ffedce] py-3 flex justify-center items-center gap-2 z-50">
+      <div className="absolute bottom-0 left-0 w-full bg-transparent py-3 flex justify-center items-center gap-2 z-50">
         <button
           onClick={handlePrevPage}
           disabled={currentPage === 1}

@@ -126,7 +126,7 @@ const InternalUsageActions = ({ item, onDelete }: InternalUsageActionsProps) => 
           <div><strong>Department:</strong> {item.department}</div>
           <div><strong>Purpose</strong> {item.purpose}</div>
           <div><strong>Authorized By:</strong> {item.authorizedBy}</div>
-          <div><strong>Note:</strong> {item.note}</div>
+          {/* <div><strong>Note:</strong> {item.note}</div> */}
           <div className="flex items-center gap-2"><span><strong>Status:</strong></span>
             <span
             className={`px-2 py-0.5 rounded text-sm font-medium ${

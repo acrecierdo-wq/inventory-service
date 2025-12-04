@@ -1,129 +1,107 @@
-"use client"
-import { cn } from "@/lib/utils";
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { SidebarItem } from "./sidebar-items";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 type Props = {
-    className?: string;
+  className?: string;
 };
 
-export const SideBarAdmin = ({className}: Props) => {
-   
-    // const closeAllDropdowns = () => {       // Close both dropdowns when clicking outside
-    //     setIsServiceOpen(false);
-    //     setIsInventoryOpen(false);
-    // };
-    return (
-        <div className={cn
-        (" flex h-full w-[250px] fixed left-0 top-0 gap-y-2 px-4 border-r-2 flex-col",
-            className,
+type NavItem = {
+  label: string;
+  href: string;
+  iconSrc: string;
+};
 
-        )}>
-            <Link href="/admin/admin_dashboard">
-                <div className="pt-10 pl-4 pb-1 flex items-center justify-center">
-                        <Image src="/cticlogo.webp" height={70} width={70} alt="CTIC" />
-                        
-                </div>
-            </Link>
-            <div className="flex flex-col gap-y-1 flex-1">
-                <SidebarItem 
-                label="Dashboard" 
-                href="/admin/admin_dashboard" 
-                iconSrc="/tray.svg"
-                />
-                {/* <SidebarItem 
-                label="Reports" 
-                href="/admin/reports" 
-                iconSrc="/tray.svg"
-                />
-                <SidebarItem 
-                label="Customer Profile" 
-                href="/admin/customer_profile" 
-                iconSrc="/tray.svg"
-                /> */}
-                {/* Service Dropdown */}
-                {/* <Button 
-                variant="ghost"
-                onClick={() => {setIsServiceOpen(!isServiceOpen)
-                    // setIsInventoryOpen(false);
-                }}
-                >
-                <Image src="/tray.svg" height={20} width={20} alt="Service" />
-                    <span className="flex flex-col gap-y-1 flex-1">Service</span> */}
-                    {/* <ChevronDown size={16} className={`transition-transform ${isServiceOpen ? "rotate-180" : ""}`} /> */}
-                {/* </Button>
-                {isServiceOpen && (
-                    <div className="pl-2 flex flex-col">
-                        <SidebarItem 
-                        label="Product Request" 
-                        href="/admin/service/product_request" 
-                        iconSrc="/tray.svg"
-                        />
-                        <SidebarItem 
-                        label="Service Request" 
-                        href="/admin/service/service_request" 
-                        iconSrc="/tray.svg"
-                />
-                    </div>
-                )} */}
+const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/admin/admin_dashboard", iconSrc: "/tray.svg" },
+  { label: "Accounts", href: "/admin/accounts", iconSrc: "/tray.svg" },
+  { label: "Audit Trail", href: "/admin/audit_trails", iconSrc: "/tray.svg" },
+  { label: "Personnels", href: "/admin/personnels", iconSrc: "/tray.svg" },
+  { label: "Clients", href: "/admin/clients", iconSrc: "/tray.svg" },
+];
 
-                {/* Inventory Dropdown */}
-                {/* <Button 
-                variant="ghost"
-                onClick={() => {setIsInventoryOpen(!isInventoryOpen);
-                    // setIsServiceOpen(false);
-                }}
-                >
-                <Image src="/tray.svg" height={20} width={20} alt="Inventory" />
-                    <span className="flex flex-col gap-y-1 flex-1">Inventory</span> */}
-                    {/* <ChevronDown size={16} className={`transition-transform ${isInventoryOpen ? "rotate-180" : ""}`} /> */}
-                {/* </Button>
-                {isInventoryOpen && (
-                    <div className="pl-2 flex flex-col">
-                        <SidebarItem 
-                        label="Category" 
-                        href="/admin/inventory/category" 
-                        iconSrc="/tray.svg"
-                        />
-                        <SidebarItem 
-                        label="Item List" 
-                        href="/admin/inventory/item_list" 
-                        iconSrc="/tray.svg"
-                        />
-                </div>
-                )} */}
-                <SidebarItem 
-                label="Accounts" 
-                href="/admin/accounts" 
-                iconSrc="/tray.svg"
-                />
-                <SidebarItem 
-                label="Audit Trail" 
-                href="/admin/audit_trails" 
-                iconSrc="/tray.svg"
-                />
-                <SidebarItem 
-                label="Personnels" 
-                href="/admin/personnels" 
-                iconSrc="/tray.svg"
-                />
-                <SidebarItem 
-                label="Clients" 
-                href="/admin/clients" 
-                iconSrc="/tray.svg"
-                />
-            </div>
-            {/* <div className="pb-5 flex justify-center">
-                <ClerkLoading>
-                    <Loader className="text-muted-foreground animate-spin"/>
-                </ClerkLoading>
-                <ClerkLoaded>
-                    <SignOutButton>
-                    <Button variant="ghost" size="sm">Log Out</Button>
-                    </SignOutButton>
-                </ClerkLoaded>
-            </div> */}
+const SidebarItem = ({ label, href, iconSrc }: NavItem) => {
+  const pathname = usePathname();
+  const active = pathname?.startsWith(href);
+
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 rounded-xl px-3 py-2 transition",
+        active ? "text-[#4f2d12]" : "text-[#7c4722] hover:text-[#4f2d12]"
+      )}
+    >
+      <Image
+        src={iconSrc}
+        alt={label}
+        width={20}
+        height={20}
+        className={cn(
+          "transition",
+          active ? "brightness-0 invert opacity-90" : "opacity-80 hover:opacity-100"
+        )}
+      />
+      <span className="text-sm font-medium">{label}</span>
+    </Link>
+  );
+};
+
+export const SideBarAdmin = ({ className }: Props) => {
+  const pathname = usePathname();
+
+  return (
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 flex h-full w-[250px] flex-col border-r border-[#f7d9b9] bg-gradient-to-b from-[#fff7ec] via-[#ffe9cd] to-[#fddfbd] text-[#4f2d12] shadow-2xl",
+        className
+      )}
+    >
+      <Link
+        href="/admin/admin_dashboard"
+        className="flex flex-col items-center gap-2 px-6 pt-10 pb-6"
+      >
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-[#f6c66d]/40 blur-3xl" />
+          <Image
+            src="/cticlogo.webp"
+            height={74}
+            width={74}
+            alt="CTIC"
+            className="relative drop-shadow"
+          />
         </div>
-    );
+        <p className="text-xs uppercase tracking-[0.45em] text-[#9b5a1f]">
+          CTIC Admin
+        </p>
+      </Link>
+
+      <nav className="flex-1 space-y-1 px-3">
+        {navItems.map((item: NavItem) => {
+          const active = pathname?.startsWith(item.href);
+
+          return (
+            <div
+              key={item.href}
+              className={cn(
+                "rounded-2xl px-2 py-1 transition hover:bg-white/20 hover:shadow-md",
+                active && "bg-white/40 shadow-inner shadow-[#f4d1a5]"
+              )}
+            >
+              <SidebarItem {...item} />
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="m-4 rounded-2xl border border-[#f7d9b9] bg-white/20 p-4 text-xs text-[#6f3e1b] shadow-inner">
+        <p className="text-sm font-semibold text-[#4f2d12]">Need help?</p>
+        <p className="mt-1">https://inventory-service-omega.vercel.app/</p>
+        <p className="text-sm font-semibold text-[#4f2d12]">(049) 252-8988</p>
+      </div>
+    </aside>
+  );
 };

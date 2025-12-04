@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Header } from "@/components/header";
-import DRModal from "@/app/warehouse/issuance_log/dr_modal";
 import { toast } from "sonner";
 import AutoComplete from "../autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
@@ -49,6 +48,8 @@ interface Props {
   onSaveSuccess?: () => void;
 }
 
+
+
 /**
  * NewIssuancePage Component
  *
@@ -60,31 +61,19 @@ interface Props {
  * - Draft saving capability
  * - Multi-item support with dynamic rows
  */
-const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
+const NewIssuancePage = ({ draftData, draftId }: Props) => {
   const { user } = useUser();
 
   // Issuance header information
-  const [clientName, setClientName] = useState(draftData?.clientName || "");
-  const [customerPoNumber, setCustomerPoNumber] = useState(
-    draftData?.customerPoNumber || ""
-  );
-  const [issuedBy, setIssuedBy] = useState(draftData?.issuedBy || "");
-  const [deliveryDate, setDeliveryDate] = useState(
-    draftData?.deliveryDate || ""
-  );
-  const [clientAddress, setClientAddress] = useState(
-    draftData?.clientAddress || ""
-  );
-  const [referenceNumber, setReferenceNumber] = useState(
-    draftData?.referenceNumber || ""
-  );
+  const [client, setClient] = useState<Selection| null>(null); 
 
-  // Modal states
-  const [showDRModal, setShowDRModal] = useState(false);
-  const [drInfo, setDrInfo] = useState<{
-    drNumber: string;
-    saveAsDraft: boolean;
-  } | null>(null);
+  const [clientName, setClientName] = useState(draftData?.clientName || "");
+  const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber || "");
+  const [issuedBy, setIssuedBy] = useState(draftData?.issuedBy || "");
+  const [deliveryDate, setDeliveryDate] = useState(draftData?.deliveryDate || "");
+  const [clientAddress, setClientAddress] = useState(draftData?.clientAddress || "");
+  const [referenceNumber, setReferenceNumber] = useState(draftData?.referenceNumber || "");
+
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -93,6 +82,9 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
   const [isScanning, setIsScanning] = useState(false);
   const [showOCRModeModal, setShowOCRModeModal] = useState(false);
   const [showWebcamModal, setShowWebcamModal] = useState(false);
+
+  // const [clientSuggestions, setClientSuggestions] = useState<Clients[]>([]);
+  const [address, setAddress] = useState("");
 
   const [duplicateErrors, setDuplicateErrors] = useState<string[]>([]);
   // Dynamic input rows for adding items (before they're officially added to the list)
@@ -125,6 +117,11 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
         unitName: i.unitName,
       })) || []
   );
+
+//   const [confirmData, setConfirmData] = useState<{
+//   referenceNumber: string;
+//   saveAsDraft: boolean;
+// } | null>(null);
 
   // === OCR HANDLERS ===
 
@@ -858,12 +855,27 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
       return;
     }
 
+    if (!clientAddress) {
+      toast.error("Please enter a client address.");
+      return;
+    }
+
+    if (!deliveryDate) {
+      toast.error("Please enter a delivery date.");
+      return;
+    }
+
+    if (!referenceNumber) {
+      toast.error("Please enter a DR reference number.");
+      return;
+    }
+
     if (items.length === 0) {
       toast.error("Please add at least one item.");
       return;
     }
 
-    setShowDRModal(true);
+    setShowSummary(true);
   };
 
   /**
@@ -871,92 +883,86 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
    * Can either create new issuance or update existing draft
    * Handles both "issued" and "draft" statuses
    */
-  const handleSaveIssuance = async () => {
-    if (!drInfo) return;
 
-    // Final validation
-    if (!clientName || !customerPoNumber || items.length === 0) {
-      toast.error("Please fill in all the required fields.");
+  
+ const handleSaveIssuance = async (isDraft?: boolean) => {
+  const status = isDraft ? "draft" : "issued";
+
+  // Only validate required fields if not saving as draft
+  if (!isDraft && (!clientName || !customerPoNumber || items.length === 0)) {
+    toast.error("Please fill in all the required fields.");
+    return;
+  }
+// ✅ NEW: Validate DR number is provided when not draft
+    if (!isDraft && !referenceNumber) {
+      toast.error("Please enter a DR Number for issued issuances.");
       return;
     }
 
-    // Build the request payload
-    const payload = {
-      clientName,
-      clientAddress,
-      referenceNumber,
-      customerPoNumber,
-      deliveryDate,
-      issuedBy,
-      drNumber: drInfo.drNumber,
-      saveAsDraft: drInfo.saveAsDraft ? "draft" : "issued",
-      items: items.map((i) => ({
-        itemId: Number(i.itemId),
-        sizeId: i.sizeId ? Number(i.sizeId) : null,
-        variantId: i.variantId ? Number(i.variantId) : null,
-        unitId: i.unitId ? Number(i.unitId) : null,
-        quantity: i.quantity,
-      })),
-    };
 
-    try {
-      // Use PUT for updating drafts, POST for new issuances
-      const res = await fetch(
-        draftId ? `/api/issuances/${draftId}` : "/api/issuances",
-        {
-          method: draftId ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (!res.ok) {
-        // Try to extract error message from response
-        let errorMessage = "Failed to process issuance.";
-        try {
-          const ct = res.headers.get("content-type") || "";
-          if (ct.includes("application/json")) {
-            const err = await res.json();
-            if (err?.error) errorMessage = err.error;
-          }
-        } catch {
-          // ignore parsing errors
-        }
-        toast.error(errorMessage);
-        return;
-      }
-
-      const result = await res.json();
-
-      // Update issuance reference if returned
-      // if (result.issuanceRef) {
-      //   setIssuance(result.issuance);
-      // }
-
-      // Display any warnings (e.g., low stock alerts)
-      if (result.warning && result.warning.length > 0) {
-        result.warning.forEach((w: string, i: number) => {
-          setTimeout(() => toast.warning(w), i * 5000);
-        });
-      }
-
-      // Show success message and redirect
-      setTimeout(() => {
-        toast.success(
-          drInfo.saveAsDraft
-            ? "Issuance saved as draft."
-            : "Issuance saved successfully!"
-        );
-        if (onSaveSuccess) onSaveSuccess();
-        setTimeout(() => {
-          window.location.href = "/warehouse/issuance_log";
-        }, 1500);
-      }, (result.warning?.length || 0) * 1000);
-    } catch (err) {
-      console.error("Issuance error:", err);
-      toast.error("Something went wrong while saving the issuance.");
-    }
+  const payload = {
+    clientName,
+    clientAddress,
+    referenceNumber,
+    customerPoNumber,
+    deliveryDate,
+    issuedBy,
+    saveAsDraft: status,
+    items: items.map((i) => ({
+      itemId: Number(i.itemId),
+      sizeId: i.sizeId ? Number(i.sizeId) : null,
+      variantId: i.variantId ? Number(i.variantId) : null,
+      unitId: i.unitId ? Number(i.unitId) : null,
+      quantity: i.quantity,
+    })),
   };
+
+  try {
+    const res = await fetch(
+      draftId ? `/api/issuances/${draftId}` : "/api/issuances",
+      {
+        method: draftId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!res.ok) {
+      let errorMessage = "Failed to process issuance.";
+      try {
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("application/json")) {
+          const err = await res.json();
+          if (err?.error) errorMessage = err.error;
+        }
+      } catch {}
+      toast.error(errorMessage);
+      return;
+    }
+
+    const result = await res.json();
+
+    // show warnings if any
+    if (result.warning && result.warning.length > 0) {
+      result.warning.forEach((w: string, i: number) =>
+        setTimeout(() => toast.warning(w), i * 5000)
+      );
+    }
+
+    // show success toast
+    toast.success(isDraft ? "Issuance saved as draft." : "Issuance saved successfully!");
+
+    // Redirect back to issuance log after short delay
+    setTimeout(() => {
+      window.location.href = "/warehouse/issuance_log";
+    }, (result.warning?.length || 0) * 1000 + 500);
+
+  } catch (err) {
+    console.error("Issuance error:", err);
+    toast.error("Something went wrong while saving the issuance.");
+  }
+};
+
 
   /**
    * Load draft data when component mounts
@@ -1000,6 +1006,29 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
     }
   }, [user]);
 
+    // Fetch client details automatically when client is selected
+useEffect(() => {
+  const fetchClientDetails = async () => {
+    if (!client) {
+      setAddress("");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/clients/${client.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAddress(data.address || "");
+      }
+    } catch (err) {
+      console.error("Failed to fetch client details", err);
+    }
+  };
+
+  fetchClientDetails();
+}, [client]);
+
+
   return (
     <WarehousemanClientComponent>
       <main className="bg-[#ffedce] w-full min-h-screen ">
@@ -1010,29 +1039,30 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
             <div className="grid grid-cols-3 gap-4">
               {/* Row 1: Client Name, Client Address, Reference Number */}
               <div>
-                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
-                  Client Name:
-                </label>
-                <input
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  className="w-full border border-[#d2bda7] p-2 rounded"
-                />
+                            <div>
+                            <AutoComplete
+                              endpoint="/api/purchasing/suppliers"
+                              value={client}
+                              onChange={setClient}
+                              label="Client"
+                            />
+                          </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
-                  Client Address:
-                </label>
-                <input
-                  type="text"
-                  value={clientAddress}
-                  onChange={(e) => setClientAddress(e.target.value)}
-                  className="w-full border border-[#d2bda7] p-2 rounded"
-                  placeholder="e.g., LOT C2-1A BRGY PUNTA..."
-                />
-              </div>
+          {/* Address */}
+          <div>
+            <label className="block text-xs sm:text-sm font-semibold mb-1 text-[#482b0e]">
+              Address
+            </label>
+            <input
+              value={address}
+              onChange={(e) => setClientAddress(e.target.value)}
+              disabled={!client}
+              readOnly
+              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
+              placeholder={!client ? "Select supplier first" : ""}
+            />
+          </div>
 
               <div>
                 <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
@@ -1304,7 +1334,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                         <th className="border px-2 py-1">Size</th>
                         <th className="border px-2 py-1">Variant</th>
                         <th className="border px-2 py-1">Unit</th>
-                        <th className="border px-2 py-1">Qty</th>
+                        <th className="border px-2 py-1">Quantity</th>
                         <th className="border px-2 py-1">Remove</th>
                       </tr>
                     </thead>
@@ -1361,7 +1391,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
           </form>
 
           {/* Modal for entering DR (Delivery Receipt) number */}
-          {showDRModal && (
+          {/* {showDRModal && (
             <DRModal
               onClose={() => setShowDRModal(false)}
               onConfirm={(data) => {
@@ -1370,7 +1400,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                 setShowSummary(true);
               }}
             />
-          )}
+          )} */}
 
           {/* ✅ UPDATED: Removed dispatcher from summary modal */}
           {showSummary && (
@@ -1390,14 +1420,10 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                 )}
                 {referenceNumber && (
                   <p className="mb-2 text-sm">
-                    <span className="font-semibold">Reference No:</span>{" "}
+                    <span className="font-semibold">D.R. Reference No:</span>{" "}
                     {referenceNumber}
                   </p>
                 )}
-                <p className="mb-2 text-sm">
-                  <span className="font-semibold">PO Number:</span>{" "}
-                  {customerPoNumber}
-                </p>
                 {deliveryDate && (
                   <p className="mb-2 text-sm">
                     <span className="font-semibold">Delivery Date:</span>{" "}
@@ -1405,9 +1431,10 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                   </p>
                 )}
                 <p className="mb-2 text-sm">
-                  <span className="font-semibold">DR Number:</span>{" "}
-                  {drInfo?.drNumber || "Draft"}
+                  <span className="font-semibold">PO Number:</span>{" "}
+                  {customerPoNumber}
                 </p>
+                
 
                 <table className="w-full mt-4 text-sm border">
                   <thead className="bg-[#f5e6d3]">
@@ -1416,7 +1443,7 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                       <th className="border px-2 py-1">Size</th>
                       <th className="border px-2 py-1">Variant</th>
                       <th className="border px-2 py-1">Unit</th>
-                      <th className="border px-2 py-1">Qty</th>
+                      <th className="border px-2 py-1">Quantity</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1446,11 +1473,20 @@ const NewIssuancePage = ({ draftData, draftId, onSaveSuccess }: Props) => {
                     Cancel
                   </button>
                   <button
-                    onClick={handleSaveIssuance}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer"
+                    onClick={() => handleSaveIssuance(true)} // Save as Draft
+                    className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded"
                   >
-                    Save
+                    Save as Draft
                   </button>
+
+                  <button
+                    onClick={() => handleSaveIssuance(false)} // Final Issuance
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+                  >
+                    Save Issuance
+                  </button>
+
+
                 </div>
               </div>
             </div>

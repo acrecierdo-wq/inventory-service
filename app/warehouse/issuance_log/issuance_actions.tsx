@@ -202,7 +202,7 @@ const IssuanceActions = ({
             </div>
             {/* <div><strong>Dispatcher Name:</strong> {item.dispatcherName}</div> */}
             <div>
-              <strong>DR Number:</strong> {item.drNumber || "-"}
+              <strong>DR Number:</strong> {item.referenceNumber || "-"}
             </div>
             <div>
               <strong>Customer PO Number:</strong>{" "}
@@ -227,7 +227,10 @@ const IssuanceActions = ({
               </span>
             </div>
             <div>
-              <strong>Date | Time:</strong>{" "}
+              <strong>Delivery Date:</strong> {item.deliveryDate || "-"}
+            </div>
+            <div>
+              <strong>Date | Time Logged:</strong>{" "}
               {item.issuedAt
                 ? new Date(item.issuedAt).toLocaleString()
                 : "Draft (Not Yet Issued)"}

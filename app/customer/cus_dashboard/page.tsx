@@ -112,13 +112,13 @@ const CustomerPage = () => {
             </p>
           </div>
           <div className="flex items-center justify-center">
-            <Image
+            {/* <Image
               src="/graph-up-svgrepo-com.svg"
               alt="Dashboard Illustration"
               width={200}
               height={160}
               className="object-contain drop-shadow-lg"
-            />
+            /> */}
           </div>
         </section>
 

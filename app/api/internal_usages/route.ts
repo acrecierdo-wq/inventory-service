@@ -12,7 +12,6 @@ import {
 import { NextResponse, NextRequest } from "next/server";
 import { eq, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
-import { clerkClient } from "@clerk/clerk-sdk-node";
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
       note,
       loggedBy,
       items: usageItems,
-      password,
+      //password,
     } = body;
 
     console.log("Parsed fields:", {
@@ -43,7 +42,7 @@ export async function POST(req: NextRequest) {
       note,
       loggedBy,
       items: usageItems,
-      password,
+      //password,
     });
 
     // ✅ Get the current signed-in user
@@ -53,9 +52,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ✅ Password required
-    if (!password) {
-      return NextResponse.json({ error: "Password required" }, { status: 400 });
-    }
+    // if (!password) {
+    //   return NextResponse.json({ error: "Password required" }, { status: 400 });
+    // }
 
     // ✅ Check if account even supports passwords
     if (!user.passwordEnabled) {
@@ -66,25 +65,25 @@ export async function POST(req: NextRequest) {
     }
 
     // ✅ Verify password with Clerk
-    try {
-      const verifyResult = await clerkClient.users.verifyPassword({
-        userId: user.id,
-        password,
-      });
+    // try {
+    //   const verifyResult = await clerkClient.users.verifyPassword({
+    //     userId: user.id,
+    //     password,
+    //   });
 
-      if (!verifyResult.verified) {
-        return NextResponse.json({ error: "Invalid password." }, { status: 400 });
-      }
-    } catch (err: unknown) {
-      console.error("Password verification failed:", err);
-      return NextResponse.json(
-        {
-          error: "Password invalid. Enter correct password.",
-          details: err instanceof Error ? err.message : String(err),
-        },
-        { status: 400 }
-      );
-    }
+    //   if (!verifyResult.verified) {
+    //     return NextResponse.json({ error: "Invalid password." }, { status: 400 });
+    //   }
+    // } catch (err: unknown) {
+    //   console.error("Password verification failed:", err);
+    //   return NextResponse.json(
+    //     {
+    //       error: "Password invalid. Enter correct password.",
+    //       details: err instanceof Error ? err.message : String(err),
+    //     },
+    //     { status: 400 }
+    //   );
+    // }
 
     // ✅ Safe "loggedBy" field
     const loggedBySafe =
@@ -97,7 +96,7 @@ export async function POST(req: NextRequest) {
       department,
       purpose,
       authorizedBy,
-      note,
+      //note,
       loggedBy: loggedBySafe,
       items: usageItems,
     });

@@ -737,7 +737,7 @@ export default function AddPurchaseOrder() {
     <main className="bg-[#ffedce] min-h-screen w-full">
       <Header />
       <section className="p-5  sm:p-6 lg:p-10 max-w-5xl mx-auto">
-        <h1 className="text-xl mt-30 md:mt-20 sm:text-2xl lg:text-3xl font-bold text-[#173f63] mb-4 sm:mb-6">
+        <h1 className="text-xl /mt-30 /md:mt-20 sm:text-2xl lg:text-3xl font-bold text-[#173f63] mb-4 sm:mb-6">
           Create Purchase Order
         </h1>
 

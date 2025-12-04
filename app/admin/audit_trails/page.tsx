@@ -103,7 +103,7 @@ export default function AuditTrailPage() {
     <main className="bg-[#ffedce] h-full w-full relative">
       <Header />
 
-      <section className="p-4 space-y-4">
+      <section className="p-2 space-y-2">
 
         {/* Filter Section */}
         <div className="flex gap-4 flex-wrap items-center">
@@ -153,7 +153,7 @@ export default function AuditTrailPage() {
             <table className="min-w-full text-left border-collapse">
               <thead className="sticky top-0 z-0">
                 <tr className="bg-[#fff4e0] rounded shadow">
-                  <th className="p-2 w-[10%] rounded">Date</th>
+                  <th className="p-2 w-[12%] rounded">Date</th>
                   <th className="p-2 w-[15%]">User</th>
                   <th className="p-2 w-[10%]">Role</th>
                   <th className="p-2 w-[10%]">Action</th>

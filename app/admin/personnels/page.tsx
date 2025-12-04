@@ -206,7 +206,7 @@ export default function SupplierList() {
             >
               <span>{p.username}</span>
               <span className="uppercase text-sm">{p.personnelName}</span>
-              <span>{p.department}</span>
+              <span className="capitalize">{p.department}</span>
               <span>{p.email}</span>
               <span><span
                     className={`px-5 py-1 rounded-full text-xs font-medium text-center
@@ -237,7 +237,7 @@ export default function SupplierList() {
     </div>
 
       {/* Pagination */}
-      <div className="absolute bottom-0 left-0 w-full bg-[#ffedce] py-3 flex justify-center items-center gap-2 z-50">
+      <div className="absolute bottom-0 left-0 w-full bg-transparent py-3 flex justify-center items-center gap-2 z-50">
         <button
           onClick={handlePrevPage}
           disabled={currentPage === 1}

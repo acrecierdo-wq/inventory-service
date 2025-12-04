@@ -86,7 +86,7 @@ export default function PurchasingSessionPage() {
   return (
     <main>
       <Header />
-      <div className="p-10 max-w-7xl mx-auto mt-20">
+      <div className="p-10 max-w-7xl mx-auto mt-20 bg-[#ffedce]">
         <h1 className="text-3xl font-bold mb-6">Session Details</h1>
 
         <div className="mb-6">

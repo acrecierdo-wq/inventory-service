@@ -4,14 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Header } from "@/components/header";
 import AddItemModal from "@/components/add/AddItemModal";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import InventoryActions from "@/app/purchasing/p_inventory/p_inventory_list/inventory_action";
 import { toast } from "sonner";
 import {
@@ -29,8 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-const ITEMS_PER_PAGE = 10;
+import ItemImport from "@/components/add/purchasing/ItemImport";
 
 const WarehouseInventoryListPage = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -48,10 +39,12 @@ const WarehouseInventoryListPage = () => {
   const [sortBy, setSortBy] = useState<
     "name" | "stocks" | "reverseName" | "reverseStocks" | ""
   >("");
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const recordsPerPage = 10;
 
   const fetchDropdownData = async () => {
     const [cats, uns, vars, sizs] = await Promise.all([
@@ -235,11 +228,24 @@ const WarehouseInventoryListPage = () => {
     }
   };
 
-  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  // const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  // const paginatedItems = filteredItems.slice(
+  //   (currentPage - 1) * ITEMS_PER_PAGE,
+  //   currentPage * ITEMS_PER_PAGE
+  // );
+  const totalPages = Math.ceil(filteredItems.length / recordsPerPage);
   const paginatedItems = filteredItems.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
   );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
 
   const categoryRef = useRef<HTMLDivElement | null>(null);
   const statusRef = useRef<HTMLDivElement | null>(null);
@@ -269,7 +275,7 @@ const WarehouseInventoryListPage = () => {
   return (
     <main className="h-full w-full bg-[#ffedce] flex flex-col">
       <Header />
-      <div className="flex flex-col mt-30">
+      <div className="flex flex-col">
         <AddItemModal
           isOpen={isAddItemModalOpen}
           onClose={() => setIsAddItemModalOpen(false)}
@@ -497,6 +503,17 @@ const WarehouseInventoryListPage = () => {
             </div>
           </div>
 
+<button
+  className="h-10 px-3 rounded text-white text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 cursor-pointer"
+  onClick={() => setIsImportModalOpen(true)}
+>
+  Import
+</button>
+{isImportModalOpen && (
+  <ItemImport onClose={() => setIsImportModalOpen(false)} />
+)}
+
+
           {/* Export Dropdown */}
           <div className="relative">
             <DropdownMenu>
@@ -505,7 +522,7 @@ const WarehouseInventoryListPage = () => {
                   className={`h-10 px-3 rounded text-white text-xs sm:text-sm ${
                     isExporting
                       ? "bg-gray-400"
-                      : "bg-green-600 hover:bg-green-700"
+                      : "bg-green-600 hover:bg-green-700 cursor-pointer"
                   }`}
                 >
                   {isExporting ? "Exporting..." : "Export"}
@@ -710,38 +727,46 @@ const WarehouseInventoryListPage = () => {
           )}
         </div>
       </section>
+{/* Pagination */}
+      <div
+        className="
+      fixed bottom-0 left-0 
+      lg:left-[250px] 
+      w-full lg:w-[calc(100%-250px)] 
+      bg-transparent py-3 
+      flex justify-center items-center gap-2 
+      z-10
+    "
+      >
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 1}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === 1
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Prev
+        </button>
 
-      {/* Pagination */}
-      <div className="fixed bottom-0 left-0 lg:left-[285px] w-full lg:w-[calc(100%-285px)] bg-[#ffedce] py-2 flex justify-center z-10">
-        <Pagination>
-          <PaginationContent className="flex-wrap gap-1">
-            <PaginationPrevious
-              href="#"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              className="text-xs sm:text-sm"
-            />
-            {Array.from({ length: totalPages }, (_, index) => (
-              <PaginationItem key={index}>
-                <PaginationLink
-                  href="#"
-                  className={`text-xs sm:text-sm ${
-                    currentPage === index + 1 ? "bg-[#d2bda7] text-white" : ""
-                  }`}
-                  onClick={() => setCurrentPage(index + 1)}
-                >
-                  {index + 1}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-            <PaginationNext
-              href="#"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              className="text-xs sm:text-sm"
-            />
-          </PaginationContent>
-        </Pagination>
+        <span className="text-[#5a4632] text-sm">
+          <strong>
+            Page {currentPage} of {totalPages}
+          </strong>
+        </span>
+
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === totalPages}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === totalPages
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Next
+        </button>
       </div>
     </main>
   );

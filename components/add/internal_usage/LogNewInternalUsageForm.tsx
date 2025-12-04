@@ -7,7 +7,7 @@ import { Header } from "@/components/header";
 import { toast } from "sonner";
 import AutoComplete from "@/components/autocomplete/AutoComplete";
 import WarehousemanClientComponent from "@/app/validate/warehouseman_validate";
-import { useUser, useSignIn } from "@clerk/nextjs";
+import { useUser} from "@clerk/nextjs";
 
 type Personnel = {
   id: number;
@@ -54,7 +54,7 @@ type InternalUsageError = {
 type InternalUsageResponse = InternalUsageSuccess | InternalUsageError;
 
 const NewInternalUsagePage = () => {
-  const { isLoaded } = useSignIn();
+  //const { isLoaded } = useSignIn();
   const { user } = useUser();
   const [personnels, setPersonnels] = useState<Personnel[]>([]);
   const [, setLoadingPersonnels] = useState(false);
@@ -62,14 +62,14 @@ const NewInternalUsagePage = () => {
   const [department, setDepartment] = useState("");
   const [purpose, setPurpose] = useState("");
   const [authorizedBy, setAuthorizedBy] = useState("");
-  const [note, setNote] = useState("");
+  //const [note, setNote] = useState("");
   const [loggedBy, setLoggedBy] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [password, setPassword] = useState("");
+  //const [showPasswordModal, setShowPasswordModal] = useState(false);
+  //const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [passwordError] = useState(false);
+  //const [passwordError] = useState(false);
 
   const [personnelQuery, setPersonnelQuery] = useState("");
   const [personnelSuggestions, setPersonnelSuggestions] = useState<Personnel[]>(
@@ -396,96 +396,155 @@ const NewInternalUsagePage = () => {
   };
 
   // "Confirm" button in summary modal handler
-  const handleSaveUsage = () => {
-    setShowSummary(false);
-    setShowPasswordModal(true); // show PIN modal
-  };
+const handleSaveUsage = async () => {
+  if (isSubmitting) return;
+  setIsSubmitting(true);
 
-  // "Submit" button in pin modal handler
-  const handlePasswordSubmit = async () => {
-    if (!isLoaded || !user) {
-      toast.error("User not loaded yet.");
-      return;
-    }
+  try {
+    const payload = {
+      personnelName,
+      department,
+      purpose,
+      authorizedBy,
+      items: items.map((i) => ({
+        itemId: Number(i.itemId),
+        sizeId: i.sizeId ? Number(i.sizeId) : null,
+        variantId: i.variantId ? Number(i.variantId) : null,
+        unitId: i.unitId ? Number(i.unitId) : null,
+        quantity: i.quantity,
+      })),
+      loggedBy, // optional if you still need to track who logged it
+    };
 
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    const usageRes = await fetch("/api/internal_usages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-    if (!password.trim()) {
-      toast.error("Please enter your password.");
-      setIsSubmitting(false);
-      return;
-    }
+    const raw = await usageRes.text();
+    let usageData: InternalUsageResponse;
 
     try {
-      // prepare payload
-      const payload = {
-        personnelName,
-        department,
-        purpose,
-        authorizedBy,
-        note,
-        items: items.map((i) => ({
-          itemId: Number(i.itemId),
-          sizeId: i.sizeId ? Number(i.sizeId) : null,
-          variantId: i.variantId ? Number(i.variantId) : null,
-          unitId: i.unitId ? Number(i.unitId) : null,
-          quantity: i.quantity,
-        })),
-        loggedBy,
-        password,
-      };
-
-      const usageRes = await fetch("/api/internal_usages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const raw = await usageRes.text();
-
-      let usageData: InternalUsageResponse;
-      try {
-        usageData = JSON.parse(raw) as InternalUsageResponse;
-      } catch {
-        console.error("Invalid JSON from server:", raw);
-        toast.error("Unexpected server response.");
-        return;
-      }
-
-      // ❌ Error branch
-      if (!usageRes.ok || "error" in usageData) {
-        const errMsg =
-          "error" in usageData
-            ? usageData.error
-            : "Failed to save internal usage log.";
-        toast.error(errMsg);
-        return;
-      }
-
-      // ✅ Success branch
-      toast.success(usageData.message);
-
-      setShowPasswordModal(false);
-
-      // ⚡ FIX: ensure it's really an array before using .length / .forEach
-      if (Array.isArray(usageData.warning)) {
-        usageData.warning.forEach((msg: string) => {
-          toast.warning(msg);
-        });
-      }
-
-      setTimeout(() => {
-        window.location.href = "/warehouse/internal_usage_log";
-      }, 1500);
-    } catch (err) {
-      console.error("Password verification error:", err);
-      toast.error("Something went wrong while verifying password.");
-      setPassword("");
-    } finally {
-      setIsSubmitting(false);
+      usageData = JSON.parse(raw) as InternalUsageResponse;
+    } catch {
+      console.error("Invalid JSON from server:", raw);
+      toast.error("Unexpected server response.");
+      return;
     }
-  };
+
+    if (!usageRes.ok || "error" in usageData) {
+      const errMsg =
+        "error" in usageData ? usageData.error : "Failed to save internal usage log.";
+      toast.error(errMsg);
+      return;
+    }
+
+    toast.success(usageData.message);
+
+    setShowSummary(false); // close summary modal
+
+    if (Array.isArray(usageData.warning)) {
+      usageData.warning.forEach((msg: string) => toast.warning(msg));
+    }
+
+    setTimeout(() => {
+      window.location.href = "/warehouse/internal_usage_log";
+    }, 1500);
+  } catch (err) {
+    console.error("Internal usage save error:", err);
+    toast.error("Something went wrong while saving the usage log.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
+  // "Submit" button in pin modal handler
+  // const handlePasswordSubmit = async () => {
+  //   if (!isLoaded || !user) {
+  //     toast.error("User not loaded yet.");
+  //     return;
+  //   }
+
+  //   if (isSubmitting) return;
+  //   setIsSubmitting(true);
+
+  //   if (!password.trim()) {
+  //     toast.error("Please enter your password.");
+  //     setIsSubmitting(false);
+  //     return;
+  //   }
+
+  //   try {
+  //     // prepare payload
+  //     const payload = {
+  //       personnelName,
+  //       department,
+  //       purpose,
+  //       authorizedBy,
+  //       //note,
+  //       items: items.map((i) => ({
+  //         itemId: Number(i.itemId),
+  //         sizeId: i.sizeId ? Number(i.sizeId) : null,
+  //         variantId: i.variantId ? Number(i.variantId) : null,
+  //         unitId: i.unitId ? Number(i.unitId) : null,
+  //         quantity: i.quantity,
+  //       })),
+  //       loggedBy,
+  //       password,
+  //     };
+
+  //     const usageRes = await fetch("/api/internal_usages", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const raw = await usageRes.text();
+
+  //     let usageData: InternalUsageResponse;
+  //     try {
+  //       usageData = JSON.parse(raw) as InternalUsageResponse;
+  //     } catch {
+  //       console.error("Invalid JSON from server:", raw);
+  //       toast.error("Unexpected server response.");
+  //       return;
+  //     }
+
+  //     // ❌ Error branch
+  //     if (!usageRes.ok || "error" in usageData) {
+  //       const errMsg =
+  //         "error" in usageData
+  //           ? usageData.error
+  //           : "Failed to save internal usage log.";
+  //       toast.error(errMsg);
+  //       return;
+  //     }
+
+  //     // ✅ Success branch
+  //     toast.success(usageData.message);
+
+  //     setShowPasswordModal(false);
+
+  //     // ⚡ FIX: ensure it's really an array before using .length / .forEach
+  //     if (Array.isArray(usageData.warning)) {
+  //       usageData.warning.forEach((msg: string) => {
+  //         toast.warning(msg);
+  //       });
+  //     }
+
+  //     setTimeout(() => {
+  //       window.location.href = "/warehouse/internal_usage_log";
+  //     }, 1500);
+  //   } catch (err) {
+  //     console.error("Password verification error:", err);
+  //     toast.error("Something went wrong while verifying password.");
+  //     setPassword("");
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   useEffect(() => {
     if (user) {
@@ -525,24 +584,24 @@ const NewInternalUsagePage = () => {
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  const handleClose = () => {
-    // reset all states when close button is clicked (pin modal)
-    setShowSummary(false);
-    setShowPasswordModal(false);
-    setItems([]);
-    setPersonnelName("");
-    setDepartment("");
-    setPurpose("");
-    setAuthorizedBy("");
-    setNote("");
-    setPassword("");
-    setLoggedBy(
-      user?.username || user?.emailAddresses[0]?.emailAddress || "Warehouseman"
-    );
+  // const handleClose = () => {
+  //   // reset all states when close button is clicked (pin modal)
+  //   setShowSummary(false);
+  //   //setShowPasswordModal(false);
+  //   setItems([]);
+  //   setPersonnelName("");
+  //   setDepartment("");
+  //   setPurpose("");
+  //   setAuthorizedBy("");
+  //   //setNote("");
+  //   //setPassword("");
+  //   setLoggedBy(
+  //     user?.username || user?.emailAddresses[0]?.emailAddress || "Warehouseman"
+  //   );
 
-    // navigate back to internal usage log page
-    window.history.back();
-  };
+  //   // navigate back to internal usage log page
+  //   window.history.back();
+  // };
 
   const sanitizeToDigits = (input: string) => {
     const digits = input.replace(/\D+/g, "");
@@ -555,10 +614,7 @@ const NewInternalUsagePage = () => {
     <WarehousemanClientComponent>
       <main className="bg-[#ffedce] w-full min-h-screen">
         <Header />
-        <section className="p-4 sm:p-6 md:p-10 max-w-4xl mx-auto">
-          <h1 className="text-xl sm:text-3xl mt-32 sm:mt-[110px] md:mt-26 lg:mt-18 font-bold text-[#173f63] mb-4 sm:mb-6">
-            Log Internal Usage
-          </h1>
+        <section className="p-4 sm:p-6 md:p-2 max-w-4xl mx-auto">
 
           <form className="grid grid-cols-1 gap-4 bg-white p-4 sm:p-6 rounded shadow">
             {/* Personnel Name */}
@@ -655,7 +711,7 @@ const NewInternalUsagePage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+              {/* <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
                 Note:
               </label>
               <input
@@ -663,7 +719,7 @@ const NewInternalUsagePage = () => {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 className="w-full border border-[#d2bda7] p-2 rounded hover:bg-gray-100"
-              />
+              /> */}
             </div>
 
             <div>
@@ -673,7 +729,7 @@ const NewInternalUsagePage = () => {
             </div>
 
             {/* Items Section */}
-            <div className="border-t pt-4 mt-4">
+            <div className="border-t pt-4">
               <h2 className="text-base sm:text-lg font-bold mb-2 text-[#173f63] text-center uppercase">
                 Items to Utilize <span className="text-red-500"> *</span>
               </h2>
@@ -824,7 +880,7 @@ const NewInternalUsagePage = () => {
                               Unit
                             </th>
                             <th className="border px-2 py-1 min-w-[50px]">
-                              Qty
+                              Quantity
                             </th>
                             <th className="border px-2 py-1 min-w-[70px]">
                               Remove
@@ -913,9 +969,9 @@ const NewInternalUsagePage = () => {
                     <span className="font-semibold">Authorized By:</span>{" "}
                     {authorizedBy}
                   </p>
-                  <p className="text-sm text-gray-700">
+                  {/* <p className="text-sm text-gray-700">
                     <span className="font-semibold">Note:</span> {note}
-                  </p>
+                  </p> */}
                 </div>
 
                 <div className="overflow-x-auto -mx-4 sm:mx-0 mb-4">
@@ -937,7 +993,7 @@ const NewInternalUsagePage = () => {
                               Unit
                             </th>
                             <th className="border px-2 py-1 min-w-[40px]">
-                              Qty
+                              Quantity
                             </th>
                           </tr>
                         </thead>
@@ -992,7 +1048,7 @@ const NewInternalUsagePage = () => {
           )}
 
           {/* Password Modal */}
-          {showPasswordModal && (
+          {/* {showPasswordModal && (
             <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-40 p-4">
               <div className="bg-white w-full max-w-[600px] p-4 sm:p-6 rounded shadow">
                 <h2 className="text-lg sm:text-xl font-bold mb-4 text-[#173f63]">
@@ -1038,7 +1094,7 @@ const NewInternalUsagePage = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
         </section>
       </main>
     </WarehousemanClientComponent>

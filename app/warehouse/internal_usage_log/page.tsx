@@ -3,14 +3,6 @@
 "use client";
 
 import { Header } from "@/components/header";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -43,7 +35,7 @@ function normalizeEnd(
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 }
 
-const ITEMS_PER_PAGE = 10;
+
 
 const InternalUsagePage = () => {
   const [loading, setLoading] = useState(false);
@@ -57,6 +49,7 @@ const InternalUsagePage = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const recordsPerPage = 10;
 
   useEffect(() => {
     const fetchInternalUsages = async () => {
@@ -135,84 +128,110 @@ const InternalUsagePage = () => {
     });
   };
 
-  const exportToPDF = () => {
-    if (typeof window === "undefined") return;
+const exportToPDF = () => {
+  if (typeof window === "undefined") return;
 
-    const doc = new jsPDF("p", "pt", "a4"); // portrait, points, A4 size
+  const now = new Date();
 
-    // Add a logo (use your own image or base64)
-    // e.g. import logo from "@/assets/logo.png"; then use it:
-    // doc.addImage(logo, "PNG", x, y, width, height);
-    // Or load from URL/base64 string:
-    // doc.addImage("data:image/png;base64,...", "PNG", 40, 20, 80, 40);
+  // --- Display Format for PDF Header ---
+  const formattedDisplay = now.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-    // Company logo
-    doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80); // x=400, y=15, w=120 h=60
+  // --- Filename Format ---
+  const formattedFileName = now
+    .toISOString()
+    .replace(/[:]/g, "-")
+    .replace("T", "_")
+    .slice(0, 16); // YYYY-MM-DD_HH-MM
 
-    // Company name at top
-    doc.setFontSize(18);
-    doc.setFont("garamond", "bold");
-    doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
+  const doc = new jsPDF("p", "pt", "a4");
 
-    // Subtitle or report name
-    doc.setFontSize(12);
-    doc.text("Internal Usage Report", 40, 60);
+  // ---- LOGO ----
+  doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80);
 
-    // A line under header
-    doc.setDrawColor(150);
-    doc.setLineWidth(0.5);
-    doc.line(40, 80, 420, 80);
+  // ---- HEADER ----
+  doc.setFontSize(18);
+  doc.setFont("garamond", "bold");
+  doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
 
-    // Table data
-    const headers = [
-      "Personnel",
-      "Department",
-      "Purpose",
-      "Authorized",
-      "Note",
-      "Logged At",
-      "Logged By",
-      "Status",
-      "Items",
-    ];
+  doc.setFontSize(12);
+  doc.text("Internal Usage Report", 40, 60);
 
-    const rows = filteredInternalUsages.map((item) => [
-      item.personnelName,
-      item.department,
-      item.purpose,
-      item.authorizedBy,
-      item.note || "-",
-      item.loggedAt,
-      item.loggedBy,
-      item.status,
-      item.items
-        .map(
-          (i) =>
-            `${i.itemName} (${i.sizeName || "No Size"} | ${
-              i.variantName || "No variant"
-            } | ${i.unitName || "No Unit"}) = ${i.quantity}`
-        )
-        .join(", "),
-    ]);
+  // Export date
+  doc.setFontSize(10);
+  doc.text(`Exported: ${formattedDisplay}`, 40, 75);
 
-    autoTable(doc, {
-      head: [headers],
-      body: rows,
-      startY: 100,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [166, 124, 82] }, // brown header
-    });
+  doc.setDrawColor(150);
+  doc.setLineWidth(0.5);
+  doc.line(40, 85, 420, 85);
 
-    // Footer: page numbers
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(9);
-      doc.text(`Page ${i} of ${pageCount}`, 500, 820, { align: "right" });
-    }
+  // ---- TABLE ----
+  const headers = [
+    "Personnel",
+    "Department",
+    "Purpose",
+    "Authorized",
+    "Note",
+    "Logged At",
+    "Logged By",
+    "Status",
+    "Items",
+  ];
 
-    doc.save("Internal Usage_Report.pdf");
-  };
+  const rows = filteredInternalUsages.map((item) => [
+    item.personnelName,
+    item.department,
+    item.purpose,
+    item.authorizedBy,
+    item.note || "-",
+    item.loggedAt,
+    item.loggedBy,
+    item.status,
+    item.items
+      .map(
+        (i) =>
+          `${i.itemName} (${i.sizeName || "No Size"} | ${
+            i.variantName || "No variant"
+          } | ${i.unitName || "No Unit"}) = ${i.quantity}`
+      )
+      .join(", "),
+  ]);
+
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 100,
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      overflow: "linebreak",
+    },
+    headStyles: {
+      fillColor: [166, 124, 82],
+    },
+    columnStyles: {
+      5: { cellWidth: 60 }, // Logged At
+      6: { cellWidth: 60 }, // Logged By
+      8: { cellWidth: 160 }, // Items (more space, readable)
+    },
+  });
+
+  // ---- FOOTER PAGE NUMBERS ----
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.text(`Page ${i} of ${pageCount}`, 500, 820, { align: "right" });
+  }
+
+  // ---- FILE SAVE ----
+  doc.save(`InternalUsage_Report_${formattedFileName}.pdf`);
+};
 
   const handleExport = async (format: string) => {
     setIsExporting(true);
@@ -259,18 +278,32 @@ const InternalUsagePage = () => {
       return true;
     });
 
-  const totalPages = Math.ceil(filteredInternalUsages.length / ITEMS_PER_PAGE);
+  // const totalPages = Math.ceil(filteredInternalUsages.length / ITEMS_PER_PAGE);
+  // const paginatedInternalUsages = filteredInternalUsages.slice(
+  //   (currentPage - 1) * ITEMS_PER_PAGE,
+  //   currentPage * ITEMS_PER_PAGE
+  // );
+
+  const totalPages = Math.ceil(filteredInternalUsages.length / recordsPerPage);
   const paginatedInternalUsages = filteredInternalUsages.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
   );
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
 
   return (
     <main className="h-screen w-full bg-[#ffedce] flex flex-col ">
       <Header />
 
       {/* Top Section - Tabs, Search, Filters, Actions */}
-      <section className="flex flex-col lg:flex-row justify-between gap-4 mt-30 px-4 sm:px-6 lg:px-10">
+      <section className="flex flex-col lg:flex-row justify-between gap-4 px-4 sm:px-6 lg:px-10">
         {/* Tabs */}
         <div className="flex flex-row mt-4 gap-2 sm:gap-4">
           {/* Utilized Tab */}
@@ -396,7 +429,7 @@ const InternalUsagePage = () => {
                   className={`h-10 px-3 sm:px-4 rounded text-white text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-none ${
                     isExporting
                       ? "bg-gray-400"
-                      : "bg-green-600 hover:bg-green-700"
+                      : "bg-green-600 hover:bg-green-700 cursor-pointer"
                   }`}
                 >
                   {isExporting ? "Exporting..." : "Export"}
@@ -416,7 +449,7 @@ const InternalUsagePage = () => {
       </section>
 
       {/* Table Section */}
-      <section className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 mt-5 min-h-[400px] pb-16">
+      <section className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 mt-1 min-h-[400px]">
         <div className="bg-[#fffcf6] rounded shadow-md mb-2">
           {loading && <div className="text-center py-5">Loading...</div>}
           {error && (
@@ -584,37 +617,46 @@ const InternalUsagePage = () => {
         </div>
       </section>
 
-      {/* Pagination - Fixed at bottom */}
-      <div className="fixed bottom-0 left-0 sm:left-[285px] w-full sm:w-[calc(100%-285px)] bg-[#ffedce] py-3 flex justify-center shadow-inner z-10">
-        <Pagination>
-          <PaginationContent className="flex-wrap justify-center gap-1">
-            <PaginationPrevious
-              href="#"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              className="text-xs sm:text-sm"
-            />
-            {Array.from({ length: totalPages }, (_, index) => (
-              <PaginationItem key={index}>
-                <PaginationLink
-                  href="#"
-                  className={`text-xs sm:text-sm ${
-                    currentPage === index + 1 ? "bg-[#d2bda7] text-white" : ""
-                  }`}
-                  onClick={() => setCurrentPage(index + 1)}
-                >
-                  {index + 1}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-            <PaginationNext
-              href="#"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              className="text-xs sm:text-sm"
-            />
-          </PaginationContent>
-        </Pagination>
+      {/* Pagination */}
+      <div
+        className="
+      fixed bottom-0 left-0 
+      lg:left-[250px] 
+      w-full lg:w-[calc(100%-250px)] 
+      bg-transparent py-3 
+      flex justify-center items-center gap-2 
+      z-10
+    "
+      >
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 1}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === 1
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Prev
+        </button>
+
+        <span className="text-[#5a4632] text-sm">
+          <strong>
+            Page {currentPage} of {totalPages}
+          </strong>
+        </span>
+
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === totalPages}
+          className={`h-8 w-15 rounded-md ${
+            currentPage === totalPages
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-[#0c2a42] text-white hover:bg-[#163b5f] cursor-pointer"
+          }`}
+        >
+          Next
+        </button>
       </div>
     </main>
   );
