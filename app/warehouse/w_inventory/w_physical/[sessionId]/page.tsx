@@ -162,7 +162,7 @@ const handleChangeQty = (id: number, value: string) => {
   if (loading) return <div className="p-10">Loading...</div>;
 
   return (
-    <main>
+    <main className="bg-[#ffedce] h-full">
       <Header />
       <div className="p-10 max-w-6xl mx-auto mt-20">
       <h1 className="text-3xl font-bold mb-5">Physical Inventory Session</h1>
@@ -179,7 +179,7 @@ const handleChangeQty = (id: number, value: string) => {
         </p>
 
       <div className="overflow-x-auto">
-        <table className="table-auto w-full border border-gray-200">
+        <table className="table-auto bg-white w-full border border-gray-200">
           <thead>
             <tr>
               <th className="px-4 py-2 border">Select</th>

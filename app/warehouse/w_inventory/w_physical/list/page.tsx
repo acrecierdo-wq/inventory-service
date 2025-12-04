@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Image from "next/image";
-import jsPDF from "jspdf";
-import autoTable, { UserOptions } from "jspdf-autotable";
 
 interface SessionItem {
     id: number;
@@ -32,12 +30,12 @@ interface Session {
   items: SessionItem[];
 }
 
-function getLastAutoTableFinalY(doc: jsPDF): number | undefined {
-  const table = (doc as unknown as { lastAutoTable?: { finalY: number } })
-    .lastAutoTable;
+// function getLastAutoTableFinalY(doc: jsPDF): number | undefined {
+//   const table = (doc as unknown as { lastAutoTable?: { finalY: number } })
+//     .lastAutoTable;
 
-  return table?.finalY;
-}
+//   return table?.finalY;
+// }
 
 function normalizeStart(
   dateInput: string | Date | null | undefined
@@ -68,58 +66,58 @@ export default function SessionsListPage() {
   const [openDropdown, setOpenDropdown] = useState(false);
   const recordsPerPage = 10;
 
-const handleExportToPDF = (sessions: Session[]) => {
-  const doc = new jsPDF();
+// const handleExportToPDF = (sessions: Session[]) => {
+//   const doc = new jsPDF();
 
-  sessions.forEach((session, index) => {
-    doc.setFontSize(14);
-    doc.text("PHYSICAL INVENTORY REPORT", 14, 20);
+//   sessions.forEach((session, index) => {
+//     doc.setFontSize(14);
+//     doc.text("PHYSICAL INVENTORY REPORT", 14, 20);
 
-    doc.setFontSize(10);
-    doc.text(`Session ID: ${session.id}`, 14, 28);
-    doc.text(`Warehouseman: ${session.createdBy}`, 14, 34);
-    doc.text(`Status: ${session.status}`, 14, 40);
-    doc.text(
-      `Date Created: ${new Date(session.createdAt).toLocaleString()}`,
-      14,
-      46
-    );
+//     doc.setFontSize(10);
+//     doc.text(`Session ID: ${session.id}`, 14, 28);
+//     doc.text(`Warehouseman: ${session.createdBy}`, 14, 34);
+//     doc.text(`Status: ${session.status}`, 14, 40);
+//     doc.text(
+//       `Date Created: ${new Date(session.createdAt).toLocaleString()}`,
+//       14,
+//       46
+//     );
 
-    if (session.remarks) {
-      doc.text(`Remarks: ${session.remarks}`, 14, 52);
-    }
+//     if (session.remarks) {
+//       doc.text(`Remarks: ${session.remarks}`, 14, 52);
+//     }
 
-    const tableData: (string | number)[][] =
-      (session.items ?? []).map((item) => [
-        item.itemName,
-        item.category,
-        item.variant ?? "-",
-        item.size ?? "-",
-        item.unit,
-        item.physicalQty ?? 0,
-      ]);
+//     const tableData: (string | number)[][] =
+//       (session.items ?? []).map((item) => [
+//         item.itemName,
+//         item.category,
+//         item.variant ?? "-",
+//         item.size ?? "-",
+//         item.unit,
+//         item.physicalQty ?? 0,
+//       ]);
 
-    const tableOptions: UserOptions = {
-      startY: 60,
-      head: [["Item Name", "Category", "Variant", "Size", "Unit", "Quantity"]],
-      body: tableData,
-      theme: "grid",
-      headStyles: { fillColor: [240, 240, 240] },
-      styles: { fontSize: 9 },
-    };
+//     const tableOptions: UserOptions = {
+//       startY: 60,
+//       head: [["Item Name", "Category", "Variant", "Size", "Unit", "Quantity"]],
+//       body: tableData,
+//       theme: "grid",
+//       headStyles: { fillColor: [240, 240, 240] },
+//       styles: { fontSize: 9 },
+//     };
 
-    autoTable(doc, tableOptions);
+//     autoTable(doc, tableOptions);
 
-    const finalY = getLastAutoTableFinalY(doc) ?? 60;
-    doc.text(`Total Items: ${tableData.length}`, 14, finalY + 10);
+//     const finalY = getLastAutoTableFinalY(doc) ?? 60;
+//     doc.text(`Total Items: ${tableData.length}`, 14, finalY + 10);
 
-    if (index < sessions.length - 1) {
-      doc.addPage();
-    }
-  });
+//     if (index < sessions.length - 1) {
+//       doc.addPage();
+//     }
+//   });
 
-  doc.save("physical_inventory_report.pdf");
-};
+//   doc.save("physical_inventory_report.pdf");
+// };
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -200,7 +198,7 @@ const handleExportToPDF = (sessions: Session[]) => {
   <main className="min-h-screen w-full bg-[#ffedce] flex flex-col">
     <Header />
 
-    <div className="p-2 max-w-7xl">
+    <div className="p-2 /max-w-7xl">
 
 {/* New Physical Count Button */}
 <div className="flex flex-row sm:flex-row justify-end items-start sm:items-center mb-6 gap-4 pr-5">
@@ -273,12 +271,12 @@ const handleExportToPDF = (sessions: Session[]) => {
   )}
 </div>
 
-<button
+{/* <button
   onClick={() => handleExportToPDF(sessions)}
   className="mb-4 px-4 py-2 bg-blue-600 text-white rounded"
 >
   Export / Print
-</button>
+</button> */}
 
 <button
   onClick={handleLogNew}

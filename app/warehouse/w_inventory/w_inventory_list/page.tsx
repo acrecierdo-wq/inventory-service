@@ -4,8 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { Header } from "@/components/header";
 import AddItemModal from "@/components/add/AddItemModal";
-import InventoryActions from "./inventory_action";
-import { toast } from "sonner";
 import {
   InventoryItem,
   InventoryCategory,
@@ -36,12 +34,12 @@ const WarehouseInventoryListPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedStatus, ] = useState("");
   const [sortBy, setSortBy] = useState<
     "name" | "stocks" | "reverseName" | "reverseStocks" | ""
   >("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [, setStatusDropdownOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const recordsPerPage = 10;
@@ -92,8 +90,8 @@ const WarehouseInventoryListPage = () => {
         "Size",
         "Variant",
         "Unit",
-        "Stock",
-        "Status",
+        // "Stock",
+        // "Status",
       ];
       const rows = filteredItems.map((item) => [
         item.name,
@@ -101,8 +99,8 @@ const WarehouseInventoryListPage = () => {
         item.size?.name || "None",
         item.variant?.name || "None",
         item.unit?.name || "None",
-        item.stock ?? 0,
-        item.status,
+        // item.stock ?? 0,
+        // item.status,
       ]);
 
       const BOM = "\uFEFF";
@@ -124,73 +122,87 @@ const WarehouseInventoryListPage = () => {
     });
   };
 
-  const exportToPDF = () => {
-    if (typeof window === "undefined") return;
+const exportToPDF = () => {
+  if (typeof window === "undefined") return;
 
-    const doc = new jsPDF("p", "pt", "a4"); // portrait, points, A4 size
+  const now = new Date();
 
-    // Add a logo (use your own image or base64)
-    // e.g. import logo from "@/assets/logo.png"; then use it:
-    // doc.addImage(logo, "PNG", x, y, width, height);
-    // Or load from URL/base64 string:
-    // doc.addImage("data:image/png;base64,...", "PNG", 40, 20, 80, 40);
+  // Display format inside PDF
+  const formattedDisplay = now.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-    // Company logo
-    doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80); // x=400, y=15, w=120 h=60
+  // Safe filename format
+  const formattedFileName = now
+    .toISOString()
+    .replace(/[:]/g, "-")
+    .replace("T", "_")
+    .slice(0, 16); // YYYY-MM-DD_HH-MM
 
-    // Company name at top
-    doc.setFontSize(18);
-    doc.setFont("garamond", "bold");
-    doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
+  const doc = new jsPDF("p", "pt", "a4");
 
-    // Subtitle or report name
-    doc.setFontSize(12);
-    doc.text("Inventory Report", 40, 60);
+  // Company logo
+  doc.addImage("/cticlogo.png", "PNG", 450, 15, 80, 80);
 
-    // A line under header
-    doc.setDrawColor(150);
-    doc.setLineWidth(0.5);
-    doc.line(40, 80, 420, 80);
+  // Company name
+  doc.setFontSize(18);
+  doc.setFont("garamond", "bold");
+  doc.text("Canlubang Techno-Industrial Corporation", 40, 40);
 
-    // Table data
-    const headers = [
-      "Item name",
-      "Category",
-      "Size",
-      "Variant",
-      "Unit",
-      "Stock",
-      "Status",
-    ];
+  // Report name
+  doc.setFontSize(12);
+  doc.text("Inventory Report", 40, 60);
 
-    const rows = filteredItems.map((item) => [
-      item.name,
-      item.category?.name || "None",
-      item.unit?.name || "None",
-      item.variant?.name || "None",
-      item.size?.name || "None",
-      item.stock,
-      item.status,
-    ]);
+  // Exported date & time
+  doc.setFontSize(10);
+  doc.text(`Exported: ${formattedDisplay}`, 40, 75);
 
-    autoTable(doc, {
-      head: [headers],
-      body: rows,
-      startY: 100,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [166, 124, 82] }, // brown header
-    });
+  // Header line
+  doc.setDrawColor(150);
+  doc.setLineWidth(0.5);
+  doc.line(40, 85, 420, 85);
 
-    // Footer: page numbers
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(9);
-      doc.text(`Page ${i} of ${pageCount}`, 500, 820, { align: "right" });
-    }
+  // Table header
+  const headers = [
+    "Item name",
+    "Category",
+    "Size",
+    "Variant",
+    "Unit",
+  ];
 
-    doc.save("Inventory_Report.pdf");
-  };
+  // Table rows
+  const rows = filteredItems.map((item) => [
+    item.name,
+    item.category?.name || "None",
+    item.size?.name || "None",
+    item.variant?.name || "None",
+    item.unit?.name || "None",
+  ]);
+
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 100,
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [166, 124, 82] },
+  });
+
+  // Footer page numbers
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(9);
+    doc.text(`Page ${i} of ${pageCount}`, 500, 820, { align: "right" });
+  }
+
+  // Save PDF with timestamp filename
+  doc.save(`Inventory_Report_${formattedFileName}.pdf`);
+};
 
   const handleExport = async (format: string) => {
     setIsExporting(true);
@@ -365,7 +377,7 @@ const WarehouseInventoryListPage = () => {
           </div>
 
           {/* Status Filter */}
-          <div className="relative w-full sm:w-auto" ref={statusRef}>
+          {/* <div className="relative w-full sm:w-auto" ref={statusRef}>
             <div
               className="h-10 w-full sm:w-auto sm:min-w-[100px] bg-white border-b-2 border-[#d2bda7] rounded-md flex items-center justify-between px-3 cursor-pointer hover:bg-[#f0d2ad] active:border-b-4"
               onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
@@ -414,7 +426,7 @@ const WarehouseInventoryListPage = () => {
                 ))}
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Sort */}
           <div className="relative w-full sm:w-auto" ref={sortRef}>
@@ -533,15 +545,13 @@ const WarehouseInventoryListPage = () => {
           {!loading && !error && (
             <>
               {/* Desktop/Tablet Table Header */}
-              <div className="hidden md:grid md:grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1.5fr_0.8fr] gap-2 lg:gap-4 px-3 lg:px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center text-xs lg:text-sm">
+              <div className="hidden md:grid md:grid-cols-[2fr_2fr_2fr_2fr_2fr] gap-2 lg:gap-4 px-3 lg:px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center text-xs lg:text-sm">
                 <span className="text-left">ITEM NAME</span>
                 <span>CATEGORY</span>
                 <span>SIZE</span>
                 <span>VARIANT</span>
                 <span>UNIT</span>
-                <span>STOCKS</span>
-                <span>STATUS</span>
-                <span>ACTION</span>
+                
               </div>
 
               {/* Mobile Card View */}
@@ -561,7 +571,7 @@ const WarehouseInventoryListPage = () => {
                             {item.category?.name}
                           </div>
                         </div>
-                        <InventoryActions
+                        {/* <InventoryActions
                           item={item}
                           onDelete={async (id: number) => {
                             try {
@@ -584,7 +594,7 @@ const WarehouseInventoryListPage = () => {
                               toast("Failed to delete item");
                             }
                           }}
-                        />
+                        /> */}
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -601,13 +611,13 @@ const WarehouseInventoryListPage = () => {
                           <span>{item.unit?.name}</span>
                         </div>
                         <div>
-                          <span className="text-gray-500">Stock: </span>
+                          {/* <span className="text-gray-500">Stock: </span>
                           <span className="font-semibold">
                             {item.stock ?? 0}
-                          </span>
+                          </span> */}
                         </div>
                       </div>
-
+{/* 
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">Status:</span>
                         <span
@@ -625,7 +635,7 @@ const WarehouseInventoryListPage = () => {
                         >
                           {item.status}
                         </span>
-                      </div>
+                      </div> */}
                     </div>
                   ))
                 ) : (
@@ -641,7 +651,7 @@ const WarehouseInventoryListPage = () => {
                   paginatedItems.map((item) => (
                     <div
                       key={item.id}
-                      className="grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1fr_1fr_1.5fr_0.8fr] gap-2 lg:gap-4 px-3 lg:px-5 py-3 bg-white border-b border-gray-200 text-[#1e1d1c] text-center items-center text-xs lg:text-sm"
+                      className="grid grid-cols-[2fr_2fr_2fr_2fr_2fr] gap-2 lg:gap-4 px-3 lg:px-5 py-3 bg-white border-b border-gray-200 text-[#1e1d1c] text-center items-center text-xs lg:text-sm"
                     >
                       <span className="text-left truncate uppercase">{item.name}</span>
                       <span className="truncate">{item.category?.name}</span>
@@ -652,8 +662,8 @@ const WarehouseInventoryListPage = () => {
                         {item.variant?.name || "(None)"}
                       </span>
                       <span>{item.unit?.name}</span>
-                      <span className="font-semibold">{item.stock ?? 0}</span>
-                      <span
+                      {/* <span className="font-semibold">{item.stock ?? 0}</span> */}
+                      {/* <span
                         className={`text-white text-xs px-2 py-1 rounded-full ${
                           item.status === "No Stock"
                             ? "bg-slate-500"
@@ -667,8 +677,8 @@ const WarehouseInventoryListPage = () => {
                         }`}
                       >
                         {item.status}
-                      </span>
-                      <span className="flex items-center justify-center">
+                      </span> */}
+                      {/* <span className="flex items-center justify-center">
                         <InventoryActions
                           item={item}
                           onDelete={async (id: number) => {
@@ -693,7 +703,7 @@ const WarehouseInventoryListPage = () => {
                             }
                           }}
                         />
-                      </span>
+                      </span> */}
                     </div>
                   ))
                 ) : (

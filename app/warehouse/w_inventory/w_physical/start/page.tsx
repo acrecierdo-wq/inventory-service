@@ -119,9 +119,9 @@ export default function NewPhysicalInventoryPage() {
     return <div className="p-10 text-gray-500">Loading items...</div>;
 
   return (
-    <main>
+    <main className="bg-[#ffedce]">
       <Header />
-      <div className="p-10 max-w-6xl mx-auto mt-20">
+      <div className="p-10 max-w-6xl mx-auto /mt-20">
       <h1 className="text-3xl font-bold mb-6">New Physical Inventory</h1>
 
       {items.length === 0 ? (

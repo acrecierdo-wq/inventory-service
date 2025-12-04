@@ -5,14 +5,13 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  AreaChart,
-  Area,
-  CartesianGrid,
-  XAxis,
-  Tooltip,
   ResponsiveContainer,
   BarChart,
-  Bar, YAxis, 
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
 } from "recharts";
 
 // Types
@@ -40,7 +39,6 @@ type QuotationRequest = {
 type CustomerAPI = {
   id: number;
   companyName: string;
-  // Add other customer fields here if needed
 };
 
 const statusColors: Record<string, string> = {
@@ -125,50 +123,48 @@ const SalesPage = () => {
     }
   };
 
+  const fetchCompanyRequests = async () => {
+    try {
+      const res = await fetch("/api/sales/customer_request");
+      const json: QuotationRequestAPI[] | { data: QuotationRequestAPI[] } = await res.json();
+      const requests: QuotationRequestAPI[] = Array.isArray(json) ? json : json.data || [];
+
+      const companyMap: Record<string, number> = {};
+      requests.forEach((req) => {
+        const company = req.customer_name || req.customer?.companyName || "N/A";
+        companyMap[company] = (companyMap[company] || 0) + 1;
+      });
+
+      const topCompanies = Object.entries(companyMap)
+        .map(([company, count]) => ({ company, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      setCompanyRequests(topCompanies);
+    } catch (err) {
+      console.error(err);
+      setCompanyRequests([]);
+    }
+  };
+
   // -------------------------
   // POLLING EVERY 10 SEC
   // -------------------------
   useEffect(() => {
-  const fetchAll = () => {
-    fetchRequests();
-    fetchCustomers();
-    fetchCompanyRequests();
-  };
+    const fetchAll = () => {
+      fetchRequests();
+      fetchCustomers();
+      fetchCompanyRequests();
+    };
 
-  fetchAll(); // initial fetch
+    fetchAll();
 
-  const interval = setInterval(() => {
-    fetchAll(); // repeat every 10 seconds
-  }, 10000);
+    const interval = setInterval(() => {
+      fetchAll();
+    }, 10000);
 
-  return () => clearInterval(interval); // cleanup
-}, []);
-
-const fetchCompanyRequests = async () => {
-  try {
-    const res = await fetch("/api/sales/customer_request"); // fetch all requests
-    const json: QuotationRequestAPI[] | { data: QuotationRequestAPI[] } = await res.json();
-    const requests: QuotationRequestAPI[] = Array.isArray(json) ? json : json.data || [];
-
-    // Count requests per company
-    const companyMap: Record<string, number> = {};
-    requests.forEach((req) => {
-      const company = req.customer_name || req.customer?.companyName || "N/A";
-      companyMap[company] = (companyMap[company] || 0) + 1;
-    });
-
-    // Convert to array and get top 5 companies
-    const topCompanies = Object.entries(companyMap)
-      .map(([company, count]) => ({ company, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    setCompanyRequests(topCompanies);
-  } catch (err) {
-    console.error(err);
-    setCompanyRequests([]);
-  }
-};
+    return () => clearInterval(interval);
+  }, []);
 
   const totalRequests =
     counts.pending + counts.accepted + counts.rejected + counts.inProgress + counts.completed;
@@ -194,22 +190,11 @@ const fetchCompanyRequests = async () => {
     </div>
   );
 
-  const chartData = [
-    { month: "Jan", desktop: counts.completed, mobile: counts.pending },
-    { month: "Feb", desktop: counts.accepted, mobile: counts.rejected },
-    { month: "Mar", desktop: counts.inProgress, mobile: counts.pending },
-    { month: "Apr", desktop: counts.completed, mobile: counts.rejected },
-    { month: "May", desktop: counts.accepted, mobile: counts.pending },
-    { month: "Jun", desktop: counts.completed, mobile: counts.inProgress },
-  ];
-
   return (
     <main className="bg-[#ffedce] min-h-screen w-full pb-10">
       <Header />
 
-      {/* -------------------------
-          TOP SUMMARY CARDS
-      --------------------------- */}
+      {/* TOP SUMMARY CARDS */}
       <div className="mt-6 px-6 flex flex-wrap gap-6">
         {renderCard("Pending", counts.pending, "text-red-600", "/square-list-svgrepo-com.svg", "/sales/s_pending_customer_request")}
         {renderCard("Accepted", counts.accepted, "text-teal-600", "/square-list-svgrepo-com.svg", "/sales/s_accepted_customer_request")}
@@ -224,40 +209,37 @@ const fetchCompanyRequests = async () => {
         </div>
       </div>
 
-      {/* -------------------------
-          MIDDLE ROW: CHART + TOTAL CUSTOMERS
-      --------------------------- */}
+      {/* MIDDLE ROW: MOST REQUESTED COMPANIES + TOTAL CUSTOMERS */}
       <div className="mt-8 px-6 flex flex-col md:flex-row gap-6">
         
-        {/* Requests Trend Chart */}
+        {/* Most Requested Companies Chart */}
         <div className="w-full md:w-3/4">
-          <div className="bg-white rounded-xl shadow-2xl p-6 h-[500px] flex flex-col">
-            <h3 className="text-lg font-semibold mb-2">Requests Trend</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Overview of requests by status in the last 6 months
-            </p>
+          <div className="bg-white rounded-xl shadow-2xl p-6 h-[500px] flex flex-col relative overflow-hidden">
+            <h3 className="text-lg font-semibold mb-2">Most Requested Companies</h3>
+            <p className="text-sm text-gray-500 mb-4">Top companies by number of requests</p>
 
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                <Tooltip />
-
-                <defs>
-                  <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0.1} />
-                  </linearGradient>
-                  <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#facc15" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#facc15" stopOpacity={0.1} />
-                  </linearGradient>
-                </defs>
-
-                <Area dataKey="mobile" type="natural" fill="url(#fillMobile)" stroke="#facc15" />
-                <Area dataKey="desktop" type="natural" fill="url(#fillDesktop)" stroke="#14b8a6" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {companyRequests.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={companyRequests}
+                  layout="vertical"
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis type="number" tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="company" width={150} tick={{ fontSize: 14, fill: "#4b5563" }} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                  />
+                  <Bar dataKey="count" fill="#14b8a6" radius={[8, 8, 8, 8]} barSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 italic">
+                Loading chart...
+              </div>
+            )}
           </div>
         </div>
 
@@ -289,52 +271,7 @@ const fetchCompanyRequests = async () => {
         </div>
       </div>
 
-{/* Most Requested Companies */}
-<div className="mt-8 px-6">
-  <div className="bg-white rounded-2xl shadow-xl p-6 h-[400px] relative overflow-hidden">
-    {/* Decorative background blur */}
-    <div className="absolute inset-0 bg-gradient-to-br from-teal-100 to-teal-300 opacity-20 blur-3xl rounded-2xl"></div>
-
-    <div className="relative z-10 h-full flex flex-col">
-      <h3 className="text-xl font-semibold mb-4 text-gray-800">
-        Most Requested Companies
-      </h3>
-
-      {companyRequests.length > 0 ? (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={companyRequests}
-            layout="vertical"
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-            <XAxis type="number" tickLine={false} axisLine={false} />
-            <YAxis type="category" dataKey="company" width={150} tick={{ fontSize: 14, fill: "#4b5563" }} />
-            <Tooltip
-              cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-              contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
-            />
-            <Bar 
-              dataKey="count" 
-              fill="#14b8a6" 
-              radius={[8, 8, 8, 8]} 
-              barSize={20}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      ) : (
-        <div className="flex items-center justify-center h-full text-gray-400 italic">
-          Loading chart...
-        </div>
-      )}
-    </div>
-  </div>
-</div>
-
-
-      {/* -------------------------
-          BOTTOM: LATEST REQUESTS
-      --------------------------- */}
+      {/* BOTTOM: LATEST REQUESTS */}
       <div className="mt-8 px-6">
         <div className="bg-white rounded-md shadow-lg overflow-x-auto">
           <div className="bg-white rounded shadow-md mb-2">
