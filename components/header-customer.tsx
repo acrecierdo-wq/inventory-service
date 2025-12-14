@@ -45,12 +45,12 @@ export const CustomerHeader = ({ className }: Props) => {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 flex items-center justify-between px-6 py-4 border-b border-[#f3dac1] bg-gradient-to-r from-[#fff7ec]/95 via-[#ffe9cf]/95 to-[#ffdcb9]/95 backdrop-blur shadow-[0_12px_30px_rgba(255,225,190,0.6)]",
+        "sticky top-0 z-50 h-[80px] flex items-center justify-between px-6 py-3 border-b border-[#f3dac1] bg-gradient-to-r from-[#fff7ec]/95 via-[#ffe9cf]/95 to-[#ffdcb9]/95 backdrop-blur shadow-[0_12px_30px_rgba(255,225,190,0.6)]",
         className
       )}
     >
       <div className="flex flex-col">
-        <span className="text-xs uppercase tracking-[0.5em] text-[#b26c27]">
+        <span className="text-xs uppercase tracking-[0.4em] text-[#b26c27]">
           Canlubang Techno-Industrial Corp.
         </span>
         <div className="mt-1 text-2xl font-semibold text-[#4f2d12]">

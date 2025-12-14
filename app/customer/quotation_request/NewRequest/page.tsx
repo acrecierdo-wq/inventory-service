@@ -277,14 +277,14 @@ const NewRequest = () => {
 
               <div className="bg-white w-[500px] rounded shadow mb-2">
                 <div className="flex flex-row">
-                  <div className="bg-white w-[300px]">
+                  {/* <div className="bg-white w-[300px]">
                 <span>Send request to:</span>
                 <input 
                   type="text" 
                   placeholder="Contact person name"
                   className="border"
                 />
-              </div>
+              </div> */}
               </div>
               </div>
 

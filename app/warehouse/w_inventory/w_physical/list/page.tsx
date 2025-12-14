@@ -201,7 +201,7 @@ export default function SessionsListPage() {
     <div className="p-2 /max-w-7xl">
 
 {/* New Physical Count Button */}
-<div className="flex flex-row sm:flex-row justify-end items-start sm:items-center mb-6 gap-4 pr-5">
+<div className="flex flex-row sm:flex-row justify-end items-start sm:items-center mb-6 gap-4 pr-5 mt-4">
     <div className="flex gap-2 items-center">
       <label className="text-xs">From:</label>
       <input

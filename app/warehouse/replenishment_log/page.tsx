@@ -282,7 +282,7 @@ const ReplenishmentPage = () => {
   return (
     <main className="min-h-screen w-full bg-[#ffedce] flex flex-col">
       <Header />
-      <section className="flex flex-col lg:flex-row justify-between mt-20 sm:mt-30 lg:mt-32 px-4 sm:px-6 lg:px-10 gap-4">
+      <section className="flex flex-col lg:flex-row justify-between mt-2 sm:mt-2 lg:mt-2 px-4 sm:px-6 lg:px-10 gap-4">
         <div className="flex flex-row gap-2 sm:gap-4 overflow-x-auto">
           {/* Replenished Tab */}
           <div className="relative flex-shrink-0">

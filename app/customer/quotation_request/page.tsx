@@ -503,7 +503,7 @@ useEffect(() => {
     {!loading && !error && (
       <>
         {/* Header */}
-        <div className="bg-[#f59e0b] grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-3 text-white font-semibold border-b border-[#d2bda7] text-center">
+        <div className="bg-[#fffcf6] grid grid-cols-[1fr_2fr_1fr_1fr_2fr_1fr] gap-4 px-5 py-3 text-[#5a4632] font-semibold border-b border-[#d2bda7] text-center">
           <span>REQUEST ID</span>
           <span>PROJECT NAME</span>
           <span>MODE</span>
@@ -603,7 +603,7 @@ useEffect(() => {
 
      {/* Sliding Details Panel */}
 {selectedRequest && (
-  <div className="fixed top-0 right-0 h-full bg-white shadow-2xl w-[30%] /max-w-5xl transform transition-transform duration-300 z-50">
+  <div className="fixed top-0 right-0 h-full bg-[#fffcf6] shadow-2xl w-[30%] /max-w-5xl transform transition-transform duration-300 z-50">
     <div className="p-6 h-full relative flex flex-col">
       <button
         className="absolute top-4 right-4 p-2 hover:bg-gray-200 rounded-full cursor-pointer"

@@ -59,7 +59,7 @@ export const Header = ({ className }: Props) => {
         </span>
 
         <div className="mt-1 text-2xl font-semibold text-[#4f2d12] capitalize">
-          Welcome, {isSignedIn ? user?.firstName || user?.fullName || user?.primaryEmailAddress?.emailAddress : "Guest"}!
+          Welcome, {isSignedIn ? user?.username || user?.primaryEmailAddress?.emailAddress : "Guest"}!
         </div>
 
         <div className="mt-1 flex items-center gap-3 text-sm font-medium text-[#7c4722]">
@@ -90,8 +90,8 @@ export const Header = ({ className }: Props) => {
                 afterSignOutUrl="/"
                 showName={false}
               />
-              <span className="text-xs text-[#7c4722]">
-                {user?.fullName || user?.primaryEmailAddress?.emailAddress}
+              <span className="text-xs text-[#7c4722] capitalize">
+                {user?.username || user?.primaryEmailAddress?.emailAddress}
               </span>
             </div>
           </SignedIn>

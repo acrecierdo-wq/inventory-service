@@ -159,13 +159,28 @@ const handleChangeQty = (id: number, value: string) => {
     }
   };
 
-  if (loading) return <div className="p-10">Loading...</div>;
+  if (loading)
+  return (
+    <div className="bg-[#ffedce] min-h-screen">
+      <Header />
+      <div className="p-10 text-gray-500 italic flex justify-center animate-pulse">
+        Loading items...
+      </div>
+    </div>
+  );
 
   return (
     <main className="bg-[#ffedce] h-full">
       <Header />
-      <div className="p-10 max-w-6xl mx-auto mt-20">
-      <h1 className="text-3xl font-bold mb-5">Physical Inventory Session</h1>
+      <div className="p-8 /max-w-6xl mx-auto mt-2">
+           <div className="flex justify-end">
+             <button
+          onClick={() => router.back()}
+          className="px-4 py-1 text-sm bg-white border border-[#d2bda7] text-[#5a4632] rounded-full shadow hover:bg-[#f59f0b1b] transition cursor-pointer"
+        >
+          ←
+        </button>
+           </div>
 
       <p className="mb-5 text-lg">
           Status:{" "}

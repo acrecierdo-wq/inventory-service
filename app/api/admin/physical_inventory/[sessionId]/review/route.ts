@@ -282,8 +282,14 @@ import {
 import { eq, and } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 
-type SubmittedItem = { itemId: number; physicalQty: number };
-type ReviewBody = { action: "approved" | "rejected"; remarks?: string | null; items?: SubmittedItem[] };
+// type SubmittedItem = { itemId: number; physicalQty: number };
+interface ReviewBody {
+  action?: "approved" | "rejected";
+  remarks?: string;
+  items?: { itemId: number; physicalQty: number }[];
+  unlockedItems?: number[]; // ✅ Add this
+}
+
 
 type RouteContext = {
   params: Promise<{ sessionId: string }>;
@@ -394,10 +400,7 @@ type RouteContext = {
 //   }
 // }
 
-export async function PATCH(
-  req: NextRequest,
-  context: RouteContext
-) {
+export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
     const { sessionId } = await context.params;
 
@@ -409,10 +412,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden: insufficient access." }, { status: 403 });
 
     const body: ReviewBody = await req.json();
-    const { action, remarks } = body;
+    const { action, remarks, unlockedItems } = body;
 
     if (!action) return NextResponse.json({ error: "Action is required." }, { status: 400 });
 
+    // Fetch session
     const sessionRecord = await db
       .select()
       .from(physicalInventorySessions)
@@ -423,7 +427,23 @@ export async function PATCH(
     if (sessionRecord.status !== "submitted")
       return NextResponse.json({ error: "Only submitted sessions can be reviewed." }, { status: 400 });
 
-    // Update session status
+    // -------------------------
+    // 1. Unlock items first
+    // -------------------------
+    if (unlockedItems?.length) {
+      for (const id of unlockedItems) {
+        await db.update(physicalInventoryItems)
+          .set({ status: "unlocked" })
+          .where(and(
+            eq(physicalInventoryItems.sessionId, sessionId),
+            eq(physicalInventoryItems.itemId, id)
+          ));
+      }
+    }
+
+    // -------------------------
+    // 2. Update session status
+    // -------------------------
     const updateData: {
       status: "approved" | "rejected";
       reviewedAt: Date;
@@ -439,54 +459,64 @@ export async function PATCH(
       .set(updateData)
       .where(eq(physicalInventorySessions.id, sessionId));
 
-    const existingSessionItems = await db
+    // -------------------------
+    // 3. Fetch session items AFTER unlocking
+    // -------------------------
+    const sessionItems = await db
       .select()
       .from(physicalInventoryItems)
       .where(eq(physicalInventoryItems.sessionId, sessionId));
 
+    // -------------------------
+    // 4. Handle rejection
+    // -------------------------
     if (action === "rejected") {
+      await db.update(physicalInventoryItems)
+        .set({ status: "rejected" })
+        .where(eq(physicalInventoryItems.sessionId, sessionId));
+
       await db.insert(audit_logs).values({
         entity: "physical_inventory_session",
         entityId: sessionId,
         action: "REJECT",
-        description: "Physical inventory session rejected, no adjutments applied.",
+        description: "Physical inventory session rejected, no adjustments applied.",
         actorId: user.id,
         actorName: user.username || "Purchasing",
         actorRole: role,
         module: "Inventory / Physical Inventory",
       });
+
       return NextResponse.json({ message: "Session rejected." });
     }
 
-    // Approved: process all session items (auto-read if frontend doesn't send items)
-    const itemsToProcess = body.items?.length ? body.items : existingSessionItems.map(i => ({
-      itemId: i.itemId,
-      physicalQty: i.physicalQty,
-    }));
+    // -------------------------
+    // 5. Handle approval
+    // -------------------------
+    for (const item of sessionItems) {
+      const discrepancy = item.physicalQty - item.systemQty;
 
-    for (const submitted of itemsToProcess) {
-      const existing = existingSessionItems.find(i => i.itemId === submitted.itemId);
-      if (!existing) continue;
+      // Locked only if still locked and discrepancy exceeds ±10
+      const isLocked = (discrepancy > 10 || discrepancy < -10) && item.status !== "unlocked";
 
-      const discrepancy = submitted.physicalQty - existing.systemQty;
+      // Final status: unlocked items become approved, others locked if needed
+      const finalStatus: "locked" | "unlocked" | "approved" = isLocked ? "locked" : "approved";
 
-      // Update session item
       await db.update(physicalInventoryItems)
-        .set({ physicalQty: submitted.physicalQty, discrepancy })
+        .set({ status: finalStatus, discrepancy })
         .where(and(
           eq(physicalInventoryItems.sessionId, sessionId),
-          eq(physicalInventoryItems.itemId, submitted.itemId)
+          eq(physicalInventoryItems.itemId, item.itemId)
         ));
 
-      // Adjust stock and insert inventory adjustment if discrepancy exists
-      if (discrepancy !== 0) {
+      // Update stock only if approved
+      if (finalStatus === "approved" && discrepancy !== 0) {
         await db.update(items)
-          .set({ stock: submitted.physicalQty })
-          .where(eq(items.id, submitted.itemId));
+          .set({ stock: item.physicalQty }) // use physicalQty
+          .where(eq(items.id, item.itemId)); // match itemId
 
         await db.insert(inventoryAdjustments).values({
           sessionId,
-          itemId: submitted.itemId,
+          itemId: item.itemId,
           adjustmentQty: discrepancy,
           reason: "Physical Inventory Adjustment",
           approvedBy: user.username || user.id,
@@ -494,24 +524,30 @@ export async function PATCH(
       }
     }
 
-    // Audit log for approval
+    // -------------------------
+    // 6. Audit log for approval
+    // -------------------------
     await db.insert(audit_logs).values({
       entity: "physical_inventory_session",
       entityId: sessionId,
       action: "APPROVE",
-      description: "Physical inventory approved and adjustments applied.",
+      description: "Physical inventory approved. Stock adjusted for unlocked or non-locked items.",
       actorId: user.id,
       actorName: user.username || "Purchasing",
       actorRole: role,
       module: "Inventory / Physical Inventory",
     });
 
-    return NextResponse.json({ message: "Session approved and stock adjusted." }, { status: 200 });
+    return NextResponse.json({
+      message: "Session approved. Locked items skipped, unlocked items adjusted.",
+    }, { status: 200 });
+
   } catch (error) {
     console.error("Review Physical Inventory Error:", error);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
 }
+
 
 export async function GET(
   _req: NextRequest,

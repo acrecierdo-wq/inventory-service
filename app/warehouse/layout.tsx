@@ -16,17 +16,16 @@ const WarehouseLayout = ({ children }: Props) => {
   return (
     <RoleGuard allowedRoles={["warehouseman"]}>
       <MustChangePasswordRedirect>
-        <div className="h-full flex flex-col lg:flex-row bg-dash relative">
+        <div className="h-screen flex bg-dash overflow-hidden">
           {/* Mobile Menu Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden fixed top-22 left-4 z-[60] bg-[#ffc922] p-2 rounded-md shadow-lg hover:bg-[#e6b41f]"
-            aria-label="Toggle menu"
+            className="lg:hidden fixed top-5 left-4 z-[60] bg-[#ffc922] p-2 rounded-md shadow-lg hover:bg-[#e6b41f]"
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          {/* Overlay for mobile */}
+          {/* Mobile overlay */}
           {sidebarOpen && (
             <div
               className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -34,21 +33,21 @@ const WarehouseLayout = ({ children }: Props) => {
             />
           )}
 
-          {/* Sidebar */}
+          {/* Fixed Sidebar */}
           <div
             className={`
-    fixed lg:static inset-y-0 left-0 z-50 w-[250px]
-    transform transition-transform duration-300 ease-in-out
-    ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-    lg:translate-x-0
-  `}
+              fixed lg:static inset-y-0 left-0 z-50 /w-[250px]
+              transform transition-transform duration-300 ease-in-out
+              ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+              lg:translate-x-0
+            `}
           >
             <SideBarWarehouse onNavigate={() => setSidebarOpen(false)} />
           </div>
 
-          {/* Main content - Fixed spacing */}
-          <main className="flex-1 w-full lg:w-auto">
-            <div className="h-full w-full">{children}</div>
+          {/* Content (scrollable) */}
+          <main className="flex-1 ml-0 lg:ml-[250px] h-screen overflow-y-auto /p-4">
+            {children}
           </main>
         </div>
       </MustChangePasswordRedirect>

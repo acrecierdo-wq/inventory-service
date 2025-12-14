@@ -21,7 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import ItemImport from "@/components/add/purchasing/ItemImport";
 
 const WarehouseInventoryListPage = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -39,7 +38,6 @@ const WarehouseInventoryListPage = () => {
   const [sortBy, setSortBy] = useState<
     "name" | "stocks" | "reverseName" | "reverseStocks" | ""
   >("");
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
@@ -503,7 +501,7 @@ const WarehouseInventoryListPage = () => {
             </div>
           </div>
 
-<button
+{/* <button
   className="h-10 px-3 rounded text-white text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 cursor-pointer"
   onClick={() => setIsImportModalOpen(true)}
 >
@@ -511,7 +509,7 @@ const WarehouseInventoryListPage = () => {
 </button>
 {isImportModalOpen && (
   <ItemImport onClose={() => setIsImportModalOpen(false)} />
-)}
+)} */}
 
 
           {/* Export Dropdown */}

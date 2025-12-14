@@ -303,7 +303,7 @@ const exportToPDF = () => {
       <Header />
 
       {/* Top Section - Tabs, Search, Filters, Actions */}
-      <section className="flex flex-col lg:flex-row justify-between gap-4 px-4 sm:px-6 lg:px-10">
+      <section className="flex flex-col lg:flex-row justify-between gap-4 px-4 sm:px-6 lg:px-10 mt-5">
         {/* Tabs */}
         <div className="flex flex-row mt-4 gap-2 sm:gap-4">
           {/* Utilized Tab */}
@@ -449,7 +449,7 @@ const exportToPDF = () => {
       </section>
 
       {/* Table Section */}
-      <section className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 mt-1 min-h-[400px]">
+      <section className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 mt-5 min-h-[400px]">
         <div className="bg-[#fffcf6] rounded shadow-md mb-2">
           {loading && <div className="text-center py-5">Loading...</div>}
           {error && (
@@ -473,7 +473,7 @@ const exportToPDF = () => {
                   paginatedInternalUsages.map((usages) => (
                     <div
                       key={usages.id}
-                      className="grid grid-cols-[2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-3 bg-white border-b border-gray-200 text-[#1e1d1c] text-center items-center"
+                      className="grid grid-cols-[2fr_2fr_1.5fr_1fr_1fr] gap-4 px-5 py-2 bg-white border-b border-gray-200 text-[#1e1d1c] text-center items-center"
                     >
                       <span className="text-sm">
                         {usages.loggedAt

@@ -1,22 +1,65 @@
 "use client";
-import { cn } from "@/lib/utils";
+
 import Image from "next/image";
 import Link from "next/link";
-import { SidebarItem } from "./sidebar-items";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 type Props = {
   className?: string;
   onNavigate?: () => void;
 };
 
+type NavItem = {
+  label: string;
+  href: string;
+  iconSrc: string;
+};
+
+const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/warehouse/w_dashboard", iconSrc: "/board-chart-svgrepo-com.svg" },
+  { label: "Inventory List", href: "/warehouse/w_inventory/w_inventory_list", iconSrc: "/report-data-svgrepo-com.svg" },
+  { label: "Issuance Log", href: "/warehouse/issuance_log", iconSrc: "/drawer-alt.png" },
+  { label: "Replenishment Log", href: "/warehouse/replenishment_log", iconSrc: "/drawer-alt.png" },
+  { label: "Internal Usage Log", href: "/warehouse/internal_usage_log", iconSrc: "/drawer-alt.png" },
+  { label: "Physical Inventory", href: "/warehouse/w_inventory/w_physical/list", iconSrc: "/drawer-alt.png" },
+];
+
+const SidebarItem = ({ label, href, iconSrc, onClick }: NavItem & { onClick?: () => void }) => {
+  const pathname = usePathname();
+  const active = pathname?.startsWith(href);
+
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 rounded-xl px-3 py-2 transition",
+        active ? "text-[#4f2d12]" : "text-[#7c4722] hover:text-[#4f2d12]"
+      )}
+    >
+      <Image
+        src={iconSrc}
+        alt={label}
+        width={20}
+        height={20}
+        className={cn(
+          "transition",
+          active ? "brightness-0 invert opacity-90" : "opacity-80 hover:opacity-100"
+        )}
+      />
+      <span className="text-sm font-medium">{label}</span>
+    </Link>
+  );
+};
+
 export const SideBarWarehouse = ({ className, onNavigate }: Props) => {
+  const pathname = usePathname();
+
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-full w-[250px] flex-col",
-        "border-r border-[#f7d9b9]",
-        "bg-gradient-to-b from-[#fff7ec] via-[#ffe9cd] to-[#fddfbd]",
-        "text-[#4f2d12] shadow-2xl",
+        "fixed left-0 top-0 z-40 flex h-full w-[250px] flex-col border-r border-[#f7d9b9] bg-gradient-to-b from-[#fff7ec] via-[#ffe9cd] to-[#fddfbd] text-[#4f2d12] shadow-2xl",
         className
       )}
     >
@@ -42,63 +85,20 @@ export const SideBarWarehouse = ({ className, onNavigate }: Props) => {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3">
-        {/* Dashboard */}
-        <div className="rounded-2xl px-2 py-1 hover:bg-white/20 hover:shadow-md transition">
-          <SidebarItem
-            label="Dashboard"
-            href="/warehouse/w_dashboard"
-            iconSrc="/board-chart-svgrepo-com.svg"
-            onClick={onNavigate}
-          />
-        </div>
-
-        {/* Inventory List */}
-        <div className="rounded-2xl px-2 py-1 hover:bg-white/20 hover:shadow-md transition">
-          <SidebarItem
-            label="Inventory List"
-            href="/warehouse/w_inventory/w_inventory_list"
-            iconSrc="/report-data-svgrepo-com.svg"
-            onClick={onNavigate}
-          />
-        </div>
-
-        {/* Logs */}
-        <div className="rounded-2xl px-2 py-1 hover:bg:white/20 hover:shadow-md transition">
-          <SidebarItem
-            label="Issuance Log"
-            href="/warehouse/issuance_log"
-            iconSrc="/drawer-alt.png"
-            onClick={onNavigate}
-          />
-        </div>
-
-        <div className="rounded-2xl px-2 py-1 hover:bg:white/20 hover:shadow-md transition">
-          <SidebarItem
-            label="Replenishment Log"
-            href="/warehouse/replenishment_log"
-            iconSrc="/drawer-alt.png"
-            onClick={onNavigate}
-          />
-        </div>
-
-        <div className="rounded-2xl px-2 py-1 hover:bg:white/20 hover:shadow-md transition">
-          <SidebarItem
-            label="Internal Usage Log"
-            href="/warehouse/internal_usage_log"
-            iconSrc="/drawer-alt.png"
-            onClick={onNavigate}
-          />
-        </div>
-
-        {/* Physical Inventory */}
-        <div className="rounded-2xl px-2 py-1 hover:bg-white/20 hover:shadow-md transition">
-          <SidebarItem
-            label="Physical Inventory"
-            href="/warehouse/w_inventory/w_physical/list"
-            iconSrc="/drawer-alt.png"
-            onClick={onNavigate}
-          />
-        </div>
+        {navItems.map((item) => {
+          const active = pathname?.startsWith(item.href);
+          return (
+            <div
+              key={item.href}
+              className={cn(
+                "rounded-2xl px-2 py-1 transition hover:bg-white/20 hover:shadow-md",
+                active && "bg-white/40 shadow-inner shadow-[#f4d1a5]"
+              )}
+            >
+              <SidebarItem {...item} onClick={onNavigate} />
+            </div>
+          );
+        })}
       </nav>
 
       {/* Help Box */}
