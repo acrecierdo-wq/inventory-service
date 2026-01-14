@@ -65,7 +65,7 @@ const NewIssuancePage = ({ draftData, draftId }: Props) => {
   const { user } = useUser();
 
   // Issuance header information
-  const [client, setClient] = useState<Selection| null>(null); 
+  //const [client, setClient] = useState<Selection| null>(null); 
 
   const [clientName, setClientName] = useState(draftData?.clientName || "");
   const [customerPoNumber, setCustomerPoNumber] = useState(draftData?.customerPoNumber || "");
@@ -84,7 +84,7 @@ const NewIssuancePage = ({ draftData, draftId }: Props) => {
   const [showWebcamModal, setShowWebcamModal] = useState(false);
 
   // const [clientSuggestions, setClientSuggestions] = useState<Clients[]>([]);
-  const [address, setAddress] = useState("");
+  //const [address, setAddress] = useState("");
 
   const [duplicateErrors, setDuplicateErrors] = useState<string[]>([]);
   // Dynamic input rows for adding items (before they're officially added to the list)
@@ -845,38 +845,56 @@ const NewIssuancePage = ({ draftData, draftId }: Props) => {
    * Checks that all required header fields and at least one item are present
    */
   const handleDone = () => {
-    if (!clientName) {
-      toast.error("Please enter a client name.");
-      return;
-    }
+  console.log("handleDone triggered");
+  console.log({
+    clientName,
+    customerPoNumber,
+    clientAddress,
+    deliveryDate,
+    referenceNumber,
+    items,
+  });
 
-    if (!customerPoNumber) {
-      toast.error("Please enter a customer PO number.");
-      return;
-    }
+  if (!clientName) {
+    console.warn("Missing clientName");
+    toast.error("Please enter a client name.");
+    return;
+  }
 
-    if (!clientAddress) {
-      toast.error("Please enter a client address.");
-      return;
-    }
+  if (!customerPoNumber) {
+    console.warn("Missing customerPoNumber");
+    toast.error("Please enter a customer PO number.");
+    return;
+  }
 
-    if (!deliveryDate) {
-      toast.error("Please enter a delivery date.");
-      return;
-    }
+  if (!clientAddress) {
+    console.warn("Missing clientAddress");
+    toast.error("Please enter a client address.");
+    return;
+  }
 
-    if (!referenceNumber) {
-      toast.error("Please enter a DR reference number.");
-      return;
-    }
+  if (!deliveryDate) {
+    console.warn("Missing deliveryDate");
+    toast.error("Please enter a delivery date.");
+    return;
+  }
 
-    if (items.length === 0) {
-      toast.error("Please add at least one item.");
-      return;
-    }
+  if (!referenceNumber) {
+    console.warn("Missing referenceNumber");
+    toast.error("Please enter a DR reference number.");
+    return;
+  }
 
-    setShowSummary(true);
-  };
+  if (items.length === 0) {
+    console.warn("No items added");
+    toast.error("Please add at least one item.");
+    return;
+  }
+
+  console.log("All validations passed. Showing summary.");
+  setShowSummary(true);
+};
+
 
   /**
    * Saves the issuance to the database
@@ -1007,26 +1025,26 @@ const NewIssuancePage = ({ draftData, draftId }: Props) => {
   }, [user]);
 
     // Fetch client details automatically when client is selected
-useEffect(() => {
-  const fetchClientDetails = async () => {
-    if (!client) {
-      setAddress("");
-      return;
-    }
+// useEffect(() => {
+//   const fetchClientDetails = async () => {
+//     if (!client) {
+//       setAddress("");
+//       return;
+//     }
 
-    try {
-      const res = await fetch(`/api/admin/clients/${client.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAddress(data.address || "");
-      }
-    } catch (err) {
-      console.error("Failed to fetch client details", err);
-    }
-  };
+//     try {
+//       const res = await fetch(`/api/admin/clients/${client.id}`);
+//       if (res.ok) {
+//         const data = await res.json();
+//         setAddress(data.address || "");
+//       }
+//     } catch (err) {
+//       console.error("Failed to fetch client details", err);
+//     }
+//   };
 
-  fetchClientDetails();
-}, [client]);
+//   fetchClientDetails();
+// }, [client]);
 
 
   return (
@@ -1039,14 +1057,19 @@ useEffect(() => {
             <div className="grid grid-cols-3 gap-4">
               {/* Row 1: Client Name, Client Address, Reference Number */}
               <div>
-                            <div>
-                            <AutoComplete
-                              endpoint="/api/purchasing/suppliers"
-                              value={client}
-                              onChange={setClient}
-                              label="Client"
-                            />
-                          </div>
+<div>
+  <label className="block text-sm font-semibold mb-1 text-[#482b0e]">
+    Client Name
+  </label>
+  <input
+    type="text"
+    value={clientName}
+    onChange={(e) => setClientName(e.target.value)}
+    className="w-full border border-[#d2bda7] p-2 rounded"
+    placeholder="Enter client name"
+  />
+</div>
+
               </div>
 
           {/* Address */}
@@ -1055,13 +1078,13 @@ useEffect(() => {
               Address
             </label>
             <input
-              value={address}
-              onChange={(e) => setClientAddress(e.target.value)}
-              disabled={!client}
-              readOnly
-              className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-500"
-              placeholder={!client ? "Select supplier first" : ""}
-            />
+  type="text"
+  value={clientAddress}
+  onChange={(e) => setClientAddress(e.target.value)}
+  className="border border-[#d2bda7] p-2 rounded w-full text-xs sm:text-sm"
+  placeholder="Enter client address"
+/>
+
           </div>
 
               <div>
